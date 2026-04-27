@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Supertails SLA Processor (Fast)</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+<style>
+body{
+  font-family:Arial;
+  margin:0;
+  padding:0;
+}
+.card{background:#fff;padding:20px;border-radius:10px}
+button{padding:10px;background:#003f8c;color:#fff;border:none}
+.table-wrap{
+  margin-top:15px;
+  max-height:70vh;
+  overflow:auto;
+  border:1px solid #ccc;
+}
+table{
+  border-collapse:collapse;
+  width:max-content;
+  font-size:12px;
+}
+th,td{
+  border:1px solid #ddd;
+  padding:6px;
+  white-space:nowrap;
+}
+th{
+  background:#003f8c;
+  color:#fff;
+  position:sticky;
+  top:0;
+}
+.report-head{
+  text-align:center;
+  margin:20px 0 10px;
+}
+
+.report-meta{
+  font-size:13px;
+  font-weight:600;
+  opacity:0.8;
+}
+
+/* ===== ZIPPEE LAYOUT START ===== */
+
+:root{
+  --primary-900:#003f8c;
+  --glass-bg:rgba(255,255,255,0.16);
+  --card-shadow:0 8px 30px rgba(0,0,0,0.25);
+}
+
+body{
+  background:url('Zippee.png') center/cover fixed no-repeat;
+}
+
+body::before{
+  content:"";
+  position:fixed;
+  inset:0;
+  background:rgba(255,255,255,.24);
+  backdrop-filter:blur(6px);
+  z-index:-1;
+}
+
+.header{
+  background:linear-gradient(90deg,rgba(0,63,140,.85),rgba(0,89,179,.85));
+  color:white;
+  padding:18px 36px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+
+.logo{height:48px}
+
+.card{
+  background:var(--glass-bg);
+  backdrop-filter:blur(10px);
+  margin:30px auto;
+  max-width:1300px;
+  padding:30px;
+  border-radius:18px;
+  box-shadow:var(--card-shadow);
+}
+
+.title{
+  font-size:22px;
+  font-weight:700;
+  color:var(--primary-900);
+}
+
+.controls{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  margin-top:12px;
+}
+
+.button{
+  background:linear-gradient(135deg,#0A66C2,#0078FF);
+  border:none;
+  border-radius:10px;
+  padding:10px 16px;
+  color:white;
+  font-weight:700;
+  cursor:pointer;
+}
+
+.table-wrap{margin-top:15px}
+
+/* ===== ZIPPEE LAYOUT END ===== */
+
+</style>
+</head>
+
+<body>
+  <div class="header">
+  <h1>Supertails – SLA Report</h1>
+  <img class="logo" src="https://i.imgur.com/7yUVE8U.png">
+</div>
+
+<div class="card">
+  <div class="title">Upload Data to Generate SLA Report</div>
+
+  <div class="controls">
+  <input type="file" id="fileInput" accept=".zip">
+  <button class="button" onclick="start()">Process</button>
+  <button class="button" id="dl" onclick="downloadExcel()" disabled>
+    Download Excel
+  </button>
+</div>
+
+
+<div id="status"></div>
+
+<!-- ================= REPORT VIEW (FIRST) ================= -->
+<div class="report-head">
+  <div class="report-meta" id="reportMeta"></div>
+</div>
+
+<label>
+  SLA Status:
+  <select id="slaFilter" onchange="renderReport()">
+  <option value="ALL">All</option>
+  <option value="SLA MET">SLA MET</option>
+  <option value="SLA Breach" selected>SLA Breach</option>
+</select>
+</label>
+
+<div class="table-wrap">
+  <table id="reportTable"></table>
+</div>
+
+<!-- ================= MAIN DATA TABLE (SECOND) ================= -->
+<div class="title" style="margin-top:25px">
+  Processed Order-Level Data
+</div>
+
+<div class="table-wrap">
+  <table id="table"></table>
+</div>
+
+
+
+<script>
+/* ================= HELPERS ================= */
+const clean = v => v == null ? "" : String(v).replace(/^=\("?|"\)?$/g,"").trim();
+
+function parseExcelDate(s){
+  if(!s) return null;
+  const m = s.match(/(\d{2})\/(\d{2})\/(\d{4})\s*(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
+  if(!m) return null;
+  let [,dd,mm,yy,hh,mi,ap] = m;
+  hh=+hh; mi=+mi;
+  if(ap){
+    if(ap.toUpperCase()==="PM" && hh<12) hh+=12;
+    if(ap.toUpperCase()==="AM" && hh===12) hh=0;
+  }
+  return new Date(yy,mm-1,dd,hh,mi,0);
+}
+
+/* ================= GLOBALS ================= */
+let output = [];
+let previewCount = 0;
+const PREVIEW_LIMIT = 500;
+
+function formatDate(d){
+  if(!(d instanceof Date)) return "";
+  const dd = String(d.getDate()).padStart(2,"0");
+  const mm = String(d.getMonth()+1).padStart(2,"0");
+  const yy = d.getFullYear();
+  return `${dd}-${mm}-${yy}`;
+}
+
+function formatDateTime(d){
+  if(!(d instanceof Date)) return "";
+  const date = formatDate(d);
+  const hh = String(d.getHours()).padStart(2,"0");
+  const mi = String(d.getMinutes()).padStart(2,"0");
+  const ss = String(d.getSeconds()).padStart(2,"0");
+  return `${date} ${hh}:${mi}:${ss}`;
+}
+
+function formatTimeFromFraction(frac){
+  if(frac === "" || frac == null || isNaN(frac)) return "";
+  const totalSeconds = Math.round(frac * 86400);
+  const hh = String(Math.floor(totalSeconds / 3600)).padStart(2,"0");
+  const mm = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2,"0");
+  const ss = String(totalSeconds % 60).padStart(2,"0");
+  return `${hh}:${mm}:${ss}`;
+}
+
+/* ================= MAIN ================= */
+async function start(){
+  output = [];
+  previewCount = 0;
+  document.getElementById("table").innerHTML="";
+  document.getElementById("status").innerText="⏳ Processing…";
+  document.getElementById("dl").disabled=true;
+
+  const file = fileInput.files[0];
+  if(!file) return alert("Upload ZIP");
+
+  const zip = await JSZip.loadAsync(file);
+  const csvName = Object.keys(zip.files).find(f=>f.endsWith(".csv"));
+  if(!csvName) return alert("ZIP must contain CSV");
+
+  const csvText = await zip.files[csvName].async("text");
+
+  Papa.parse(csvText,{
+    skipEmptyLines:true,
+    step(res){
+      const row = res.data;
+
+      /* HEADER */
+      if(output.length === 0){
+        output.push([
+          ...row,
+          "Model","Order Date 1","TAT","SLA Status",
+          "Time","Packing_time","Packing_Delay","p_delay"
+        ]);
+        renderHeader(output[0]);
+        return;
+      }
+
+      const C = clean(row[2]);
+      if(C!=="Supertails Hyperlocal" && C!=="Supertails") return;
+
+      const D = clean(row[3]);
+      const N = parseExcelDate(clean(row[13]));
+      if(!N) return;
+
+      const DW = String(clean(row[121]));
+      const EE = clean(row[130]);
+      const AX = parseExcelDate(clean(row[49])); // packing complete
+
+      const hour = N.getHours();
+
+      /* ===== Model ===== */
+      let Model="SDD Delivery";
+      const blr=[
+        "Supertails-BLR-Varthur","Supertails-BLR-Indranagar",
+        "Supertails-BLR2-BTM","Supertails-BLR-KalyanNagar"
+      ];
+      if(C==="Supertails Hyperlocal" && EE==="562162" && blr.includes(D)) Model="Warehouse Order";
+      else if(C==="Supertails Hyperlocal" && hour>=8 && hour<20 && DW!=="560049" && blr.includes(D)) Model="2 Hours Delivery";
+      else if(C==="Supertails Hyperlocal" && (hour<8||hour>=20) && blr.includes(D)) Model="SF Previous";
+
+      /* ===== Order Date 1 ===== */
+      let base = new Date(N); base.setHours(0,0,0,0);
+      let OrderDate1;
+      if(Model==="2 Hours Delivery") OrderDate1=base;
+      else if(Model==="Warehouse Order" && hour<12) OrderDate1=base;
+      else OrderDate1 = hour<14 ? base : new Date(base.getTime()+86400000);
+
+      /* ===== TAT ===== */
+      let TAT = new Date(OrderDate1);
+      TAT.setHours(23,59,59);
+
+      /* ===== SLA ===== */
+      let SLA = AX && AX>TAT ? "SLA Breach" : "SLA MET";
+
+      /* ===== Time ===== */
+      let TimeVal = (N - base)/86400000;
+
+      /* ===== Packing Time ===== */
+      let PackingTime = AX ? (AX-N)/86400000 : "";
+
+      /* ===== Packing Delay ===== */
+      let PackingDelay="More than 30 min delay";
+      if(PackingTime<=15/1440) PackingDelay="15 min delay";
+      else if(PackingTime<=30/1440) PackingDelay="15-30 min delay";
+
+      /* ===== p_delay ===== */
+      let p_delay="More than 15 min delay";
+      if(PackingTime<=5/1440) p_delay="0–5 min delay";
+      else if(PackingTime<=10/1440) p_delay="5–10 min delay";
+      else if(PackingTime<=15/1440) p_delay="10–15 min delay";
+
+      const finalRow=[
+        ...row,
+           Model,
+          formatDate(OrderDate1),          // ✅ DATE ONLY
+          formatDateTime(TAT),             // ✅ DATE + TIME
+          SLA,
+        formatTimeFromFraction(TimeVal),         // ✅ HH:MM:SS
+formatTimeFromFraction(PackingTime),     // ✅ HH:MM:SS
+PackingDelay,
+p_delay
+      ];
+
+      output.push(finalRow);
+
+      if(previewCount<PREVIEW_LIMIT){
+        renderRow(finalRow);
+        previewCount++;
+      }
+    },
+    complete(){
+  document.getElementById("status").innerText =
+    `✅ Done | Rows processed: ${output.length-1}`;
+  document.getElementById("dl").disabled=false;
+  updateReportMeta();
+  renderReport();   // ✅ THIS LINE IS REQUIRED
+}
+
+  });
+}
+
+/* ================= RENDER ================= */
+function renderHeader(h){
+  document.getElementById("table").innerHTML =
+    `<tr>${h.map(x=>`<th>${x}</th>`).join("")}</tr>`;
+}
+function renderRow(r){
+  document.getElementById("table").innerHTML +=
+    `<tr>${r.map(v=>`<td>${v ?? ""}</td>`).join("")}</tr>`;
+}
+
+/* ================= DOWNLOAD ================= */
+function downloadExcel(){
+  const ws = XLSX.utils.aoa_to_sheet(output);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,"Processed");
+  XLSX.writeFile(wb,"Supertails_SLA_Processed.xlsx");
+}
+
+const ALLOWED_STORES = new Set([
+  "HYD-Supertails",
+  "KOL-Supertails",
+  "Supertails-BLR-Indranagar",
+  "Supertails-BLR-KalyanNagar",
+  "Supertails-BLR-Varthur",
+  "PUN-Supertails",
+  "CH_Periyamet"
+]);
+
+function parseDDMMYYYY(dateStr){
+  if(!dateStr) return null;
+  const [dd,mm,yyyy] = dateStr.split("-");
+  return new Date(yyyy, mm-1, dd);
+}
+
+function renderReport(){
+  if(output.length <= 1) return;
+
+  const slaChoice = document.getElementById("slaFilter").value;
+  const header = output[0];
+
+  const idxStore = header.indexOf("Order Dark Store") !== -1
+    ? header.indexOf("Order Dark Store")
+    : header.indexOf("Store Name");
+
+  const idxDate  = header.indexOf("Order Date 1");
+  const idxModel = header.indexOf("Model");
+  const idxSLA   = header.indexOf("SLA Status");
+    // ---- Find max Order Date (from data) ----
+  let maxDate = null;
+
+  for(let i=1;i<output.length;i++){
+    const d = parseDDMMYYYY(output[i][idxDate]);
+    if(d && (!maxDate || d > maxDate)) {
+      maxDate = d;
+    }
+  }
+
+  // Allow only last 7 days (including max date)
+  const minAllowedDate = new Date(maxDate);
+  minAllowedDate.setDate(minAllowedDate.getDate() - 6);
+
+
+  /* === Build unique model list (columns) === */
+  const models = [...new Set(
+    output.slice(1)
+      .map(r => r[idxModel])
+      .filter(Boolean)
+  )];
+
+  const pivot = {};
+
+  for(let i=1;i<output.length;i++){
+    const r = output[i];
+
+    // SLA filter
+    if(slaChoice !== "ALL" && r[idxSLA] !== slaChoice) continue;
+
+// Last 7 days filter (REPORT ONLY)
+const rowDate = parseDDMMYYYY(r[idxDate]);
+if(!rowDate || rowDate < minAllowedDate) continue;
+
+
+    const key = `${r[idxStore]}||${r[idxDate]}`;
+
+    if(!pivot[key]){
+      pivot[key] = {
+        store: r[idxStore],
+        date: r[idxDate],
+        counts: {}
+      };
+      models.forEach(m => pivot[key].counts[m] = 0);
+    }
+
+    pivot[key].counts[r[idxModel]]++;
+  }
+
+  /* === Render table === */
+  const t = document.getElementById("reportTable");
+
+  t.innerHTML = `
+    <tr>
+      <th>Order Dark Store</th>
+      <th>Day</th>
+      ${models.map(m => `<th>${m}</th>`).join("")}
+      <th>Total</th>
+    </tr>
+  `;
+
+ // ---- Group rows by Store ----
+const groupedByStore = {};
+
+Object.values(pivot).forEach(row=>{
+  if(!groupedByStore[row.store]){
+    groupedByStore[row.store] = [];
+  }
+  groupedByStore[row.store].push(row);
+});
+
+// ---- Render store-wise, date-wise ----
+Object.keys(groupedByStore).sort().forEach(store => {
+
+  // sort dates inside store
+  groupedByStore[store].sort((a,b)=>{
+    const da = new Date(a.date.split("-").reverse().join("-"));
+    const db = new Date(b.date.split("-").reverse().join("-"));
+    return da - db;
+  });
+
+  groupedByStore[store].forEach((row, idx)=>{
+    const total = models.reduce((s,m)=>s+row.counts[m],0);
+
+    t.innerHTML += `
+      <tr>
+        <td>${idx === 0 ? `<b>${row.store}</b>` : ""}</td>
+        <td>${row.date}</td>
+        ${models.map(m => `<td>${row.counts[m]}</td>`).join("")}
+        <td><b>${total}</b></td>
+      </tr>
+    `;
+  });
+});
+}
+function updateReportMeta(){
+  const now = new Date();
+  const d = now.toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"});
+  const t = now.toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit",hour12:true});
+  document.getElementById("reportMeta").innerText =
+    `Generated on ${d} | ${t}`;
+}
+
+
+</script>
+</body>
+</html>

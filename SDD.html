@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SASA – SDD Pendency Tool</title>
+
+<!-- LIBRARIES -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+<style>
+:root{
+    --zippee-primary:#00305E;
+    --zippee-secondary:#0078D4;
+    --text-dark:#1d2a38;
+    --card-bg:rgba(255,255,255,.15);
+}
+body{
+    margin:0;
+    font-family:"Segoe UI",sans-serif;
+    background:url('Zippee.png') no-repeat center/cover;
+    min-height:100vh;
+    overflow-x:hidden;
+}
+body::before{
+    content:"";
+    position:fixed;
+    inset:0;
+    background:rgba(255,255,255,.25);
+    z-index:-1;
+}
+.header-main{
+    background:rgba(0,48,94,.85);
+    color:white;
+    position:fixed;
+    top:0;
+    width:100%;
+    padding:10px 8px;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    gap:10px;
+}
+.header-logo{height:36px}
+h1{margin:0;font-size:22px}
+.container{
+    margin:110px auto 90px auto;
+    width:92%;
+    max-width:1100px;
+    padding:22px;
+    border-radius:18px;
+    background:var(--card-bg);
+    backdrop-filter:blur(10px);
+    box-shadow:0 8px 30px rgba(0,0,0,.2);
+}
+#detailTable{display:table}
+th,td{
+  border:1px solid #444;
+  padding:6px 10px;
+  font-size:14px;
+  color:var(--text-dark);
+}
+table{
+  border-collapse:collapse;
+  margin:12px auto;
+}
+button{
+  padding:8px 12px;
+  margin:4px;
+  cursor:pointer;
+  border-radius:8px;
+  border:none;
+  background:#0078ff;
+  color:white;
+  font-weight:600;
+}
+.loader-screen{
+    position:fixed;
+    inset:0;
+    background:#001c38;
+    color:white;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    align-items:center;
+    z-index:999;
+}
+</style>
+</head>
+
+<body>
+
+<div class="loader-screen" id="loader">
+    <img src="SASA.png" height="120"><br>
+    <div>SASA is loading your analytics...</div>
+</div>
+
+<div class="header-main">
+    <img src="ZippeeSocial-Image.webp" class="header-logo">
+    <h1>SDD Pendency – SASA Analytics</h1>
+</div>
+
+<div class="container">
+
+<h2 style="text-align:center;">📦 SDD Pendency Dashboard</h2>
+
+<div style="text-align:center;margin-bottom:10px;">
+    <input type="file" id="zipInput" accept=".zip">
+</div>
+
+<div style="text-align:center;display:none;" id="buttonsArea">
+    <button id="downloadSummaryBtn">Download Summary Table Image</button>
+    <button id="downloadChartBtn">Download Graph Image</button>
+    <button id="downloadExcelBtn">Download Detailed Excel</button>
+</div>
+
+<table id="summaryTable"></table>
+
+<div style="width:900px;height:600px;margin:0 auto;">
+    <canvas id="slaChart" width="900" height="600"></canvas>
+</div>
+
+<table id="detailTable"></table>
+
+</div>
+
+<script>
+window.onload=()=>setTimeout(()=>loader.style.display="none",1200);
+
+const allowedStores=new Set([
+"BLR_kalyan-nagar","BLR_koramangala","CH_Periyamet",
+"DEL_malviya-nagar","HYD_manikonda","KOL-Topsia",
+"MUM_andheri","PUN_koregaon-park"
+]);
+
+function trimCustom(v){ if(!v)return""; v=String(v); return v.length>5?v.slice(3,-2):v; }
+
+function parseIndianDateTime(str){
+ if(!str)return null;
+ const m=str.trim().match(/^(\d{2})\/(\d{2})\/(\d{4})\s+(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+ if(!m)return null;
+ let[_,dd,mm,yy,hh,min,ap]=m;
+ dd=+dd;mm=+mm-1;yy=+yy;hh=+hh;min=+min;
+ if(ap.toUpperCase()==="PM"&&hh!==12)hh+=12;
+ if(ap.toUpperCase()==="AM"&&hh===12)hh=0;
+ return new Date(yy,mm,dd,hh,min,0,0);
+}
+
+function formatIndian(d){
+ const dd=String(d.getDate()).padStart(2,"0");
+ const mm=String(d.getMonth()+1).padStart(2,"0");
+ const yy=d.getFullYear();
+ let h=d.getHours();
+ const m=String(d.getMinutes()).padStart(2,"0");
+ const ap=h>=12?"PM":"AM";
+ h=h%12;if(h===0)h=12;
+ return`${dd}/${mm}/${yy} ${h}:${m} ${ap}`;
+}
+
+function computeDZ(nStr){
+ const d=parseIndianDateTime(nStr);
+ if(!d)return{date:null,text:""};
+ const h=d.getHours();
+ let r=new Date(d);
+ r.setHours(0,0,0,0);
+ if(h<15)r.setHours(23,59,0,0);
+ else{r.setDate(r.getDate()+1);r.setHours(23,59,0,0);}
+ return{date:r,text:formatIndian(r)};
+}
+
+const whiteBackgroundPlugin={
+ beforeDraw:(chart)=>{
+  const ctx=chart.canvas.getContext("2d");
+  ctx.save();ctx.globalCompositeOperation="destination-over";
+  ctx.fillStyle="#FFFFFF";ctx.fillRect(0,0,chart.width,chart.height);ctx.restore();
+ }
+};
+
+const watermarkPlugin = {
+  afterDraw: (chart) => {
+    const ctx = chart.ctx;
+    ctx.save();
+    ctx.font = "16px Segoe UI";
+    ctx.fillStyle = "black";
+    ctx.textAlign = "center";
+    ctx.fillText(
+      "Powered by SASA Automation | Harshit Saini – Data Analyst, Zippee",
+      chart.width / 2,
+      chart.height - 10
+    );
+    ctx.restore();
+  }
+};
+
+let chartInstance=null;
+let detailedExportData=[];
+
+zipInput.addEventListener("change",async e=>{
+ const file=e.target.files[0]; if(!file)return;
+ buttonsArea.style.display="none";
+
+ const zip=await JSZip.loadAsync(file);
+ let first=null;
+
+ zip.forEach((p,e)=>{
+  const n=p.toLowerCase();
+  if(!first&&(n.endsWith(".csv")||n.endsWith(".xlsx")||n.endsWith(".xls")))first=e;
+ });
+
+ if(!first){alert("No CSV/Excel found inside ZIP");return;}
+
+ const buf=await first.async("arraybuffer");
+ let rows=[];
+
+ if(first.name.toLowerCase().endsWith(".csv")){
+  rows=Papa.parse(new TextDecoder().decode(buf),{skipEmptyLines:true}).data;
+ }else{
+  const wb=XLSX.read(buf,{type:"array"});
+  rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:""});
+ }
+
+ const A=0,B=1,C=2,D=3,J=9,N=13,AB=27,AL=37;
+
+ detailedExportData=[];
+ detailedExportData.push(["A","B","C","D","J","N","AB","AL","DZ","Status"]); // 👈 restored as before
+
+ const summaryMap={};
+
+ rows.slice(1).forEach(r=>{   // 👈 restored – detailed table unchanged
+
+  if(!allowedStores.has((r[D]||"").toString().trim()))return;
+  if((r[AB]||"").toString().trim()!=="Delivered")return;
+  if((r[J]||"").toString().trim()!=="Delivery")return;
+
+  const nTrim=trimCustom(r[N]);
+  const alDate=parseIndianDateTime(trimCustom(r[AL]));
+
+  // -------- D-1 FILTER USING AL COLUMN --------
+  if(!alDate) return;
+
+  let alOnly = new Date(alDate);
+  alOnly.setHours(0,0,0,0);
+
+  let yesterday = new Date();
+  yesterday.setDate(yesterday.getDate()-1);
+  yesterday.setHours(0,0,0,0);
+
+  if(alOnly.getTime() !== yesterday.getTime()) return;
+  // -------------------------------------------
+
+  const dzObj=computeDZ(nTrim);
+
+  let status="";
+  if(alDate&&dzObj.date)status=(alDate>dzObj.date)?"SLA Breach":"SLA Met";
+
+  detailedExportData.push([
+    r[A],r[B],r[C],r[D],r[J],r[N],r[AB],r[AL],dzObj.text,status
+  ]);
+
+  if(!summaryMap[r[D]])summaryMap[r[D]]={met:0,breach:0,total:0};
+  summaryMap[r[D]].total++;
+  if(status==="SLA Met")summaryMap[r[D]].met++;
+  if(status==="SLA Breach")summaryMap[r[D]].breach++;
+ });
+
+ const summary=document.getElementById("summaryTable");
+ summary.innerHTML="";
+
+ let head=document.createElement("tr");
+ ["Dark Store","SLA MET","SLA BREACH","TOTAL","SLA MET%","SLA BREACH%"]
+ .forEach(v=>{let th=document.createElement("th");th.innerText=v;head.appendChild(th);});
+ summary.appendChild(head);
+
+ let labels=[],metPctArr=[],breachPctArr=[];
+ let gm=0,gb=0,gt=0;
+
+ Object.keys(summaryMap).forEach(store=>{
+  const o=summaryMap[store];
+  const mp=Math.round(o.met/o.total*100)||0;
+  const bp=Math.round(o.breach/o.total*100)||0;
+
+  let tr=document.createElement("tr");
+  [store,o.met,o.breach,o.total,mp+"%",bp+"%"]
+  .forEach(v=>{let td=document.createElement("td");td.innerText=v;tr.appendChild(td)});
+  summary.appendChild(tr);
+
+  labels.push(store);
+  metPctArr.push(mp);
+  breachPctArr.push(bp);
+
+  gm+=o.met;gb+=o.breach;gt+=o.total;
+ });
+
+ const GMP=Math.round(gm/gt*100)||0;
+ const GBP=Math.round(gb/gt*100)||0;
+
+ let gtr=document.createElement("tr");
+ ["Grand Total",gm,gb,gt,GMP+"%",GBP+"%"]
+ .forEach(v=>{let td=document.createElement("td");td.style.fontWeight="bold";td.innerText=v;gtr.appendChild(td)});
+ summary.appendChild(gtr);
+
+ let ftr=document.createElement("tr");
+ let td=document.createElement("td");
+ td.colSpan=6;
+ td.style.textAlign="center";
+ td.style.fontWeight="600";
+ td.innerText="Powered by SASA Automation | Harshit Saini – Data Analyst, Zippee";
+ ftr.appendChild(td);
+ summary.appendChild(ftr);
+
+ if(chartInstance)chartInstance.destroy();
+
+ chartInstance=new Chart(document.getElementById("slaChart"),{
+  type:"bar",
+  plugins:[ChartDataLabels,whiteBackgroundPlugin,watermarkPlugin],
+  data:{
+    labels:[...labels,"Grand Total"],
+    datasets:[
+      {label:"SLA MET %",data:[...metPctArr,GMP],backgroundColor:"#0FA958"},
+      {label:"SLA BREACH %",data:[...breachPctArr,GBP],backgroundColor:"#D62828"}
+    ]
+  },
+  options:{
+    layout:{ padding:{ bottom:40 } },
+    responsive:false,
+    devicePixelRatio:3,
+
+    plugins:{
+      legend:{ labels:{ color:"#000" } },
+      datalabels:{
+        color:"#000",
+        anchor:"end",
+        align:"end",
+        formatter:v=>v+"%"
+      }
+    },
+
+    scales:{
+      x:{ ticks:{ color:"#000" }, title:{ color:"#000" } },
+      y:{ beginAtZero:true, max:100, ticks:{ color:"#000" }, title:{ color:"#000" } }
+    }
+  }
+ });
+
+ buttonsArea.style.display="block";
+});
+
+downloadSummaryBtn.onclick=()=>html2canvas(summaryTable).then(c=>{
+ let a=document.createElement("a");a.href=c.toDataURL();a.download="Summary.png";a.click();
+});
+
+downloadChartBtn.onclick=()=>{
+ let a=document.createElement("a");
+ a.href=chartInstance.toBase64Image();a.download="Chart.png";a.click();
+};
+
+downloadExcelBtn.onclick=()=>{
+ const wb=XLSX.utils.book_new();
+ const ws=XLSX.utils.aoa_to_sheet(detailedExportData);
+ XLSX.utils.book_append_sheet(wb,ws,"Detailed");
+ XLSX.writeFile(wb,"SDD_Detailed.xlsx");
+};
+</script>
+
+<!-- 🔒 BLOCKERS -->
+<script>
+setInterval(function () {
+  const threshold = 160;
+  if (
+    window.outerWidth - window.innerWidth > threshold ||
+    window.outerHeight - window.innerHeight > threshold
+  ) {
+    document.body.innerHTML =
+      "<h2 style='text-align:center;margin-top:40px;'>Dev Tools are not allowed 🚫</h2>";
+  }
+}, 500);
+
+document.addEventListener("contextmenu", e => e.preventDefault());
+document.addEventListener("copy", e => e.preventDefault());
+document.addEventListener("selectstart", e => e.preventDefault());
+
+document.addEventListener("keydown", function(e){
+  if (e.key === "PrintScreen") {
+    e.preventDefault();
+    navigator.clipboard.writeText("Screenshots disabled on this page");
+    alert("Print Screen is blocked on this page.");
+  }
+});
+
+function temporarilyBlur() {
+  const overlay = document.createElement("div");
+  overlay.style.position = "fixed";
+  overlay.style.inset = "0";
+  overlay.style.backdropFilter = "blur(18px)";
+  overlay.style.background = "rgba(255,255,255,0.25)";
+  overlay.style.zIndex = "999999";
+  overlay.style.pointerEvents = "none";
+  document.body.appendChild(overlay);
+  setTimeout(()=> overlay.remove(), 1400);
+}
+
+document.addEventListener("keydown", function(e){
+  if (e.shiftKey && e.metaKey) temporarilyBlur();
+  if (e.shiftKey && e.key.toLowerCase() === "s") temporarilyBlur();
+});
+
+document.addEventListener("keydown", function(e){
+  if (e.metaKey && e.shiftKey && (e.key === "3" || e.key === "4")) {
+    e.preventDefault();
+    temporarilyBlur();
+    alert("Mac screenshot shortcut blocked.");
+  }
+});
+
+document.addEventListener("keydown", function(e){
+  if (e.keyCode === 123) e.preventDefault();
+  if (e.ctrlKey && e.shiftKey &&
+     ['I','J','C','i','j','c'].includes(e.key)) e.preventDefault();
+  if (e.ctrlKey && ['U','u'].includes(e.key)) e.preventDefault();
+  if (e.ctrlKey && e.shiftKey) e.preventDefault();
+});
+</script>
+
+</body>
+</html>

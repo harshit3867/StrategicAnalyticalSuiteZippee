@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Warehouse Performance Dashboard</title>
+
+<script defer src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#fff;color:#000;font-family:Inter,Segoe UI,Arial;padding:24px;min-height:100vh}
+.container{max-width:1320px;margin:auto}
+.card{background:#f5f5f5;border-radius:22px;padding:20px;border:1px solid #ddd;margin-top:14px}
+select,button{background:#fff;color:#000;border:1px solid #000;padding:10px 14px;border-radius:14px;margin-right:6px}
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:10px;flex-wrap:wrap}
+.kpi{background:#fff;border:1px solid #ddd;border-radius:14px;padding:14px}
+.green{color:#16a34a}.yellow{color:#ca8a04}.red{color:#dc2626}
+
+/* ⭐ SASA FULLSCREEN LOADER ⭐ */
+#sasaLoader{
+  position:fixed;
+  inset:0;
+  background:#001c38;
+  color:white;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  flex-direction:column;
+  z-index:9999;
+}
+#sasaLoader img{
+  height:120px;
+  margin-bottom:10px;
+}
+.dots::after{
+  content:"";
+  animation:dots 1.4s steps(4,end) infinite;
+}
+@keyframes dots{
+  0%{content:"."}
+  33%{content:".."}
+  66%{content:"..."}
+}
+</style>
+</head>
+
+<body>
+
+<!-- ⭐ SASA LOADING SCREEN ⭐ -->
+<div id="sasaLoader">
+  <img src="SASA.png">
+  <div style="font-size:18px;font-weight:700">
+    SASA is loading your analytics<span class="dots"></span>
+  </div>
+</div>
+
+<div id="dashboard" class="container">
+
+<h2>📦 Flipkart – Warehouse Performance Dashboard</h2>
+<p>Zippee Last-mile | December Performance</p>
+
+<div class="card">
+<b>Select Warehouse & Date Range</b><br><br>
+
+<select id="citySelect"></select>
+<select id="startDate"></select>
+<select id="endDate"></select>
+
+<button onclick="downloadPNG()">🖼 Download PNG</button>
+<button onclick="downloadPDF()">📄 Download PDF</button>
+
+<div class="kpis">
+
+<div class="kpi">
+  <div>Total Shipments</div>
+  <div id="kpiTotal" style="font-size:22px;font-weight:800"></div>
+</div>
+
+<div class="kpi">
+  <div>Delivered Shipments</div>
+  <div id="kpiDelivered" style="font-size:22px;font-weight:800"></div>
+</div>
+
+<div class="kpi">
+  <div>Average Delivery %</div>
+  <div id="kpiPct" style="font-size:22px;font-weight:800"></div>
+  <div id="kpiRemark"></div>
+</div>
+
+<div class="kpi"><div>Total Projection</div><div id="kpiProjection" style="font-size:22px;font-weight:800"></div></div>
+<div class="kpi"><div>Total Actual Orders</div><div id="kpiActual" style="font-size:22px;font-weight:800"></div></div>
+<div class="kpi"><div>Total CD Breaches</div><div id="kpiCD" style="font-size:22px;font-weight:800"></div></div>
+<div class="kpi"><div>Total NCD Breaches</div><div id="kpiNCD" style="font-size:22px;font-weight:800"></div></div>
+<div class="kpi"><div>Total PRTO</div><div id="kpiPRTO" style="font-size:22px;font-weight:800"></div></div>
+<div class="kpi"><div>Total RTO</div><div id="kpiRTO" style="font-size:22px;font-weight:800"></div></div>
+
+</div>
+</div>
+
+<div class="card"><h3>Projection vs Actual Orders</h3><canvas id="projectionCanvas"></canvas></div>
+<div class="card"><h3>Total Shipments vs Delivered Shipments</h3><canvas id="ordersCanvas"></canvas></div>
+<div class="card"><h3>Delivery % Trend</h3><canvas id="percentageCanvas"></canvas></div>
+<div class="card"><h3>CD vs NCD Breaches</h3><canvas id="breachCanvas"></canvas></div>
+<div class="card"><h3>PRTO vs RTO</h3><canvas id="rtoCanvas"></canvas></div>
+<div class="card"><h3>Re-Attempt Trend (RA)</h3><canvas id="raCanvas"></canvas></div>
+
+</div>
+
+<script>
+window.onload=()=>{
+
+Chart.register(ChartDataLabels);
+
+/* ---------- watermark ---------- */
+const watermarkPlugin={
+ id:'wm',
+ beforeDraw(chart){
+  const {ctx,chartArea}=chart;if(!chartArea)return;
+  ctx.save();ctx.globalAlpha=.08;
+  ctx.translate((chartArea.left+chartArea.right)/2,(chartArea.top+chartArea.bottom)/2);
+  ctx.rotate(-Math.PI/6);
+  ctx.textAlign='center';
+  ctx.font='bold 34px Arial';
+  ctx.fillStyle='#000';
+  ctx.fillText('HARSHIT SAINI  DATA ANALYST',0,0);
+  ctx.restore();
+ }
+};
+
+/* ---------- LINKS ---------- */
+const warehouseLinks={
+ "Moradabad":"https://docs.google.com/spreadsheets/d/e/2PACX-1vQsdf6zkT2uAdec3qoyhupo2xGEbWEAw2PifpDCP31wbbl94UA-9A1Bj4Ke-H9w_clMRUWTekfNEGDb/pub?gid=0&single=true&output=csv",
+ "Prayagraj":"https://docs.google.com/spreadsheets/d/e/2PACX-1vQsdf6zkT2uAdec3qoyhupo2xGEbWEAw2PifpDCP31wbbl94UA-9A1Bj4Ke-H9w_clMRUWTekfNEGDb/pub?gid=517402564&single=true&output=csv",
+ "Siliguri":"https://docs.google.com/spreadsheets/d/e/2PACX-1vQsdf6zkT2uAdec3qoyhupo2xGEbWEAw2PifpDCP31wbbl94UA-9A1Bj4Ke-H9w_clMRUWTekfNEGDb/pub?gid=300485761&single=true&output=csv",
+ "Surat":"https://docs.google.com/spreadsheets/d/e/2PACX-1vQsdf6zkT2uAdec3qoyhupo2xGEbWEAw2PifpDCP31wbbl94UA-9A1Bj4Ke-H9w_clMRUWTekfNEGDb/pub?gid=978178956&single=true&output=csv"
+};
+
+Object.keys(warehouseLinks).forEach(w=>citySelect.innerHTML+=`<option>${w}</option>`);
+
+let dataSet={};
+
+let projectionChart=null,ordersChart=null,percentageChart=null,breachChart=null,rtoChart=null,raChart=null;
+
+/* ---------- LOAD CSV (SHOWS LOADER) ---------- */
+function loadCSV(){
+ Papa.parse(warehouseLinks[citySelect.value],{
+  download:true,
+  header:true,
+  complete:(res)=>{
+    reshape(res.data);
+
+    // ⭐ hide loader after first successful data load
+    document.getElementById("sasaLoader").style.display="none";
+  },
+  error:()=>{
+    document.getElementById("sasaLoader").innerHTML =
+      "<b>❌ Failed to load Google Sheet data</b><br><br>Please check internet or access.";
+  }
+ });
+}
+
+/* ---------- HELPERS ---------- */
+function getRow(rows,text){
+ return rows.find(r=>((r["Key Parameters (7)"]||"").toLowerCase()).includes(text.toLowerCase()));
+}
+function getRowAcronym(rows,ac){
+ return rows.find(r=>((r["Key Parameters (7)"]||"").toLowerCase()).includes("(" + ac.toLowerCase()));
+}
+
+/* ---------- RESHAPE ---------- */
+function reshape(rows){
+
+ const headers=Object.keys(rows[0]).slice(2);
+
+ function nums(obj){
+  return headers.map(h=>{
+   if(!obj) return 0;
+   let v=obj[h];
+   if(v==null||v==="") return 0;
+   return Number(String(v).replace("%","").trim())||0;
+  });
+ }
+
+ dataSet={
+  dates:headers,
+  total:nums(getRow(rows,"total orders")),
+  delivered:nums(getRow(rows,"delivered orders")),
+  projection:nums(getRow(rows,"projection")),
+  actual:nums(getRow(rows,"actual")),
+  prto:nums(getRowAcronym(rows,"PRTO")),
+  rto: nums(getRowAcronym(rows,"RTO")),
+  ra:  nums(getRowAcronym(rows,"RA")),
+  cd: nums(getRow(rows,"Customer Dependency Breach")),
+  ncd:nums(getRow(rows,"Non Customer Dependency Breach"))
+ };
+
+ loadDates();
+ render();
+}
+
+/* ---------- CURRENT MONTH DEFAULT ---------- */
+function loadDates(){
+ const d=dataSet.dates;
+ startDate.innerHTML=endDate.innerHTML="";
+ d.forEach(v=>{startDate.innerHTML+=`<option>${v}</option>`;endDate.innerHTML+=`<option>${v}</option>`;});
+ startDate.value=d[0];endDate.value=d[d.length-1];
+}
+
+/* ---------- CORE HELPERS ---------- */
+function sum(a){return a.reduce((x,y)=>x+Number(y),0);}
+function avg(a){return (sum(a)/a.length).toFixed(2);}
+
+/* ---------- RENDER ---------- */
+function render(){
+
+const d=dataSet;
+
+let s=d.dates.indexOf(startDate.value);
+let e=d.dates.indexOf(endDate.value);
+if(s>e){let t=s;s=e;e=t;}
+
+const r={
+ dates:d.dates.slice(s,e+1),
+ total:d.total.slice(s,e+1),
+ delivered:d.delivered.slice(s,e+1),
+ projection:d.projection.slice(s,e+1),
+ actual:d.actual.slice(s,e+1),
+ prto:d.prto.slice(s,e+1),
+ rto:d.rto.slice(s,e+1),
+ cd:d.cd.slice(s,e+1),
+ ncd:d.ncd.slice(s,e+1),
+ ra:d.ra.slice(s,e+1)
+};
+
+/* ---------- KPI UPDATE ---------- */
+kpiTotal.innerText=sum(r.total);
+kpiDelivered.innerText=sum(r.delivered);
+
+const p=avg(r.delivered.map((v,i)=>r.total[i]?v/r.total[i]*100:0));
+kpiPct.innerText=p+"%";
+if(p>=95)kpiRemark.innerHTML="🟢 <span class='green'>Good</span>";
+else if(p>=90)kpiRemark.innerHTML="🟡 <span class='yellow'>Average</span>";
+else kpiRemark.innerHTML="🔴 <span class='red'>Poor</span>";
+
+kpiProjection.innerText=sum(r.projection);
+kpiActual.innerText=sum(r.actual);
+kpiCD.innerText=sum(r.cd);
+kpiNCD.innerText=sum(r.ncd);
+kpiPRTO.innerText=sum(r.prto);
+kpiRTO.innerText=sum(r.rto);
+
+/* ---------- DESTROY OLD CHARTS ---------- */
+[projectionChart,ordersChart,percentageChart,breachChart,rtoChart,raChart].forEach(c=>{ if(c) c.destroy(); });
+
+/* ---------- RE-DRAW CHARTS ---------- */
+projectionChart=new Chart(projectionCanvas,{type:"line",
+ data:{labels:r.dates,datasets:[
+  {label:"Projection",data:r.projection,borderWidth:3,tension:.35},
+  {label:"Actual Orders",data:r.actual,borderWidth:3,tension:.35}
+ ]},plugins:[watermarkPlugin]
+});
+
+ordersChart=new Chart(ordersCanvas,{type:"line",
+ data:{labels:r.dates,datasets:[
+  {label:"Total Shipments",data:r.total,borderWidth:3,tension:.35},
+  {label:"Delivered Shipments",data:r.delivered,borderWidth:3,tension:.35}
+ ]},plugins:[watermarkPlugin]
+});
+
+percentageChart=new Chart(percentageCanvas,{type:"line",
+ data:{labels:r.dates,datasets:[
+  {label:"Delivery %",data:r.delivered.map((v,i)=>r.total[i]? (v/r.total[i]*100).toFixed(2):0),borderWidth:3,tension:.35}
+ ]},plugins:[watermarkPlugin]
+});
+
+breachChart=new Chart(breachCanvas,{type:"line",
+ data:{labels:r.dates,datasets:[
+  {label:"CD Breaches",data:r.cd,borderWidth:3,tension:.35},
+  {label:"NCD Breaches",data:r.ncd,borderWidth:3,tension:.35}
+ ]},plugins:[watermarkPlugin]
+});
+
+rtoChart=new Chart(rtoCanvas,{type:"line",
+ data:{labels:r.dates,datasets:[
+  {label:"PRTO",data:r.prto,borderWidth:3,tension:.35},
+  {label:"RTO",data:r.rto,borderWidth:3,tension:.35}
+ ]},plugins:[watermarkPlugin]
+});
+
+raChart=new Chart(raCanvas,{type:"line",
+ data:{labels:r.dates,datasets:[
+  {label:"Re-Attempt (RA)",data:r.ra,borderWidth:3,tension:.35}
+ ]},plugins:[watermarkPlugin]
+});
+
+}
+
+/* ---------- EXPORT ---------- */
+function downloadPNG(){
+ html2canvas(dashboard).then(c=>{
+  const a=document.createElement("a");
+  a.href=c.toDataURL();
+  a.download="dashboard.png";
+  a.click();
+ });
+}
+
+function downloadPDF(){
+ html2canvas(dashboard).then(c=>{
+  const img=c.toDataURL("image/png");
+  const pdf=new jspdf.jsPDF("p","mm","a4");
+  const w=210,h=w*c.height/c.width;
+  pdf.addImage(img,"PNG",0,0,w,h);
+  pdf.save("dashboard.pdf");
+ });
+}
+
+citySelect.onchange=loadCSV;
+startDate.onchange=endDate.onchange=render;
+
+loadCSV();
+
+};
+</script>
+
+  <script>
+// ============ ANTI-INSPECT + NO DEVTOOLS ============
+
+// Detect DevTools by window resize gap
+setInterval(function () {
+  const threshold = 160;
+  if (
+    window.outerWidth - window.innerWidth > threshold ||
+    window.outerHeight - window.innerHeight > threshold
+  ) {
+    document.body.innerHTML =
+      "<h2 style='text-align:center;margin-top:40px;'>Dev Tools are not allowed 🚫</h2>";
+  }
+}, 500);
+
+// Disable right-click everywhere
+document.addEventListener("contextmenu", function(e){
+  e.preventDefault();
+});
+
+// Block common inspect keys
+document.addEventListener("keydown", function(e){
+
+  // F12
+  if (e.keyCode === 123) e.preventDefault();
+
+  // Ctrl + Shift + I / J / C
+  if (e.ctrlKey && e.shiftKey &&
+     ['I','J','C','i','j','c'].includes(e.key)) {
+      e.preventDefault();
+  }
+
+  // Ctrl + U (View Source)
+  if (e.ctrlKey && ['U','u'].includes(e.key)) {
+      e.preventDefault();
+  }
+
+  // Block any Ctrl+Shift combination
+  if (e.ctrlKey && e.shiftKey) e.preventDefault();
+});
+</script>
+
+
+</body>
+</html>
+

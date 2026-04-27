@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Zippee – Stock Summary</title>
+
+<!-- html2canvas -->
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+
+<style>
+:root{
+    --primary-900:#003f8c;
+    --glass-bg:rgba(255,255,255,0.16);
+    --card-shadow:0 8px 30px rgba(0,0,0,0.25);
+}
+
+html,body{
+    margin:0;
+    padding:0;
+    font-family:"Segoe UI",Arial;
+}
+
+body{
+    background:url('Zippee.png') center/cover fixed no-repeat;
+}
+
+body::before{
+    content:"";
+    position:fixed;
+    inset:0;
+    background:rgba(255,255,255,.24);
+    backdrop-filter:blur(6px);
+    z-index:-1;
+}
+
+/* HEADER */
+.header{
+    background:linear-gradient(90deg,rgba(0,63,140,.85),rgba(0,89,179,.85));
+    color:white;
+    padding:18px 36px;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+}
+
+/* CARD */
+.card{
+    background:var(--glass-bg);
+    backdrop-filter:blur(10px) saturate(120%);
+    margin:30px auto;
+    max-width:1400px;
+    padding:30px;
+    border-radius:18px;
+    box-shadow:var(--card-shadow);
+}
+
+.title{
+    font-size:22px;
+    font-weight:700;
+    color:var(--primary-900);
+}
+
+/* CITY INPUT GRID */
+.city-grid{
+    display:grid;
+    grid-template-columns:repeat(6,1fr);
+    gap:10px;
+    margin-top:16px;
+}
+
+.city-box{
+    background:white;
+    border-radius:10px;
+    padding:8px;
+}
+
+.city-box h4{
+    margin:4px 0;
+    text-align:center;
+    font-size:13px;
+}
+
+textarea{
+    width:100%;
+    height:160px;
+    font-size:11px;
+}
+
+/* BUTTONS */
+.button{
+    margin-top:14px;
+    margin-right:6px;
+    background:linear-gradient(135deg,#0A66C2,#0078FF);
+    border:none;
+    border-radius:10px;
+    padding:10px 16px;
+    color:white;
+    cursor:pointer;
+    font-weight:700;
+}
+
+/* REPORT */
+#reportContainer{
+    margin-top:24px;
+    display:flex;
+    justify-content:center;
+}
+
+#captureBox{
+    display:inline-block;
+    position:relative;
+}
+
+/* REPORT HEADER */
+.report-head{
+    text-align:center;
+    margin-bottom:10px;
+    width:100%;
+}
+
+.report-title{
+    font-size:18px;
+    font-weight:800;
+}
+
+/* WATERMARK */
+.watermark{
+    position:absolute;
+    inset:0;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    pointer-events:none;
+    z-index:0;
+}
+
+.watermark span{
+    font-size:42px;
+    font-weight:900;
+    color:rgba(0,0,0,0.07);
+    transform:rotate(-25deg);
+    text-align:center;
+}
+
+/* TABLE */
+table{
+    border-collapse:collapse;
+    background:white;
+    border-radius:12px;
+    box-shadow:0 8px 20px rgba(0,0,0,.12);
+    position:relative;
+    z-index:1;
+    table-layout:fixed;
+}
+
+th,td{
+    border:1px solid #ddd;
+    padding:6px 12px;
+    font-size:13px;
+    text-align:center;
+}
+
+th{
+    background:#FFD84D;
+    font-weight:800;
+}
+
+th:nth-child(1), td:nth-child(1){ width:160px; text-align:left; padding-left:16px; }
+th:nth-child(2), td:nth-child(2){ width:90px; }
+th:nth-child(3), td:nth-child(3){ width:120px; }
+
+/* FOOTER */
+.report-footer{
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    margin:12px 0;
+    font-size:12px;
+    font-weight:700;
+    width:100%;
+    text-align:center;
+}
+</style>
+</head>
+
+<body>
+
+<div class="header">
+    <h2>Zippee – Stock Summary</h2>
+</div>
+
+<div class="card">
+    <div class="title">Paste FC Dashboard Mail (City-wise)</div>
+
+    <div class="city-grid">
+        <div class="city-box"><h4>Moradabad</h4><textarea id="Moradabad"></textarea></div>
+        <div class="city-box"><h4>Surat</h4><textarea id="Surat"></textarea></div>
+        <div class="city-box"><h4>Siliguri</h4><textarea id="Siliguri"></textarea></div>
+        <div class="city-box"><h4>Prayagraj</h4><textarea id="Prayagraj"></textarea></div>
+        <div class="city-box"><h4>Nasik</h4><textarea id="Nasik"></textarea></div>
+        <div class="city-box"><h4>Vadodara</h4><textarea id="Vadodara"></textarea></div>
+    </div>
+
+    <button class="button" onclick="extractData()">Generate Stock Summary</button>
+    <button class="button" onclick="downloadReport()">Download Image</button>
+
+    <div id="reportContainer"></div>
+</div>
+
+<script>
+const cities=["Moradabad","Surat","Siliguri","Prayagraj","Nasik","Vadodara"];
+
+function getDMinusOne(dateStr){
+    const d=new Date(dateStr);
+    d.setDate(d.getDate()-1);
+    return d.toISOString().split("T")[0];
+}
+
+function extractData(){
+    let rows=[];
+    let reportDate="";
+
+    cities.forEach(city=>{
+        const text=document.getElementById(city).value;
+        if(!text) return;
+
+        const lines=text.split("\n");
+        const invStart=lines.findIndex(l=>l.includes("INVENTORY Summary"));
+        if(invStart===-1) return;
+
+        const headerLine=lines.slice(invStart).find(l=>l.includes("Type") && l.includes("Metric"));
+        const dates=headerLine.trim().split(/\s+/);
+        reportDate=dates[dates.length-1];
+
+        let fsn="",qty="";
+
+        lines.slice(invStart).forEach(l=>{
+            if(l.includes("Store_Stock") && l.includes("FSN")){
+                fsn=l.trim().split(/\s+/).pop().replace(".0","");
+            }
+            if(l.includes("Store_Stock") && l.includes("ATP")){
+                qty=l.trim().split(/\s+/).pop().replace(".0","");
+            }
+        });
+
+        rows.push({city,fsn,qty});
+    });
+
+    renderReport(rows,reportDate);
+}
+
+function renderReport(data,todayDate){
+    const headingDate=getDMinusOne(todayDate);
+
+    let html=`
+    <div id="captureBox">
+        <div class="report-head">
+            <div class="report-title">Stock Summary ${headingDate}</div>
+        </div>
+
+        <table>
+            <tr>
+                <th>City</th>
+                <th>FSN</th>
+                <th>Qty</th>
+            </tr>`;
+
+    data.forEach(d=>{
+        html+=`
+        <tr>
+            <td>${d.city}</td>
+            <td>${d.fsn}</td>
+            <td>${Number(d.qty).toLocaleString()}</td>
+        </tr>`;
+    });
+
+    html+=`
+        </table>
+
+        <div class="report-footer">
+            Powered by SASA Automation | Harshit Saini – Data Analyst, Zippee
+        </div>
+    </div>`;
+
+    document.getElementById("reportContainer").innerHTML=html;
+}
+
+function downloadReport(){
+    const box=document.getElementById("captureBox");
+    if(!box) return alert("Generate report first");
+
+    html2canvas(box,{scale:2}).then(canvas=>{
+        const link=document.createElement("a");
+        link.download="Stock_Summary.png";
+        link.href=canvas.toDataURL("image/png");
+        link.click();
+    });
+}
+</script>
+
+</body>
+</html>

@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>SDD – Attempted vs Not Dispatched (Enhanced)</title>
+
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.7.1/dist/jszip.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+
+<style>
+body{margin:0;font-family:"Segoe UI",Arial;background:url('Zippee.png') center/cover fixed no-repeat;}
+body::before{content:"";position:fixed;inset:0;background:linear-gradient(to bottom right,rgba(255,255,255,.25),rgba(255,255,255,.65));backdrop-filter:blur(3px);z-index:-1;}
+#sasaLoader{position:fixed;inset:0;background:#001c38;display:none;flex-direction:column;justify-content:center;align-items:center;z-index:9999;color:white;}
+#sasaLoader img{height:120px;margin-bottom:8px;}
+.dots::after{content:"";animation:dots 1.2s steps(4,end) infinite;}
+@keyframes dots{0%{content:"."}33%{content:".."}66%{content:"..."}100%{content:"...."}}
+.header{padding:14px 16px;text-align:center;font-size:22px;font-weight:800;color:white;background:linear-gradient(135deg,#00305E,#0078D4);box-shadow:0 8px 20px rgba(0,0,0,.25);}
+.container{max-width:1100px;margin:26px auto;background:rgba(255,255,255,.85);border-radius:18px;padding:20px 24px 26px 24px;box-shadow:0 15px 45px rgba(0,0,0,.28);}
+button{padding:10px 14px;border-radius:12px;border:none;font-weight:700;cursor:pointer;background:linear-gradient(135deg,#00305E,#0094FF);color:white;}
+table{width:100%;border-collapse:collapse;margin-top:18px;overflow:hidden;border-radius:16px;}
+th{padding:10px;background:linear-gradient(135deg,#00305E,#0069c9);color:white;}
+td{padding:9px;font-weight:600;text-align:center;background:white;}
+tr:nth-child(even) td{background:#f4f7ff;}
+.total td{font-weight:900;background:#dfe9ff!important;}
+</style>
+</head>
+
+<body>
+
+<div id="sasaLoader">
+  <img src="SASA.png">
+  <div style="font-size:18px;font-weight:700">
+    SASA is loading your analytics<span class="dots"></span>
+  </div>
+</div>
+
+<div class="header">SDD – Dark Store Wise Attempted Delivery vs Not Dispatched</div>
+
+<div class="container">
+
+<input type="file" id="fileInput">
+
+<button onclick="downloadImage()" id="downloadBtn" style="display:none">
+📥 Download Report as Image
+</button>
+
+<div id="captureOnly">
+
+<table id="resultTable" style="display:none">
+<thead>
+<tr>
+<th>Dark Store</th>
+<th>Attempted Delivery</th>
+<th>Not Dispatched</th>
+<th>Total Pending Orders</th>
+</tr>
+</thead>
+<tbody id="tableBody"></tbody>
+<tfoot id="tableFooter"></tfoot>
+</table>
+
+<div style="text-align:center;font-size:12px;font-weight:700;margin-top:12px;">
+Powered by SASA Automation | Harshit Saini – Data Analyst, Zippee
+</div>
+
+</div>
+</div>
+
+<script>
+const STORES=[
+ "BLR_kalyan-nagar","BLR_koramangala","CH_periyamet",
+ "DEL_malviya-nagar","HYD_manikonda","KOL_Topsia",
+ "MUM_andheri","PUN_koregaon-park"
+];
+
+const counts={}; STORES.forEach(s=>counts[s]={a:0,n:0});
+
+function norm(s){return (s||"").toString().trim().toLowerCase().replace(/[-_ ]+/g,"");}
+
+function processRow(dark,status){
+ const key=STORES.find(ds=>norm(ds)===norm(dark));
+ if(!key) return;
+
+ const st=(status||"").toLowerCase();
+
+ if(st.includes("attempted")&&st.includes("delivery")) counts[key].a++;
+ else if(st.includes("not")&&st.includes("dispatch")) counts[key].n++;
+}
+
+document.getElementById("fileInput").addEventListener("change", async e=>{
+
+ document.getElementById("sasaLoader").style.display="flex";
+
+ const file=e.target.files[0];
+ const zip=await JSZip.loadAsync(await file.arrayBuffer());
+
+ let csv=Object.keys(zip.files).find(f=>f.endsWith(".csv"));
+ let xlsx=Object.keys(zip.files).find(f=>f.endsWith(".xlsx"));
+
+/* ---------- CSV ---------- */
+ if(csv){
+  Papa.parse(await zip.files[csv].async("string"),{
+   header:true,
+   chunk:chunk=>chunk.data.forEach(r=>{
+
+     const values = Object.values(r);
+
+     /* Column B index = 1 */
+     let colB = (values[1] || "").toString().trim().toLowerCase();
+
+     /* remove wrappers like =("test_123") */
+     colB = colB.replace(/=|\(|\)|"|'/g,"").trim();
+
+     /* skip entire row if cleaned value starts with test */
+     if(colB.startsWith("test")) return;
+
+     processRow(
+      r["Order Dark Store"]||r["Dark Store"]||r["Hub Name"]||r["Dark Store Orders"],
+      r["Status"]||r["Order Status"]||r["Current Status"]
+     );
+
+   }),
+   complete:()=>{render();}
+  });
+ }
+
+/* ---------- XLSX ---------- */
+ else if(xlsx){
+
+  const wb=XLSX.read(await zip.files[xlsx].async("arraybuffer"),{type:"array"});
+  XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]).forEach(r=>{
+
+    const values = Object.values(r);
+
+    let colB = (values[1] || "").toString().trim().toLowerCase();
+
+    colB = colB.replace(/=|\(|\)|"|'/g,"").trim();
+
+    if(colB.startsWith("test")) return;
+
+    processRow(
+     r["Order Dark Store"]||r["Dark Store"]||r["Hub Name"]||r["Dark Store Orders"],
+     r["Status"]||r["Order Status"]||r["Current Status"]
+    );
+  });
+
+  render();
+ }
+});
+
+function render(){
+ const body=document.getElementById("tableBody");
+ const foot=document.getElementById("tableFooter");
+ body.innerHTML=""; foot.innerHTML="";
+
+ let gA=0,gN=0,gT=0;
+
+ STORES.forEach(s=>{
+  const a=counts[s].a,n=counts[s].n,t=a+n;
+  gA+=a;gN+=n;gT+=t;
+  body.innerHTML+=`<tr><td>${s}</td><td>${a}</td><td>${n}</td><td>${t}</td></tr>`;
+ });
+
+ foot.innerHTML=`<tr class="total"><td>Grand Total</td><td>${gA}</td><td>${gN}</td><td>${gT}</td></tr>`;
+
+ document.getElementById("resultTable").style.display="table";
+ document.getElementById("downloadBtn").style.display="inline-block";
+ document.getElementById("sasaLoader").style.display="none";
+}
+
+function downloadImage(){
+ html2canvas(document.getElementById("captureOnly"),{scale:2}).then(c=>{
+  const a=document.createElement("a");
+  a.download="SDD_Report.png";
+  a.href=c.toDataURL();
+  a.click();
+ });
+}
+
+/* ================== BLOCKERS ================== */
+
+/* Block ALL function keys except F5 */
+document.addEventListener("keydown", function(e){
+  if(e.key.startsWith("F")){
+
+    // Allow only F5 refresh
+    if(e.key === "F5") return;
+
+    // Block all others
+    e.preventDefault();
+    alert("Function keys are disabled on this page (except Refresh).");
+  }
+
+  // Block Ctrl+R refresh combo
+  if(e.ctrlKey && (e.key === "r" || e.key === "R")){
+    e.preventDefault();
+  }
+});
+
+/* PrintScreen block */
+document.addEventListener("keydown",function(e){
+ if(e.key==="PrintScreen"){
+  e.preventDefault();
+  navigator.clipboard.writeText("Screenshots disabled on this page");
+  alert("Print Screen is blocked on this page.");
+ }
+});
+
+/* blur overlay */
+function temporarilyBlur(){
+ const o=document.createElement("div");
+ o.style.position="fixed";o.style.inset="0";
+ o.style.backdropFilter="blur(18px)";
+ o.style.background="rgba(255,255,255,0.25)";
+ o.style.zIndex="999999";o.style.pointerEvents="none";
+ document.body.appendChild(o);
+ setTimeout(()=>o.remove(),1400);
+}
+
+/* Win+Shift+S like tools */
+document.addEventListener("keydown",function(e){
+ if(e.shiftKey&&e.metaKey)temporarilyBlur();
+});
+
+/* Mac screenshot */
+document.addEventListener("keydown",function(e){
+ if(e.metaKey&&e.shiftKey&&(e.key==="3"||e.key==="4")){
+  e.preventDefault();
+  temporarilyBlur();
+  alert("Mac screenshot shortcut blocked.");
+ }
+});
+
+/* Right click / selection / copy blocked */
+document.addEventListener("contextmenu",e=>e.preventDefault());
+document.addEventListener("selectstart",e=>e.preventDefault());
+document.addEventListener("copy",e=>{
+ e.preventDefault();
+ alert("Copying is disabled on this page.");
+});
+
+/* DevTools detect */
+setInterval(function(){
+ const t=160;
+ if(window.outerWidth-window.innerWidth>t||window.outerHeight-window.innerHeight>t){
+  document.body.innerHTML="<h2 style='text-align:center;margin-top:40px;'>Dev Tools are not allowed 🚫</h2>";
+ }
+},500);
+
+/* F12, Ctrl+Shift+I/J/C/U block */
+document.addEventListener("keydown",function(e){
+ if(e.keyCode===123)e.preventDefault();
+ if(e.ctrlKey&&e.shiftKey)e.preventDefault();
+ if(e.ctrlKey&&['U','u'].includes(e.key))e.preventDefault();
+});
+</script>
+
+</body>
+</html>

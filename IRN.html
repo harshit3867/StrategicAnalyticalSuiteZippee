@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>IRN Pendancy Report</title>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+<style>
+:root{
+    --primary-900:#003f8c;
+    --glass-bg:rgba(255,255,255,0.16);
+    --card-shadow:0 8px 30px rgba(0,0,0,0.25);
+}
+
+html,body{
+    margin:0;
+    padding:0;
+    font-family:"Segoe UI",Arial;
+}
+
+body{
+    background:url('Zippee.png') center/cover fixed no-repeat;
+}
+
+body::before{
+    content:"";
+    position:fixed;
+    inset:0;
+    background:rgba(255,255,255,.24);
+    backdrop-filter:blur(6px);
+    z-index:-1;
+}
+
+/* ---------- HEADER ---------- */
+.header{
+    background:linear-gradient(90deg,rgba(0,63,140,.85),rgba(0,89,179,.85));
+    color:white;
+    padding:18px 36px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+}
+
+.logo{
+    height:48px;
+}
+
+/* ---------- CARD ---------- */
+.card{
+    background:var(--glass-bg);
+    backdrop-filter:blur(10px) saturate(120%);
+    margin:30px auto;
+    max-width:1300px;
+    padding:30px;
+    border-radius:18px;
+    box-shadow:var(--card-shadow);
+}
+
+.title{
+    font-size:22px;
+    font-weight:700;
+    color:var(--primary-900);
+}
+
+/* ---------- CONTROLS ---------- */
+.controls{
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+    margin-top:12px;
+}
+
+.button{
+    background:linear-gradient(135deg,#0A66C2,#0078FF);
+    border:none;
+    border-radius:10px;
+    padding:10px 16px;
+    color:white;
+    cursor:pointer;
+    font-weight:700;
+}
+
+/* ---------- REPORT AREA ---------- */
+#reportContainer{
+    margin-top:20px;
+    overflow-x:auto;
+}
+
+#captureBox{
+    display:inline-block;
+    position:relative;
+    padding:20px 30px;   /* left-right margin */
+}
+
+/* ---------- REPORT HEADER ---------- */
+.report-head{
+    text-align:center;
+    margin-bottom:8px;
+}
+
+.report-title{
+    font-size:18px;
+    font-weight:800;
+}
+
+.report-meta{
+    font-size:13px;
+}
+
+/* ---------- WATERMARK ---------- */
+.watermark{
+    position:absolute;
+    inset:0;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    pointer-events:none;
+    z-index:0;
+}
+
+.watermark span{
+    font-size:44px;
+    font-weight:900;
+    color:rgba(0,0,0,0.07);
+    transform:rotate(-25deg);
+    text-align:center;
+    line-height:1.2;
+}
+
+/* ---------- TABLE ---------- */
+table{
+    border-collapse:collapse;
+    background:white;
+    border-radius:12px;
+    box-shadow:0 8px 20px rgba(0,0,0,.12);
+    position:relative;
+    z-index:1;
+    white-space:nowrap;
+}
+
+th,td{
+    border:1px solid #ddd;
+    padding:6px 10px;
+    font-size:13px;
+}
+
+/* ---------- FOOTER ---------- */
+.report-footer{
+    display:flex;
+    justify-content:center;
+    margin:12px 0;
+    font-size:12px;
+    font-weight:700;
+}
+</style>
+</head>
+
+<body>
+
+<!-- HEADER -->
+<div class="header">
+    <h1>IRN Pendancy Report</h1>
+    <img class="logo" src="https://i.imgur.com/7yUVE8U.png">
+</div>
+
+<!-- CARD -->
+<div class="card">
+    <div class="title">Upload File</div>
+
+    <!-- CONTROLS -->
+    <div class="controls">
+        <input type="file" id="fileInput" accept=".csv" multiple>
+        <button class="button" onclick="downloadImage()">Download Image</button>
+    </div>
+
+    <!-- REPORT -->
+    <div id="reportContainer">
+        <div id="captureBox"></div>
+    </div>
+</div>
+
+<script>
+// =======================
+// HELPERS
+// =======================
+function formatDateDDMMYYYY(isoDate){
+    if(!isoDate) return "";
+    const [y,m,d] = isoDate.slice(0,10).split("-");
+    return `${d}-${m}-${y}`;
+}
+
+// =======================
+// CONFIG
+// =======================
+const ALLOWED_STATUS = ["submitted","received","created"];
+
+const warehouseCityMap = {
+    prg:"Prayagraj",
+    prayagraj:"Prayagraj",
+    sur:"Surat",
+    surat:"Surat",
+    sil:"Siliguri",
+    mrd:"Moradabad",
+    nasik:"Nasik",
+    blr:"Bengaluru",
+    chn:"Chennai",
+    vdr:"Vadodara",
+    ahd:"Prayagraj"
+};
+
+function getCity(warehouse){
+    if(!warehouse) return "Unknown";
+    const w = warehouse.toLowerCase();
+    return warehouseCityMap[w] || warehouseCityMap[w.split("_")[0]] || warehouse;
+}
+
+// =======================
+// FILE UPLOAD
+// =======================
+document.getElementById("fileInput").addEventListener("change", e=>{
+    const files = e.target.files;
+    let allRows = [];
+    let done = 0;
+
+    for(const file of files){
+        Papa.parse(file,{
+            skipEmptyLines:true,
+            complete:res=>{
+                res.data.slice(1).forEach(r=>allRows.push(r));
+                if(++done === files.length) generateReport(allRows);
+            }
+        });
+    }
+});
+
+// =======================
+// REPORT GENERATION (D-1)
+// =======================
+function generateReport(rows){
+    const today = new Date().toISOString().slice(0,10);
+
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate()-1);
+    const d1 = yesterday.toISOString().slice(0,10);
+
+    let html = `
+    <div class="report-head">
+        <div class="report-title">IRN Pendancy Report</div>
+        <div class="report-meta">Date: ${formatDateDDMMYYYY(d1)}</div>
+    </div>
+    <table>
+        <tr>
+            <th>City</th>
+            <th>IRN Number</th>
+            <th>Status</th>
+            <th>Date</th>
+        </tr>
+    `;
+
+    rows.forEach(r=>{
+        const irn = r[0];
+        const status = (r[3]||"").toLowerCase().trim();
+        const warehouse = r[4];
+        const rawDate = r[10];
+
+        if(!irn || !rawDate) return;
+        if(!ALLOWED_STATUS.includes(status)) return;
+
+        const dateISO = rawDate.slice(0,10);
+        if(dateISO === today) return;
+
+        html += `
+        <tr>
+            <td>${getCity(warehouse)}</td>
+            <td>${irn}</td>
+            <td>${status}</td>
+            <td>${formatDateDDMMYYYY(dateISO)}</td>
+        </tr>`;
+    });
+
+    html += `
+    </table>
+
+    <div class="report-footer">
+        Powered by SASA Automation | Harshit Saini – Data Analyst, Zippee
+    </div>
+    `;
+
+    document.getElementById("captureBox").innerHTML = html;
+}
+
+// =======================
+// IMAGE DOWNLOAD
+// =======================
+function downloadImage(){
+    const box = document.getElementById("captureBox");
+
+    html2canvas(box, {
+        scale: 3,                 // 🔥 HD quality
+        useCORS: true,
+        backgroundColor: "#ffffff"
+    }).then(canvas=>{
+        const a = document.createElement("a");
+        a.download = "IRN_Pendency_D-1_HD.png";
+        a.href = canvas.toDataURL("image/png", 1.0);
+        a.click();
+    });
+}
+</script>
+<script>
+// ============ ANTI-INSPECT + NO DEVTOOLS ============
+
+// Detect DevTools by window resize gap
+setInterval(function () {
+  const threshold = 160;
+  if (
+    window.outerWidth - window.innerWidth > threshold ||
+    window.outerHeight - window.innerHeight > threshold
+  ) {
+    document.body.innerHTML =
+      "<h2 style='text-align:center;margin-top:40px;'>Dev Tools are not allowed 🚫</h2>";
+  }
+}, 500);
+
+// Disable right-click everywhere
+document.addEventListener("contextmenu", function(e){
+  e.preventDefault();
+});
+
+// Block common inspect keys
+document.addEventListener("keydown", function(e){
+
+  // F12
+  if (e.keyCode === 123) e.preventDefault();
+
+  // Ctrl + Shift + I / J / C
+  if (e.ctrlKey && e.shiftKey &&
+     ['I','J','C','i','j','c'].includes(e.key)) {
+      e.preventDefault();
+  }
+
+  // Ctrl + U (View Source)
+  if (e.ctrlKey && ['U','u'].includes(e.key)) {
+      e.preventDefault();
+  }
+
+  // Block any Ctrl+Shift combination
+  if (e.ctrlKey && e.shiftKey) e.preventDefault();
+});
+</script>
+
+</body>
+</html>
+
+

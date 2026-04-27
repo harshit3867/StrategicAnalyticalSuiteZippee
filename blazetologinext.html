@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Zippee – Blaze Restructure Tool</title>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+<style>
+
+:root{
+--primary-900:#003f8c;
+--glass-bg:rgba(255,255,255,0.16);
+--card-shadow:0 8px 30px rgba(0,0,0,0.25);
+}
+
+html,body{
+margin:0;
+padding:0;
+font-family:"Segoe UI",Arial
+}
+
+body{
+background:url('Zippee.png') center/cover fixed no-repeat;
+}
+
+body::before{
+content:"";
+position:fixed;
+inset:0;
+background:rgba(255,255,255,.24);
+backdrop-filter:blur(6px);
+z-index:-1;
+}
+
+.header{
+background:linear-gradient(90deg,rgba(0,63,140,.85),rgba(0,89,179,.85));
+color:white;
+padding:18px 36px;
+display:flex;
+justify-content:space-between;
+align-items:center
+}
+
+.logo{height:48px}
+
+.card{
+background:var(--glass-bg);
+backdrop-filter:blur(10px) saturate(120%);
+margin:30px auto;
+max-width:1400px;
+padding:30px;
+border-radius:18px;
+box-shadow:var(--card-shadow);
+}
+
+.title{
+font-size:22px;
+font-weight:700;
+color:var(--primary-900)
+}
+
+.controls{
+display:flex;
+gap:8px;
+flex-wrap:wrap;
+margin-top:10px
+}
+
+.button{
+background:linear-gradient(135deg,#0A66C2,#0078FF);
+border:none;
+border-radius:10px;
+padding:10px 16px;
+color:white;
+cursor:pointer;
+font-weight:700
+}
+
+.table-wrapper{
+overflow:auto;
+max-height:600px;
+margin-top:20px;
+}
+
+table{
+border-collapse:collapse;
+background:white;
+border-radius:12px;
+box-shadow:0 8px 20px rgba(0,0,0,.12);
+}
+
+th,td{
+border:1px solid #ddd;
+padding:6px;
+font-size:12px;
+text-align:center;
+white-space:nowrap;
+}
+
+th{
+background:#f4f6f8;
+font-weight:700;
+}
+
+.footer-watermark{
+width:100%;
+display:flex;
+justify-content:center;
+align-items:center;
+margin-top:10px;
+font-size:11px;
+font-weight:700;
+color:#000;
+letter-spacing:1px;
+text-transform:uppercase;
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="header">
+<h1>Zippee – Blaze CSV Restructure</h1>
+<img class="logo" src="https://i.imgur.com/7yUVE8U.png">
+</div>
+
+<div class="card">
+
+<div class="title">Upload Blaze Dataset</div>
+
+<input type="file" id="fileInput" multiple>
+
+<div class="controls">
+<button class="button" onclick="generateReport()">Generate Report</button>
+<button class="button" onclick="downloadCSV()">Download Output CSV</button>
+</div>
+
+<div id="reportContainer" style="display:none;margin-top:20px">
+
+<div id="captureBox">
+
+<div style="text-align:center;margin-bottom:15px">
+
+<div style="font-size:18px;font-weight:800">
+ZIPPEE – Blaze Restructured Dataset
+</div>
+
+</div>
+
+<div class="table-wrapper">
+<table id="finalReportTable"></table>
+</div>
+
+<div class="footer-watermark">
+Powered by SASA Automation | Zippee
+</div>
+
+</div>
+
+</div>
+
+</div>
+
+<script>
+
+let dataset=[]
+let outputData=[]
+
+
+// 135 OUTPUT HEADERS
+const headers=`AWB No	Order No.	Client Name	Order Dark Store	Order Dark Store Description	Origin	Destination	Destination Latitude	Destination Longitude	Order Type	Order State	Skill Set	Delivery Location Type	Order Date	Start Date	End Date	Payment Type	Order Value	Planned cash at Pickup	Actual cash at Pickup	Planned cash at Delivery	Actual cash at Delivery	Payment Subtype	Transaction Id	Cash Mismatch Reason	Opening Cash	Closing Cash	Order Status	Planned Service Time	Service Time	Delivery Associate	Delivery Associate Mobile Number	DB Employee ID	Assigned Through	Trip No.	Planned Checkout Time	Start Time (Actual)	End Time (Actual)	Planned distance from confirmed to pickup	Actual distance from confirm to pickup	Planned distance from pickup to delivery	Actual distance from pickup to delivery	Total Planned Distance(Km)	Total Actual Distance(Km)	Actual Distance from Hub	Actual Tracked Distance	Start Time (Estimated)	End Time (Estimated)	Time Taken (Difference in Mins.)	Order creation date time	Order confirmed time	Pickup Checkin Time	Pickup Checkout Time	Planned time for Pickup	Actual time to pickup	Actual time at pickup	Order Pickup Lifecycle Time	Delivery Checkin Time	Delivery Checkout Time	Planned time for Delivery	Actual Time to deliver	Actual Time at deliver	Order Delivery Lifecycle Time	Total Order Lifecycle Time	Pickup Checkin Latitude	Pickup Checkin Longitude	Pickup Checkout Latitude	Pickup Checkout Longitude	Deliver Checkin Latitude	Deliver Checkin Longitude	Deliver Checkout Latitude	Deliver Checkout Longitude	Order Creation Medium	Delivered By	Cancelled By	Vehicle No.	Vehicle Type	Order Sequence	Vendor/Customer code	Customer Name	POD count	No. of Boxes	Weight (Kg)	Volume (Cc)	Customer comments	Reason	Ratings	No. of Attempts	Territory Enter Time	Territory Exit Time	Delayed	Delayed by (Mins)	Scan Status	Parent Order Number	Territory Name	Priority	Mode Of Assignment	Delivery Associate Dark Store Name	Auto Allocate	Pickup notes	Delivery Notes	Customer Contact Number	Pickup Wait Time (min)	Deliver Wait Time (min)	Pickup Load Time (in mins)	Deliver UnLoad Time (in mins)	shippingCost	parentOrderReferenceId	Service Type	Fleet Estimated Cost	Fleet Actual Cost	Destination City	Current Manifest ID	Pickup Start Time	Pickup End Time	Deliver Wait Start Time	Deliver Wait End Time	Preparation Time (Min)	Count of Tracking Records	Other Reasons	Pickup Society / Street	Deliver Society / Street	Inscan Time	Outscan Time	Username	OriginPincode	DestPincode	Destination State	Signature Required	Insurance Required	Insured Value(₹)	Original Value (₹)	Discount(%)	Packaging Required	Supertails Warehouse Identifier`.split("\t")
+
+
+// INPUT → OUTPUT MAPPING
+const mapping={
+1:[4],
+2:[1],
+3:[2],
+5:[28],
+6:[14,38],
+11:[80],
+16:[127],
+17:[35],
+21:[88],
+28:[3]
+}
+
+
+// FILE UPLOAD
+document.getElementById("fileInput").addEventListener("change", async function(e){
+
+dataset=[]
+
+const files=Array.from(e.target.files)
+
+for(const file of files){
+
+const data=await file.arrayBuffer()
+
+const workbook=XLSX.read(data,{type:'array'})
+const sheet=workbook.Sheets[workbook.SheetNames[0]]
+
+const rows=XLSX.utils.sheet_to_json(sheet,{header:1})
+
+dataset.push(...rows.slice(1))
+
+}
+
+})
+
+
+// GENERATE OUTPUT DATA
+function generateReport(){
+
+outputData=[]
+
+dataset.forEach(row=>{
+
+let newRow=new Array(135).fill("")
+
+for(let input in mapping){
+
+mapping[input].forEach(out=>{
+newRow[out-1]=row[input-1]||""
+})
+
+}
+
+outputData.push(newRow)
+
+})
+
+renderTable()
+
+document.getElementById("reportContainer").style.display="block"
+
+}
+
+
+// DISPLAY TABLE
+function renderTable(){
+
+let html=""
+
+html+="<tr>"
+
+headers.forEach(h=>{
+html+=`<th>${h}</th>`
+})
+
+html+="</tr>"
+
+outputData.slice(0,200).forEach(r=>{
+html+="<tr>"
+r.forEach(c=>{
+html+=`<td>${c}</td>`
+})
+html+="</tr>"
+})
+
+document.getElementById("finalReportTable").innerHTML=html
+
+}
+
+
+// DOWNLOAD CSV
+function downloadCSV(){
+
+let csv=headers.join(",")+"\n"
+
+outputData.forEach(r=>{
+csv+=r.join(",")+"\n"
+})
+
+const blob=new Blob([csv],{type:"text/csv"})
+const url=URL.createObjectURL(blob)
+
+const a=document.createElement("a")
+a.href=url
+a.download="Blaze_Restructured_Output.csv"
+a.click()
+
+}
+
+</script>
+
+</body>
+</html>

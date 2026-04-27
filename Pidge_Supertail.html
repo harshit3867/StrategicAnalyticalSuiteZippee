@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>SLA Automation – FINAL (Derived + Clean + Summary)</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+<style>
+:root{
+    --primary-900:#003f8c;
+    --glass-bg:rgba(255,255,255,0.16);
+    --card-shadow:0 8px 30px rgba(0,0,0,0.25);
+}
+
+html,body{
+    margin:0;
+    padding:0;
+    font-family:"Segoe UI",Arial;
+}
+
+body{
+    background:url('Zippee.png') center/cover fixed no-repeat;
+}
+
+body::before{
+    content:"";
+    position:fixed;
+    inset:0;
+    background:rgba(255,255,255,.24);
+    backdrop-filter:blur(6px);
+    z-index:-1;
+}
+
+/* HEADER */
+.header{
+    background:linear-gradient(90deg,rgba(0,63,140,.85),rgba(0,89,179,.85));
+    color:white;
+    padding:18px 36px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+}
+
+.logo{height:48px}
+/* BIG TABLE SCROLLER */
+.wrapper{
+    max-height:45vh;        /* 👈 limits height */
+    overflow:auto;          /* 👈 enables scroll */
+    margin-top:16px;
+    border-radius:12px;
+}
+.summary-wrapper{
+  background:#fff;
+  border:1px solid #ccc;
+  margin:15px auto;     /* 👈 THIS centers it */
+  width:max-content;
+  border-radius:12px;
+}
+
+/* CARD */
+.card{
+    background:var(--glass-bg);
+    backdrop-filter:blur(10px) saturate(120%);
+    margin:30px auto;
+    max-width:1400px;
+    padding:30px;
+    border-radius:18px;
+    box-shadow:var(--card-shadow);
+}
+
+.title{
+    font-size:22px;
+    font-weight:700;
+    color:var(--primary-900);
+}
+
+/* CONTROLS */
+.controls{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    margin-top:12px;
+}
+
+.button{
+    background:linear-gradient(135deg,#0A66C2,#0078FF);
+    border:none;
+    border-radius:10px;
+    padding:10px 16px;
+    color:white;
+    cursor:pointer;
+    font-weight:700;
+}
+
+/* REPORT */
+#reportContainer{margin-top:20px;overflow-x:auto}
+#captureBox{position:relative;display:inline-block}
+
+/* TABLE */
+table{
+    border-collapse:collapse;
+    background:white;
+    border-radius:12px;
+    box-shadow:0 8px 20px rgba(0,0,0,.12);
+}
+
+th,td{
+    border:1px solid #ddd;
+    padding:6px 10px;
+    white-space:nowrap;
+    font-size:13px;
+}
+
+th{
+    background:#003f8c;
+    color:white;
+    position:sticky;
+    top:0;
+}
+</style>
+
+</head>
+<!-- HEADER -->
+<div class="header">
+  <h2>SLA Automation – Final Output</h2>
+  <img class="logo" src="https://i.imgur.com/7yUVE8U.png">
+</div>
+<div class="card">
+<input type="file" id="fileInput" accept=".csv">
+<button onclick="downloadExcel()">⬇ Download Excel</button>
+
+<div style="background:#fff;border:1px solid #ccc;padding:8px;margin-bottom:10px;width:max-content">
+  <b>Summary Filters</b><br><br>
+
+  Fulfillment Status:
+  <select id="filterFulfillment"></select>
+
+  &nbsp;&nbsp;Status:
+  <select id="filterStatus"></select>
+</div>
+
+
+<div class="summary-wrapper">
+  <b>📊 SLA Summary</b>
+  <table id="summary"></table>
+</div>
+<div style="background:#fff;border:1px solid #ccc;padding:8px;margin-bottom:6px;width:max-content">
+  <b>Model-wise Filters</b><br><br>
+
+  SLA STATUS:
+  <select id="filterModelSLA"></select>
+
+  &nbsp;&nbsp;Fulfillment Status:
+  <select id="filterModelFulfillment"></select>
+</div>
+
+<div class="summary-wrapper">
+  <b>📊 SLA Model-wise Summary</b>
+  <table id="summaryModel"></table>
+</div>
+
+<div class="wrapper">
+  <table id="output"></table>
+</div>
+</div>
+
+<script>
+/* ================= INDEX MAP (RAW CSV) ================= */
+const IDX = { D:3,E:4,F:5,G:6,I:8,AE:30,AL:37 };
+
+/* ================= DERIVED HEADERS ================= */
+const NEW_HEADERS=[
+  "Warehouse pincode","Destination pincode","Model","TAT","SLA STATUS",
+  "Time","Order date time","Tat_2","order_date",
+  "Packing_Time","Packing_delay","Delay_bucket"
+];
+
+let FINAL_ROWS=[];
+let FINAL_HEADERS=[];
+function populateFilter(id, values, defaultValue){
+  const sel = document.getElementById(id);
+  sel.innerHTML = '<option value="ALL">All</option>';
+
+  [...new Set(values)]
+    .filter(v => v)
+    .sort()
+    .forEach(v => {
+      const o = document.createElement("option");
+      o.value = v;
+      o.textContent = v;
+
+      // 🔹 set default selection
+      if (defaultValue && v.toLowerCase() === defaultValue.toLowerCase()) {
+        o.selected = true;
+      }
+
+      sel.appendChild(o);
+    });
+}
+
+/* ================= HELPERS ================= */
+function parseDateSafe(v){
+  if(!v) return null;
+  const d=new Date(String(v).replace(" ","T"));
+  return isNaN(d)?null:d;
+}
+function excelTime(ms){return ms/(24*60*60*1000);}
+function endOfDay(d){let x=new Date(d);x.setHours(23,59,59,999);return x;}
+function addDays(d,n){let x=new Date(d);x.setDate(x.getDate()+n);return x;}
+function dateOnly(d){return new Date(d.getFullYear(),d.getMonth(),d.getDate());}
+
+function fmtDT(d){
+  if(!d) return "";
+  const p=n=>String(n).padStart(2,"0");
+  return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+}
+function fmtTime(f){
+  if(f==null||f==="") return "";
+  let t=Math.round(f*86400);
+  const p=n=>String(n).padStart(2,"0");
+  return `${p(t/3600|0)}:${p((t%3600)/60|0)}:${p(t%60)}`;
+}
+
+/* ================= LOAD ================= */
+document.getElementById("fileInput").addEventListener("change",e=>{
+  Papa.parse(e.target.files[0],{
+    skipEmptyLines:true,
+    complete:r=>process(r.data)
+  });
+});
+
+/* ================= CORE ================= */
+function process(data){
+  const baseHeaders=data[0];
+  const rows=data.slice(1);
+
+  FINAL_HEADERS=[...baseHeaders,...NEW_HEADERS];
+
+  /* ===== STEP 1: DERIVE ALL NEW COLUMNS (UNCHANGED LOGIC) ===== */
+  let derived=rows.map(r=>{
+    let ae=r[IDX.AE];
+
+    let ba=null;
+    if(ae){let m=ae.match(/value":"([^"]{19})/);if(m)ba=parseDateSafe(m[1]);}
+    if(!ba) ba=parseDateSafe(r[IDX.E]);
+
+    let bb=ba;
+    if(ae){let d=ae.match(/drop_time[^]*?value":"([^"]{19})/);if(d)bb=parseDateSafe(d[1]);}
+
+    let AU=r[IDX.F]?String(r[IDX.F]).slice(-6):"";
+    let AV=r[IDX.I]?String(r[IDX.I]).slice(-6):"";
+
+// ===== MODEL (AW) – Excel logic =====
+let AW = "SDD Delivery";
+
+if (AU === "562162") {
+  AW = "Warehouse Order";
+
+} else if (
+  ["Supertails-Varthur", "Supertail_Hyperlocal"].includes(r[IDX.D]) &&
+  AV !== "560049" &&
+  (ba.getHours() >= 20 || ba.getHours() < 8)
+) {
+  AW = "SF Previous";
+
+} else if (
+  ["Supertails-Varthur", "Supertail_Hyperlocal"].includes(r[IDX.D]) &&
+  ba.getHours() >= 8 &&
+  ba.getHours() < 20 &&
+  AV !== "560049" &&
+  ["BLR Darkstore VTR", "BLRDS KALYAN NAGAR"].includes(r[IDX.G])
+) {
+  AW = "2 Hours Delivery";
+}
+
+
+// ===== TAT / SLA DEADLINE (AX) – Excel logic =====
+let AX = "";
+
+// Gurgaon
+if (r[IDX.D] === "Supertails-Gurgaon") {
+  AX = ba.getHours() < 13
+    ? endOfDay(ba)
+    : endOfDay(addDays(ba, 1));
+}
+
+// SDD – same day
+else if (
+  AW === "SDD Delivery" &&
+  (
+    (r[IDX.D] === "Supertails-Varthur" && ba.getHours() < 14) ||
+    (r[IDX.D] === "Supertails_SDD" && ba.getHours() < 13)
+  )
+) {
+  AX = endOfDay(ba);
+}
+
+// SDD – next day
+else if (
+  AW === "SDD Delivery" &&
+  ["Supertails-Varthur", "Supertails_SDD"].includes(r[IDX.D])
+) {
+  AX = endOfDay(addDays(ba, 1));
+}
+
+// SF Previous
+else if (
+  AW === "SF Previous" &&
+  ["Supertail_Hyperlocal", "Supertails-Varthur"].includes(r[IDX.D])
+) {
+  if (ba.getHours() >= 20) {
+    AX = addDays(dateOnly(ba), 1);
+    AX.setHours(13, 0, 0, 0);
+  } else {
+    AX = dateOnly(ba);
+    AX.setHours(13, 0, 0, 0);
+  }
+}
+
+// 2 Hours Delivery
+else if (
+  AW === "2 Hours Delivery" &&
+  ["Supertail_Hyperlocal", "Supertails-Varthur"].includes(r[IDX.D])
+) {
+  AX = bb;
+}
+
+// Warehouse – same day
+else if (AW === "Warehouse Order" && ba.getHours() < 11) {
+  AX = endOfDay(ba);
+}
+
+// Warehouse – next day
+else if (AW === "Warehouse Order") {
+  AX = endOfDay(addDays(ba, 1));
+}
+
+
+    let AY=parseDateSafe(r[IDX.AL])>AX?"SLA BREACH":"SLA MET";
+    let AZ=ba?excelTime(ba-new Date(ba.toDateString())):"";
+    let BC=ba?ba.toLocaleDateString("en-GB",{day:"2-digit",month:"short"}):"";
+    let BD=ba&&r[IDX.E]?excelTime(parseDateSafe(r[IDX.E])-ba):"";
+
+    let BE=BD<=excelTime(15*60000)?"15 min delay":
+           BD<=excelTime(30*60000)?"15-30 min delay":"More than 30 min delay";
+
+    let BF=BD<=excelTime(5*60000)?"0–5 min delay":
+           BD<=excelTime(10*60000)?"5–10 min delay":
+           BD<=excelTime(15*60000)?"10–15 min delay":"More than 15 min delay";
+
+    return [...r,AU,AV,AW,fmtDT(AX),AY,fmtTime(AZ),fmtDT(ba),fmtDT(bb),BC,fmtTime(BD),BE,BF];
+  });
+
+  /* ===== STEP 2: CLEAN ROWS (AFTER DERIVATION) ===== */
+  FINAL_ROWS=derived.filter(r=>{
+    const status=String(r[34]||"").toLowerCase().trim();
+    const actual=parseDateSafe(r[IDX.AL]);
+    const reject=String(r[32]||"");
+    const collect=parseDateSafe(r[33]);
+
+    if((status==="cancelled"||status==="completed") && actual && dateOnly(actual)<dateOnly(new Date())) return false;
+    if(reject.slice(-4)==="DRTO") return false;
+    if(status==="cancelled" && collect && dateOnly(collect)<dateOnly(new Date())) return false;
+    return true;
+  });
+  populateFilter(
+  "filterModelSLA",
+  FINAL_ROWS.map(r => String(r[r.length - 8] || "").trim()), // SLA STATUS (AY)
+  "SLA BREACH"
+);
+
+populateFilter(
+  "filterModelFulfillment",
+  FINAL_ROWS.map(r => String(r[21] || "").trim()), // Fulfillment Status (V)
+  "DELIVERED"
+);
+// 🔹 Force-select SLA BREACH even if spacing differs
+const slaSelect = document.getElementById("filterModelSLA");
+[...slaSelect.options].forEach(o => {
+  if (o.textContent.trim() === "SLA BREACH") {
+    slaSelect.value = o.value;
+  }
+});
+
+// Fulfillment works fine
+
+document.getElementById("filterModelFulfillment").value = "DELIVERED";
+
+// Rebuild ONLY model-wise summary on change
+["filterModelSLA","filterModelFulfillment"].forEach(id=>{
+  document.getElementById(id).onchange = renderModelSummary;
+});
+
+populateFilter(
+  "filterFulfillment",
+  FINAL_ROWS.map(r => String(r[21] || "").trim()),
+  "DELIVERED"
+);
+
+populateFilter(
+  "filterStatus",
+  FINAL_ROWS.map(r => String(r[34] || "").trim()),
+  "completed"
+);
+
+
+// Rebuild summary when filters change
+["filterFulfillment","filterStatus"].forEach(id=>{
+  document.getElementById(id).onchange = ()=>{
+    renderSummary();
+    renderModelSummary();
+  };
+});
+
+  renderMain();
+  renderSummary();
+  renderModelSummary();
+}
+
+/* ================= SUMMARY ================= */
+function renderSummary(){
+  const map={};
+  let b=0,m=0;
+  FINAL_ROWS.forEach(r=>{
+    const fulfillment = String(r[21] || "").trim(); // Column V
+const status = String(r[34] || "").trim();      // Column AI
+
+const fFilter = document.getElementById("filterFulfillment").value;
+const sFilter = document.getElementById("filterStatus").value;
+
+// Apply filters ONLY for summary
+if (fFilter !== "ALL" && fulfillment !== fFilter) return;
+if (sFilter !== "ALL" && status !== sFilter) return;
+
+    const ch=r[3]||"Unknown";
+    const sla=String(r[r.length-8]||""); // SLA STATUS
+    if(!map[ch]) map[ch]={b:0,m:0};
+    if(sla==="SLA BREACH"){map[ch].b++;b++;}
+    if(sla==="SLA MET"){map[ch].m++;m++;}
+  });
+
+  const t=[["Channel","SLA BREACH","SLA MET","Total"]];
+  Object.entries(map).forEach(([k,v])=>t.push([k,v.b,v.m,v.b+v.m]));
+  t.push(["Grand Total",b,m,b+m]);
+  draw("summary",t);
+}
+
+function renderModelSummary(){
+    const slaFilter = document.getElementById("filterModelSLA").value;
+const fulfillFilter = document.getElementById("filterModelFulfillment").value;
+  const fFilter = document.getElementById("filterFulfillment").value;
+  const sFilter = document.getElementById("filterStatus").value;
+
+  const map = {};
+  const models = new Set();
+
+  FINAL_ROWS.forEach(r=>{
+    const fulfillment = String(r[21]||"").trim();   // Column V
+    const status = String(r[34]||"").trim();        // Column AI
+    const channel = r[3] || "Unknown";              // Column D
+const orderDate = (() => {
+  const d = r[r.length - 4]; // BC
+  return d ? String(d).trim() : "Unknown";
+})(); // BC → order_date
+const model = r[r.length - 10] || "Unknown";   // AW → Model
+const ref = r[2];                               // Column C → Reference ID
+
+    if (!ref) return;
+
+// 🔹 APPLY MODEL-WISE FILTERS ONLY
+if (slaFilter !== "ALL" && String(r[r.length - 8]).trim() !== slaFilter) return;
+if (fulfillFilter !== "ALL" && fulfillment !== fulfillFilter) return;
+
+
+    models.add(model);
+
+    map[channel] ??= {};
+    map[channel][orderDate] ??= {};
+    map[channel][orderDate][model] ??= 0;
+
+    map[channel][orderDate][model]++;
+  });
+
+  const modelList = [...models].sort();
+
+  const table = [
+    ["Channel","order_date",...modelList,"Grand Total"]
+  ];
+
+  Object.entries(map).forEach(([ch,dates])=>{
+    Object.entries(dates).forEach(([dt,mods],i)=>{
+      let rowTotal = 0;
+      const row = [
+        i===0 ? ch : "",
+        dt
+      ];
+
+      modelList.forEach(m=>{
+        const v = mods[m] || 0;
+        row.push(v);
+        rowTotal += v;
+      });
+
+      row.push(rowTotal);
+      table.push(row);
+    });
+  });
+
+  // Grand total row
+  const gt = ["Grand Total",""];
+  let gtSum = 0;
+  modelList.forEach(m=>{
+    let s = 0;
+    FINAL_ROWS.forEach(r=>{
+      const fulfillment = String(r[21]||"").trim();
+      const status = String(r[34]||"").trim();
+      const model = r[r.length - 10];
+      if(
+        (fFilter==="ALL"||fulfillment===fFilter) &&
+        (sFilter==="ALL"||status===sFilter) &&
+        model===m
+      ) s++;
+    });
+    gt.push(s);
+    gtSum += s;
+  });
+  gt.push(gtSum);
+  table.push(gt);
+
+  draw("summaryModel",table);
+}
+
+/* ================= RENDER ================= */
+function renderMain(){
+  draw(
+    "output",
+    [
+      ["S.No", ...FINAL_HEADERS],                 // header only for display
+      ...FINAL_ROWS.map((r, i) => [i + 1, ...r])  // numbering only for UI
+    ]
+  );
+}
+function draw(id,data){
+  const t=document.getElementById(id);
+  t.innerHTML="";
+  data.forEach((r,i)=>{
+    const tr=document.createElement("tr");
+    r.forEach(c=>{
+      const el=document.createElement(i===0?"th":"td");
+      el.textContent=c??"";
+      tr.appendChild(el);
+    });
+    t.appendChild(tr);
+  });
+}
+
+/* ================= DOWNLOAD ================= */
+function downloadExcel(){
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([FINAL_HEADERS,...FINAL_ROWS]),"Final_Data");
+  XLSX.writeFile(wb,"SLA_FINAL.xlsx");
+}
+</script>
+
+</body>
+</html>

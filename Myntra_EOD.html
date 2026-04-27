@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Zippee – Myntra EOD Report</title>
+
+<script src="https://unpkg.com/tesseract.js@v4.0.2/dist/tesseract.min.js"></script>
+
+<style>
+:root{
+    --primary:#003f8c;
+}
+body{
+    margin:0;
+    font-family:"Segoe UI",Arial;
+    background:linear-gradient(135deg,#e6f0ff,#f5f9ff);
+}
+
+/* HEADER */
+.header{
+    background:linear-gradient(90deg,#003f8c,#0059b3);
+    color:white;
+    padding:18px 30px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+}
+
+.header h1{
+    margin:0;
+    font-size:20px;
+}
+
+/* CARD */
+.card{
+    background:white;
+    margin:30px auto;
+    max-width:1300px;
+    padding:25px;
+    border-radius:14px;
+    box-shadow:0 8px 30px rgba(0,0,0,0.1);
+}
+
+/* BUTTONS */
+.controls{
+    display:flex;
+    gap:10px;
+    margin-top:10px;
+}
+
+button{
+    padding:10px 14px;
+    border:none;
+    border-radius:8px;
+    background:#0078ff;
+    color:white;
+    cursor:pointer;
+    font-weight:600;
+}
+
+/* TABLE */
+table{
+    border-collapse:collapse;
+    margin-top:20px;
+    width:100%;
+}
+
+th,td{
+    border:1px solid #ddd;
+    padding:6px;
+    text-align:center;
+}
+
+th{
+    background:#ffe600;
+}
+
+.red{background:red;color:white;}
+.green{background:#00ff00;}
+.yellow{background:#fff200;}
+
+.copy-btn{
+    cursor:pointer;
+    border:none;
+    background:#f0f0f0;
+    padding:5px;
+    border-radius:6px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="header">
+    <h1>ZIPPEE ↔ MYNTRA EOD REPORT</h1>
+</div>
+
+<div class="card">
+
+    <input type="file" id="imageInput" multiple>
+    <button onclick="processImages()">Generate Report</button>
+
+    <p id="status"></p>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Copy</th>
+                <th>S.No</th>
+                <th>Key Parameters</th>
+                <th>Kalyan Nagar</th>
+                <th>Basaveshwar Nagar</th>
+                <th>Thyagaraja Nagar</th>
+                <th>Begur</th>
+                <th>Brookfield</th>
+                <th>Sarjapur Road</th>
+                <th>Hulimavu</th>
+                <th>Jakkur</th>
+                <th>Manikonda</th>
+                <th>Gachibowli</th>
+                <th>Attapur</th>
+                <th>Nizampet</th>
+            </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+    </table>
+
+</div>
+
+<script>
+
+const stores = [
+"Kalyan Nagar","Basaveshwar Nagar","Jakkur","Begur",
+"Thyagaraja Nagar","Brookfield","Hulimavu","Sarjapur Road",
+"Manikonda","Gachibowli","Attapur","Nizampet"
+];
+
+function emptyRow(){
+  let obj = {};
+  stores.forEach(s => obj[s]=0);
+  return obj;
+}
+
+async function processImages(){
+  const files = document.getElementById("imageInput").files;
+  if(files.length===0){
+    alert("Upload images first!");
+    return;
+  }
+
+  document.getElementById("status").innerText = "Processing... ⏳";
+
+  let text = "";
+
+  for(let file of files){
+    const result = await Tesseract.recognize(file,'eng');
+    text += result.data.text + "\n";
+  }
+
+  let data = {
+    projected: emptyRow(),
+    actual: emptyRow(),
+    delivered: emptyRow(),
+    deepPain: emptyRow(),
+    additional: emptyRow()
+  };
+
+  let lines = text.split("\n");
+
+  lines.forEach(line => {
+
+    stores.forEach(store => {
+
+      let cleanLine = line.toLowerCase().replace(/0/g,"o");
+
+      if(cleanLine.includes(store.toLowerCase())){
+
+        let nums = line.match(/\d+/g);
+
+        if(nums && nums.length >= 6){
+
+          data.projected[store] = parseInt(nums[0]) || 0;
+          data.actual[store] = parseInt(nums[3]) || 0;
+
+          let percentMatch = line.match(/%[^0-9]*(\d+)/);
+          data.delivered[store] = percentMatch ? parseInt(percentMatch[1]) : 0;
+
+          let cleanNums = line.match(/\d+\.\d+|\d+/g)?.map(n => parseFloat(n)) || [];
+
+          if(cleanNums.length >= 2){
+            data.additional[store] = parseInt(cleanNums[cleanNums.length - 2]) || 0;
+          }
+
+          if(cleanNums.length >= 3){
+            data.deepPain[store] = parseInt(cleanNums[cleanNums.length - 3]) || 0;
+          }
+
+        }
+
+      }
+
+    });
+
+  });
+
+  generateTable(data);
+
+  document.getElementById("status").innerText = "Done ✅";
+}
+
+function ratio(a,b){
+  let obj = {};
+  stores.forEach(s=>{
+    obj[s] = (!b[s] || b[s]===0) ? "0%" : ((a[s]/b[s])*100).toFixed(1)+"%";
+  });
+  return obj;
+}
+
+function generateTable(data){
+  const tbody = document.getElementById("tableBody");
+  tbody.innerHTML="";
+
+  const rows = [
+    ["1","Order Projected",data.projected],
+    ["2","Actual Orders",data.actual],
+    ["2.1","Attainment",ratio(data.actual,data.projected),"red"],
+    ["3","Delivered Order",data.delivered],
+    ["3.1","Delivery %",ratio(data.delivered,data.actual),"green"],
+    ["4","Deep Pain (Count)",data.deepPain,"yellow"],
+    ["5","Additional Orders",data.additional]
+  ];
+
+  rows.forEach(r=>{
+    let tr=document.createElement("tr");
+
+    tr.innerHTML += `<td><button class="copy-btn" onclick="copyRow(this)">📋</button></td>`;
+    tr.innerHTML+=`<td>${r[0]}</td>`;
+    tr.innerHTML+=`<td>${r[1]}</td>`;
+
+    stores.forEach(s=>{
+      let val = r[2][s] || 0;
+      let cls = r[3] || "";
+      tr.innerHTML+=`<td class="${cls}">${val}</td>`;
+    });
+
+    tbody.appendChild(tr);
+  });
+}
+
+function copyRow(btn){
+  let row = btn.closest("tr");
+  let cells = row.querySelectorAll("td");
+
+  let text = "";
+
+  for(let i=3; i<cells.length; i++){
+    text += cells[i].innerText + "\t";
+  }
+
+  navigator.clipboard.writeText(text.trim());
+
+  btn.innerText = "✅";
+  setTimeout(()=> btn.innerText = "📋", 800);
+}
+
+</script>
+
+</body>
+</html>

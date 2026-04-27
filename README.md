@@ -1,0 +1,1 @@
+This project is not limited to static reports — it includes multiple interactive tools that perform automated calculations, analyze performance metrics, track pendency, and support data-driven decision-making in last-mile operations.

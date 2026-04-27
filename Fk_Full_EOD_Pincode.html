@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>SASA – Combined LM + Pincode Report</title>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+<style>
+/* ---- full original styling preserved ---- */
+
+:root{
+    --primary-900:#003f8c;
+    --glass-bg:rgba(255,255,255,0.16);
+    --card-shadow:0 8px 30px rgba(0,0,0,0.25);
+
+    --zippee-primary:#00305E;
+    --zippee-secondary:#0078D4;
+    --text-dark:#1d2a38;
+    --card-bg:rgba(255,255,255,.15);
+}
+
+.high-perc{
+    background:#2ECC71 !important;   /* Rich Emerald Green */
+    color:#ffffff;
+    font-weight:800;
+}
+
+.mid-perc{
+    background:#F1C40F !important;   /* Premium Gold Yellow */
+    color:#000000;
+    font-weight:800;
+}
+
+.low-perc{
+    background:#E74C3C !important;   /* Bold Crimson Red */
+    color:#ffffff;
+    font-weight:800;
+}
+.city-block table{
+  margin: 0 auto;   /* 👈 centers table horizontally */
+}
+
+.city-wrapper{
+  display:inline-block;
+  margin:10px;
+}
+.city-block h3{
+  text-align:center;
+  margin-bottom:12px;
+}
+
+.city-block{
+  display:inline-block;
+  padding:12px 16px;
+  background:white;
+  border-radius:12px;
+  box-shadow:0 4px 22px rgba(0,0,0,.18);
+}
+
+.subtotal-row td{
+  background:#ffecb3;
+  font-weight:700;
+}
+
+
+.manager-header{background:#d9dde2;font-weight:700}
+.sub-attempt-title{background:#999;color:#000;font-weight:700}
+
+.green-row td{background:#00b050;color:#000;font-weight:700;}
+.blue-row td{background:#B7DEE8;color:#000;font-weight:700;}
+.orange-row td{background:#FCE4D6;color:#000;font-weight:700;}
+
+.yellow-cell{
+    background:#FFD84D !important;
+    font-weight:700;
+    color:#000;
+}
+.green-cell{
+    background:#C6EFCE !important;
+    font-weight:700;
+    color:#000;
+}
+
+.cd-sub-row td{
+    background:#B7DEE8 !important;
+    font-weight:700;
+}
+.noncd-sub-row td{
+    background:#FCE4D6 !important;
+    font-weight:700;
+}
+
+.fasr-label{
+    color:#0057FF;
+    font-weight:800;
+}
+
+
+
+body.dark{
+    --zippee-primary:#dce9ff;
+    --text-dark:#f5f5f5;
+    --card-bg:rgba(0,0,0,.35);
+    background:#0b1320 !important;
+}
+
+html,body{margin:0;padding:0;font-family:"Segoe UI"}
+body{
+    background:url('Zippee.png') center/cover fixed no-repeat;
+}
+body::before{
+    content:"";position:fixed;inset:0;
+    background:rgba(255,255,255,.24);
+    backdrop-filter:blur(6px);
+    z-index:-1;
+}
+
+/* HEADER */
+.header{
+    background:linear-gradient(90deg,rgba(0,63,140,.85),rgba(0,89,179,.85));
+    color:white;padding:18px 36px;
+    display:flex;justify-content:space-between;align-items:center
+}
+.logo{height:48px}
+
+.footer-text{
+  text-align:center;
+  font-size:0.9vw;          /* auto-resizes with box width */
+  font-weight:500;
+  margin-top:0px;
+  width:100%;
+  display:block;
+  white-space:nowrap;        /* keeps text in one line */
+  overflow:hidden;           /* prevents overflow */
+  text-overflow:ellipsis;    /* adds "..." if extremely small */
+}
+
+
+/* CONTAINER CARD */
+.card{
+    background:var(--glass-bg);
+    backdrop-filter:blur(10px) saturate(120%);
+    margin:30px auto;max-width:1300px;
+    padding:30px;border-radius:18px;
+    box-shadow:var(--card-shadow);
+}
+.title{font-size:22px;font-weight:700;color:var(--primary-900)}
+.controls{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.button{
+    background:linear-gradient(135deg,#0A66C2,#0078FF);
+    border:none;border-radius:10px;
+    padding:10px 16px;color:white;cursor:pointer;
+    font-weight:700
+}
+
+/* TABLES */
+table{
+    border-collapse:collapse;
+    background:white;border-radius:12px;
+    box-shadow:0 8px 20px rgba(0,0,0,.12);
+}
+th,td{
+    border:1px solid #ddd;
+    padding:6px 10px;
+    white-space:nowrap;
+    font-size:13px
+}
+
+.manager-header{background:#d9dde2;font-weight:700}
+.subtotal-row td{background:#ffecb3;font-weight:800}
+
+.watermark{
+    position:absolute;inset:0;
+    display:flex;justify-content:center;align-items:center;
+    pointer-events:none;
+}
+.watermark span{
+    font-size:42px;font-weight:900;
+    color:rgba(0,0,0,.08);
+    transform:rotate(-25deg)
+}
+</style>
+</head>
+
+<body>
+
+<div class="header">
+    <h1>Zippee Last Mile EOD Report</h1>
+    <img src="https://i.imgur.com/7yUVE8U.png" class="logo">
+</div>
+
+<div class="card">
+
+    <div class="title">Upload Excel files</div>
+
+    <div class="controls">
+        <input type="file" id="multiUpload" accept=".xlsx,.xls,.csv" multiple>
+    </div>
+
+    <p id="message" style="color:red;font-weight:700;"></p>
+
+</div>
+
+<!---------------- LM REPORT SECTION ---------------->
+
+<div class="card" id="lmSection" style="display:none;">
+    <h2>📌 Last Mile EOD Report</h2>
+
+    <button class="button" onclick="downloadLMImage()">Download LM Report</button>
+
+    <div id="lmBox" style="position:relative;display:inline-block;">
+
+        <div style="text-align:center;margin-bottom:6px;">
+            <div style="font-size:18px;font-weight:800;">
+                Report: [FKG <> Zippee] Last Mile EOD Report
+            </div>
+            <div style="font-size:13px;">
+                Date: <span id="autoDate"></span>
+                </div>
+        </div>
+
+        <table id="finalReportTable"></table>
+
+        <div style="text-align:center;margin-top:6px;font-size:12px;font-weight:800;">
+            Powered by SASA Automation | Harshit Saini – Data Analyst, Zippee
+        </div>
+
+    </div>
+</div>
+
+<!---------------- PINCODE REPORT SECTION ---------------->
+
+<div class="card" id="pincodeSection" style="display:none;">
+    <h2>📌 City Pincode Conversion Report</h2>
+
+    <div id="pincodeOutput"></div>
+
+    <div style="text-align:center;margin-top:6px;font-size:12px;font-weight:800;">
+        Powered by SASA Automation | Harshit Saini – Data Analyst, Zippee
+    </div>
+</div>
+
+
+<script>
+
+/* ------------ SHARE PARSED DATA -------------- */
+
+let GLOBAL_DATA = [];
+
+/* ------------ SINGLE PROCESS FUNCTION -------- */
+
+function processFiles(){
+    const files=[...document.getElementById("multiUpload").files];
+    if(files.length===0){
+        document.getElementById("message").textContent="Upload files first.";
+        return;
+    }
+
+    let merged=[],done=0;
+
+    files.forEach(file=>{
+        const r=new FileReader();
+        r.onload=e=>{
+            const wb=XLSX.read(e.target.result,{type:"binary"});
+            const sh=wb.Sheets[wb.SheetNames[0]];
+            const js=XLSX.utils.sheet_to_json(sh,{defval:""});
+            merged=merged.concat(js);
+            done++;
+            if(done===files.length){
+                GLOBAL_DATA=merged;
+                generateLM(merged);
+                generatePincode(merged);
+            }
+        };
+        r.readAsBinaryString(file);
+    });
+}
+
+/* ----------- NORMALIZATION HELPERS ----------*/
+
+function normalize(s){return String(s||"").trim().toUpperCase().replace(/[-\s]+/g,"_");}
+function cleanHeader(h){return String(h).trim().replace(/\s+/g,"");}
+
+/* ----------- CITY DETECTION COMMON ----------*/
+
+function detectCity(h){
+    h=h.toLowerCase();
+
+    if(h.includes("mor")||h.includes("mrd")) return "Moradabad";
+    if(h.includes("alb")||h.includes("pray")||h.includes("prg")||h.includes("fkl_ahd_nai_3pl_g_02_grocery")) return "Prayagraj";
+    if(h.includes("sil")||h.includes("slg")) return "Siliguri";
+    if(h.includes("sur")||h.includes("str")) return "Surat";
+
+    return h;
+}
+
+/* ===========================================================
+                      LM REPORT GENERATOR
+=========================================================== */
+function generateLM(json){
+
+    const SUB_PARAMETERS=[
+     "Delivered","Delivery_Update","Expected","Out_For_Delivery",
+     "Partial_Delivery_Update","Partially_Delivered",
+     "Undelivered_Heavy_Rain","Undelivered_HeavyLoad",
+     "Undelivered_NonServiceablePincode","Undelivered_Security_Instability",
+     "Undelivered_Not_Attended","Undelivered_No_Response",
+     "Undelivered_Order_Rejected_By_Customer","Undelivered_Request_For_Reschedule",
+     "Undelivered_SameStateMisroute","Untraceable"
+    ];
+
+    const cleaned=json.map(r=>{
+        const n={};Object.keys(r).forEach(k=>n[cleanHeader(k)]=r[k]);return n;
+    });
+
+    const statusCol=Object.keys(cleaned[0]).find(h=>h.toLowerCase().includes("status"));
+    const hubCol=Object.keys(cleaned[0]).find(h=>h.toLowerCase().includes("deliveryhub"));
+    const attemptsCol=Object.keys(cleaned[0]).find(h=>h.toLowerCase().includes("attempt"));
+
+    const citiesData={};
+
+    cleaned.forEach(row=>{
+
+        const hub=String(row[hubCol]||"");
+        const cityInfo = detectCity(hub);
+
+        // keep manager names like your original screenshot
+        let city = cityInfo;
+        let manager = "Manager";
+
+        if(hub.toLowerCase().includes("mor")) manager="Sanjay";
+        if(hub.toLowerCase().includes("pray")||hub.toLowerCase().includes("prg")) manager="Vijay";
+        if(hub.toLowerCase().includes("sil")) manager="Tanmoy";
+        if(hub.toLowerCase().includes("sur")) manager="Umesh";
+
+        if(!citiesData[city]){
+            citiesData[city]={
+                manager,
+                totalShipments:0,
+                shipmentDelivered:0,
+                prto:0,
+                reattempt:0,
+                returnToOrigin:0,
+                customerDependencyBreach:0,
+                nonCustomerDependencyBreach:0,
+                notAttempted:0,
+                fasr:0,
+                pivotCounts:{}
+            };
+            SUB_PARAMETERS.forEach(p=>citiesData[city].pivotCounts[p]=0);
+        }
+
+        const d=citiesData[city];
+        d.totalShipments++;
+
+        const st=normalize(row[statusCol]);
+        const attempts = Number(row[attemptsCol]||0);
+
+        const isDelivered =
+            ["DELIVERED","DELIVERY_UPDATE","PARTIAL_DELIVERY_UPDATE","PARTIALLY_DELIVERED"]
+            .includes(st);
+
+        if(isDelivered){
+            d.shipmentDelivered++;
+            if(attempts===1) d.fasr++;
+        }
+
+        if(st.includes("NOT_ATTEMPTED")) d.notAttempted++;
+
+        SUB_PARAMETERS.forEach(p=>{
+            if(normalize(p)==st) d.pivotCounts[p]++;
+        });
+    });
+
+    Object.values(citiesData).forEach(d=>{
+
+        d.prto=(d.pivotCounts["Partial_Delivery_Update"]||0)+(d.pivotCounts["Partially_Delivered"]||0);
+
+        d.reattempt=(d.pivotCounts["Undelivered_HeavyLoad"]||0)
+                   +(d.pivotCounts["Undelivered_Request_For_Reschedule"]||0)
+                   +(d.pivotCounts["Undelivered_No_Response"]||0);
+
+        d.returnToOrigin=(d.pivotCounts["Undelivered_Order_Rejected_By_Customer"]||0);
+
+        d.customerDependencyBreach=
+            (d.pivotCounts["Undelivered_Order_Rejected_By_Customer"]||0)+
+            (d.pivotCounts["Undelivered_Request_For_Reschedule"]||0)+
+            (d.pivotCounts["Undelivered_SameStateMisroute"]||0)+
+            (d.pivotCounts["Undelivered_No_Response"]||0);
+
+        d.nonCustomerDependencyBreach=
+            (d.pivotCounts["Undelivered_Heavy_Rain"]||0)+
+            (d.pivotCounts["Undelivered_HeavyLoad"]||0)+
+            (d.pivotCounts["Undelivered_Security_Instability"]||0)+
+            (d.pivotCounts["Undelivered_NonServiceablePincode"]||0);
+
+        d.deliveryPercent=d.shipmentDelivered/d.totalShipments*100;
+        d.prtoPercent=d.prto/d.totalShipments*100;
+        d.reattemptPercent=d.reattempt/d.totalShipments*100;
+        d.rtoPercent=d.returnToOrigin/d.totalShipments*100;
+        d.cdBreachPercent=d.customerDependencyBreach/d.totalShipments*100;
+        d.nonCdBreachPercent=d.nonCustomerDependencyBreach/d.totalShipments*100;
+    });
+
+    const cities=Object.keys(citiesData);
+
+    let html="";
+    html+=`<tr><th>S. No.</th><th>Key Parameters</th>`;
+    cities.forEach(c=>html+=`<th class="manager-header">${c}<br>${citiesData[c].manager}</th>`);
+    html+=`</tr>`;
+
+    let s=1;
+
+    function add(label,get,className=""){
+        html+=`<tr class="${className}"><td>${s++}</td><td>${label}</td>`;
+        cities.forEach(c=>html+=`<td>${get(citiesData[c])}</td>`);
+        html+=`</tr>`;
+    }
+
+    add("Total Shipments",d=>d.totalShipments);
+    add("Delivered Shipments",d=>d.shipmentDelivered);
+
+    // Delivery %
+    html+=`<tr><td>${s++}</td><td>Delivery % (KPI >90%)</td>`;
+    cities.forEach(c=>{
+        const v=citiesData[c].deliveryPercent;
+        const cls=v>=90?"green-cell":"yellow-cell";
+        html+=`<td class="${cls}">${v.toFixed(2)}%</td>`;
+    });
+    html+=`</tr>`;
+
+    add(`<span class="fasr-label">FASR (First Attempt Success Ratio)</span>`,d=>d.fasr);
+
+add("FASR %",d=>(d.fasr/d.totalShipments*100).toFixed(2)+"%");
+
+
+    add("Partial Return to Origin (PRTO)",d=>d.prto);
+    add("PRTO %",d=>d.prtoPercent.toFixed(2)+"%");
+
+    add("Re-Attempt (RA)",d=>d.reattempt);
+    add("Re-Attempt %",d=>d.reattemptPercent.toFixed(2)+"%");
+
+    add("Return to Origin (RTO)",d=>d.returnToOrigin);
+    add("RTO %",d=>d.rtoPercent.toFixed(2)+"%");
+
+    add("Customer Dependency Breach (CD Breach)",d=>d.customerDependencyBreach,"blue-row");
+    add("Customer Dependency Breach %",d=>d.cdBreachPercent.toFixed(2)+"%");
+
+    add("Non Customer Dependency Breach",d=>d.nonCustomerDependencyBreach,"orange-row");
+    add("Non Customer Dependency Breach %",d=>d.nonCdBreachPercent.toFixed(2)+"%");
+
+    // Sub parameters header
+    html+=`<tr><td></td><td class="sub-attempt-title">Detailed Sub-Parameters (16)</td>`;
+    cities.forEach(c=>html+=`<th>${c}</th>`);
+    html+=`</tr>`;
+
+    SUB_PARAMETERS.forEach(p=>{
+
+    let rowClass="";
+
+    if([
+        "Undelivered_Order_Rejected_By_Customer",
+        "Undelivered_Request_For_Reschedule",
+        "Undelivered_SameStateMisroute",
+        "Undelivered_No_Response"
+    ].includes(p)) rowClass="cd-sub-row";
+
+    if([
+        "Undelivered_Heavy_Rain",
+        "Undelivered_HeavyLoad",
+        "Undelivered_Security_Instability",
+        "Undelivered_NonServiceablePincode"
+    ].includes(p)) rowClass="noncd-sub-row";
+
+    html+=`<tr class="${rowClass}">
+        <td>${s++}</td>
+        <td>${p.replace(/_/g," ")}</td>`;
+
+    cities.forEach(c=>html+=`<td>${citiesData[c].pivotCounts[p]}</td>`);
+
+    html+=`</tr>`;
+});
+
+    document.getElementById("finalReportTable").innerHTML=html;
+    document.getElementById("lmSection").style.display="block";
+
+    fillDateTime();
+}
+
+
+/* -------- LM Footer Time --------*/
+
+function fillDateTime(){
+    const d=new Date();
+    document.getElementById("autoDate").innerText=d.toLocaleDateString('en-GB',{day:"2-digit",month:"short",year:"numeric"});
+
+}
+
+/* -------- Download LM --------*/
+
+function downloadLMImage(){
+    html2canvas(document.getElementById("lmBox"),{backgroundColor:"#ffffff",scale:3}).then(c=>{
+        const a=document.createElement("a");
+        a.href=c.toDataURL("image/png");
+        a.download="LM_Report.png";
+        a.click();
+    });
+}
+
+/* ===========================================================
+                   PINCODE REPORT GENERATOR
+=========================================================== */
+
+function generatePincode(data){
+
+    const keys=Object.keys(data[0]);
+    const hubCol=keys.find(h=>h.toLowerCase().includes("deliveryhub"));
+    const pinCol=keys.find(h=>h.toLowerCase().includes("pin"));
+    const statusCol=keys.find(h=>h.toLowerCase().includes("status"));
+
+    const deliveredStatus=["DELIVERED","DELIVERY_UPDATE","PARTIAL_DELIVERY_UPDATE","PARTIALLY_DELIVERED"];
+
+    const cityData={};
+
+    data.forEach(row=>{
+        const city=detectCity(String(row[hubCol]||""));
+        const pin=String(row[pinCol]||"NA");
+        const st=normalize(row[statusCol]);
+
+        if(!cityData[city]) cityData[city]={};
+        if(!cityData[city][pin]) cityData[city][pin]={total:0,delivered:0};
+
+        cityData[city][pin].total++;
+        if(deliveredStatus.includes(st)) cityData[city][pin].delivered++;
+    });
+
+    let html="";
+
+    Object.keys(cityData).forEach((city,i)=>{
+
+        const id=`city_block_${i}`;
+        let gTot = 0, gDel = 0, gUnd = 0;
+
+        html+=`
+<div class="city-wrapper">
+<div class="city-block" id="${id}">
+
+<h3>${city} – Pincode wise conversion</h3>
+
+        <table>
+        <tr><th>Pincode</th><th>Delivered</th><th>Undelivered</th><th>Total</th><th>Delivery%</th></tr>`;
+
+        Object.keys(cityData[city]).forEach(pin=>{
+    const o = cityData[city][pin];
+    const und = o.total - o.delivered;
+
+    const p = o.total ? ((o.delivered / o.total) * 100).toFixed(2) : "0.00";
+
+    gTot += o.total;
+    gDel += o.delivered;
+    gUnd += und;
+
+    // decide color class
+    let percClass = "low-perc";      // default = RED
+    if(p >= 90) percClass = "high-perc";      // GREEN
+    else if(p >= 80) percClass = "mid-perc";  // YELLOW
+
+    html+=`
+    <tr>
+        <td>${pin}</td>
+        <td>${o.delivered}</td>
+        <td>${und}</td>
+        <td>${o.total}</td>
+        <td class="${percClass}">${p}%</td>
+    </tr>`;
+});
+
+
+        const gPerc = gTot ? ((gDel/gTot)*100).toFixed(2) : "0.00";
+
+html+=`
+<tr class="subtotal-row">
+<td>Total</td>
+<td>${gDel}</td>
+<td>${gUnd}</td>
+<td>${gTot}</td>
+<td>${gPerc}%</td>
+</tr>
+</table>
+
+<div class="footer-text">
+Powered by SASA Automation | Harshit Saini – Data Analyst, Zippee
+</div>
+
+</div>
+
+        <button class="button" onclick="downloadCity('${id}','${city}')">
+  Download ${city} Report
+</button>
+        </div>`;
+    });
+
+    document.getElementById("pincodeOutput").innerHTML=html;
+    document.getElementById("pincodeSection").style.display="block";
+}
+
+/* download per city */
+
+function downloadCity(id,city){
+    html2canvas(document.getElementById(id),{backgroundColor:"#ffffff",scale:3}).then(c=>{
+        const a=document.createElement("a");
+        a.href=c.toDataURL("image/png");
+        a.download=city+"_Pincode_Report.png";
+        a.click();
+    });
+}
+
+/* ================= BLOCKER FROM ORIGINAL (unchanged) ================= */
+
+setInterval(function(){
+  const t=160;
+  if(window.outerWidth-window.innerWidth>t||window.outerHeight-window.innerHeight>t){
+    document.body.innerHTML="<h2 style='text-align:center;margin-top:40px;'>Dev Tools are not allowed 🚫</h2>";
+  }
+},500);
+
+document.addEventListener("contextmenu",e=>e.preventDefault());
+
+document.addEventListener("keydown",function(e){
+  if(e.keyCode===123) e.preventDefault();
+  if(e.ctrlKey&&e.shiftKey) e.preventDefault();
+  if(e.ctrlKey&&['U','u'].includes(e.key)) e.preventDefault();
+});
+
+document.getElementById("multiUpload").addEventListener("change", function () {
+    document.getElementById("message").textContent = "";
+    processFiles();
+});
+
+</script>
+
+</body>
+</html>

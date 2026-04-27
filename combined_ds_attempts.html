@@ -1,0 +1,949 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Store Pendancy</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+
+<!-- Libraries -->
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+
+<style>
+:root{
+    --primary-900:#003f8c;
+    --glass-bg:rgba(255,255,255,0.16);
+    --card-shadow:0 8px 30px rgba(0,0,0,0.25);
+}
+.blur-active #reportContainer {
+  filter: blur(8px);
+  pointer-events: none;
+  user-select: none;
+}
+
+html,body{
+    margin:0;
+    padding:0;
+    font-family:"Segoe UI",Arial;
+}
+
+body{
+    background:url('Zippee.png') center/cover fixed no-repeat;
+}
+
+body::before{
+    content:"";
+    position:fixed;
+    inset:0;
+    background:rgba(255,255,255,.24);
+    backdrop-filter:blur(6px);
+    z-index:-1;
+}
+
+/* HEADER */
+.header{
+    background:linear-gradient(90deg,rgba(0,63,140,.85),rgba(0,89,179,.85));
+    color:white;
+    padding:18px 36px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+}
+
+.logo{
+    height:48px;
+}
+
+/* CARD */
+.card{
+    background:var(--glass-bg);
+    backdrop-filter:blur(10px) saturate(120%);
+    margin:30px auto;
+    max-width:1300px;
+    padding:30px;
+    border-radius:18px;
+    box-shadow:var(--card-shadow);
+}
+
+.title{
+    font-size:22px;
+    font-weight:700;
+    color:var(--primary-900);
+}
+
+/* CONTROLS */
+.controls{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    margin-top:12px;
+}
+
+.button{
+    background:linear-gradient(135deg,#0A66C2,#0078FF);
+    border:none;
+    border-radius:10px;
+    padding:10px 16px;
+    color:white;
+    cursor:pointer;
+    font-weight:700;
+}
+
+/* REPORT */
+#reportContainer{
+    margin-top:20px;
+    overflow-x:auto;
+}
+
+#captureBox{
+    display:inline-block;
+    position:relative;
+}
+
+/* REPORT HEADER */
+.report-head{
+    text-align:center;
+    margin-bottom:10px;
+}
+
+.report-title{
+    font-size:18px;
+    font-weight:800;
+}
+
+.report-meta{
+    font-size:11px;
+}
+.download-btn {
+    margin: 10px 0 15px;
+    background: linear-gradient(135deg,#28C76F,#20A65A);
+    border: none;
+    border-radius: 8px;
+    padding: 8px 14px;
+    color: white;
+    font-weight: 700;
+    cursor: pointer;
+    font-size: 13px;
+}
+.table-header-bar{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:#2f3e46;
+    color:white;
+    padding:10px 12px;
+    font-weight:800;
+    width:100%;
+    box-sizing:border-box;
+}
+
+.table-header-title{
+    flex:1;
+    text-align:center;
+    font-size:16px;
+}
+
+.table-header-actions{
+    display:flex;
+    gap:8px;
+}
+.report-note{
+    margin-top:30px;
+    padding:16px;
+    background:rgba(255,255,255,0.6);
+    border-radius:12px;
+    font-size:13px;
+}
+
+.report-note h3{
+    margin-bottom:8px;
+    color:#003f8c;
+}
+
+.report-note ol{
+    padding-left:18px;
+}
+
+.report-note li{
+    margin-bottom:6px;
+}
+/* WATERMARK */
+.watermark{
+    position:absolute;
+    inset:0;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    pointer-events:none;
+    z-index:0;
+}
+table{
+    border-radius:0 0 12px 12px;
+}
+#clientFilter{
+    background:#111;     /* black */
+    color:#fff;          /* white text */
+    border:1px solid #333;
+}
+
+/* dropdown items */
+#clientFilter option{
+    background:#111;
+    color:#fff;
+}
+
+.watermark span{
+    font-size:44px;
+    font-weight:900;
+    color:rgba(0,0,0,0.07);
+    transform:rotate(-25deg);
+    text-align:center;
+    line-height:1.2;
+}
+/* 🔒 Screenshot blur overlay */
+.screenshot-blur-overlay {
+  position: fixed;
+  inset: 0;
+  backdrop-filter: blur(18px);
+  background: rgba(255,255,255,0.25);
+  z-index: 9999999;
+  pointer-events: none;
+}
+
+/* TABLE */
+.table-wrapper{
+    overflow-x:auto;
+    display:inline-block;
+}
+
+table{
+    border-collapse:collapse;
+    background:white;
+    border-radius:0 0 12px 12px;
+    box-shadow:0 8px 20px rgba(51, 93, 229, 0.12);
+    position:relative;
+    z-index:1;
+    min-width:400px;
+}
+
+th, td{
+    border:1px solid #ddd;
+    padding:3px 7px;
+    white-space:nowrap;
+    font-size:11px;
+    text-align:center;   /* ✅ center everything */
+}
+
+th{
+    background:#062e44;
+    color:white;
+    text-align:center;
+}
+
+td.store{
+    text-align:center;
+    font-weight:700;
+    background:#e9ecef;
+}
+
+td.date{
+    text-align:center;
+    padding-left :12px;
+    font-weight:700;
+}
+
+td.total-label{
+    text-align:center !important;
+    font-weight:800;
+}
+
+tfoot td{
+    font-weight:800;
+    background:#dee2e6;
+}
+
+/* FOOTER */
+.report-footer{
+    display:flex;
+    align-items:center;        /* vertical center */
+    justify-content:center;    /* horizontal center */
+    text-align:center;
+    padding:12px 0;
+    font-size:12px;
+    font-weight:700;
+    width:100%;
+}
+</style>
+</head>
+
+<body>
+
+<!-- HEADER -->
+<div class="header">
+    <h1>Zippee – Report</h1>
+    <img class="logo" src="SASA.png">
+</div>
+
+<!-- CARD -->
+<div class="card">
+    <div class="title">Store Pendancy</div>
+
+<div class="controls">
+    <div id="columnCheckboxes" style="display:none; gap:12px; align-items:center; flex-wrap:wrap;">
+  <label style="display:flex; align-items:center; gap:6px; font-weight:700;">
+  <input type="checkbox" id="onTripFilter" checked>
+  On-Trip
+</label>
+
+<label style="display:flex; align-items:center; gap:6px; font-weight:700;">
+  <input type="checkbox" id="cutoff3pmFilter" checked>
+  3PM Cutoff
+</label>
+  <label><input type="checkbox" value="No. of Attempts" checked> <b>No. of Attempts</b></label>
+  <label><input type="checkbox" value="Attempted Delivery" checked> <b>Attempted Delivery</b></label>
+  <label><input type="checkbox" value="Not Dispatched" checked> <b>Not Dispatched</b></label>
+  <label><input type="checkbox" value="Pickedup" checked><b> Pickedup</b></label>
+</div>
+    <select id="clientFilter" class="button">
+    <option value="ALL">Brands</option>
+</select>
+
+  <input type="file" id="zipFile" accept=".zip">
+
+  
+<button class="download-btn"
+onclick="downloadPNG('captureBox','All_Stores')">
+Download Report
+</button>
+<button class="download-btn"
+onclick="downloadFilteredExcel()">
+Download Excel
+</button>
+</div>
+
+    <div id="reportContainer">
+        <div id="captureBox">
+
+            <div class="table-wrapper" id="tableContainer"></div>
+
+            <div class="report-footer">
+                Powered by SASA Automation | Harshit Saini - Data Analyst,Zippee
+            </div>
+        </div>
+    </div>
+</div>
+<div class="card">
+    <div class="report-note">
+        <h3>Report Logic</h3>
+        <ol>
+            <li>Upload ZIP file containing CSV/XLSX order data.</li>
+            <li>System removes test orders from Column B (testing_*) and Column C (testing_fabbox).</li>
+            <li>Data is filtered by selected Brand (Client Name).</li>
+            <li>Orders are grouped Store-wise and Attempt-wise.</li>
+            <li>Status-wise counts are calculated (Attempted Delivery, Not Dispatched, Pickedup).</li>
+            <li>Grand Total is auto-calculated based on visible columns.</li>
+            <li>Excel export downloads filtered full data.</li>
+            <li>PNG export downloads summarized report view.</li>
+        </ol>
+    </div>
+</div><script>
+    let FULL_DATA = [];
+    // ===== COLUMN VISIBILITY STATE =====
+let selectedColumns = [
+  "No. of Attempts",
+  "Attempted Delivery",
+  "Not Dispatched",
+  "Pickedup"
+];
+    let CLIENT_COLUMN = "";
+    let COLUMN_B_KEY = "";
+    let COLUMN_C_KEY = "";
+    let AI_COLUMN = "";
+    let ORDER_DATE_COLUMN = "";
+    // ===== CHECKBOX COLUMN FILTER =====
+document
+.getElementById("columnCheckboxes")
+.addEventListener("change", function(){
+
+  selectedColumns = Array.from(
+    this.querySelectorAll("input:checked")
+  ).map(cb => cb.value);
+
+  const selectedClient =
+    document.getElementById("clientFilter").value;
+
+  buildPivot(getFilteredData());
+});
+    // ===== COLUMN FILTER LISTENER =====
+
+document
+.getElementById("cutoff3pmFilter")
+.addEventListener("change", function(){
+    buildPivot(getFilteredData());
+});
+
+
+// 🔽 PASTE IT HERE
+document
+.getElementById("onTripFilter")
+.addEventListener("change", function(){
+
+    console.log(
+      "Attempted Delivery after FULL getFilteredData():",
+      getFilteredData().filter(r =>
+        r["Order Status"] === "Attempted Delivery"
+      ).length
+    );
+
+    buildPivot(getFilteredData());
+});
+const ALLOWED_STORES=[
+"DEL_malviya-nagar","HYD_manikonda","MUM_andheri","BLR_kalyan-nagar",
+"BLR_koramangala","CH_Periyamet","KOL-Topsia","PUN_koregaon-park"
+];
+// ===== EXCEL DATA STORAGE (STORE WISE) =====
+const detailsByStore = {};
+ALLOWED_STORES.forEach(s => detailsByStore[s] = []);
+
+const ALLOWED_STATUS=["Attempted Delivery","Not Dispatched","Pickedup"];
+
+
+document.getElementById("zipFile").addEventListener("change", async e=>{
+    const zip=await JSZip.loadAsync(e.target.files[0]);
+    for(const f of Object.keys(zip.files)){
+        if(f.endsWith(".csv")){
+            Papa.parse(await zip.files[f].async("text"),{
+                header:true,skipEmptyLines:true,
+                complete:r=>{
+    FULL_DATA = r.data;
+    populateClientFilter(r.data);
+
+    // 🔍 DEBUG CHECK
+    console.log(
+      "Total Attempted Delivery:",
+      FULL_DATA.filter(r => 
+        r["Order Status"] === "Attempted Delivery"
+      ).length
+    );
+
+    console.log(
+      "Attempted Delivery with AI blank:",
+      FULL_DATA.filter(r => 
+        r["Order Status"] === "Attempted Delivery" &&
+        (!r[AI_COLUMN] || r[AI_COLUMN].trim() === "")
+      ).length
+    );
+
+    console.log(
+  "Attempted Delivery after FULL getFilteredData():",
+  getFilteredData().filter(r =>
+    r["Order Status"] === "Attempted Delivery"
+  ).length
+);
+
+    buildPivot(getFilteredData());
+}
+            });
+            break;
+        }
+        if(f.endsWith(".xlsx")){
+            const wb=XLSX.read(await zip.files[f].async("arraybuffer"),{type:"array"});
+            const json = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:""});
+FULL_DATA = json;
+populateClientFilter(json);
+buildPivot(getFilteredData());
+            break;
+        }
+    }
+});
+
+
+function buildPivot(data) {
+    document.getElementById("tableContainer").innerHTML = "";
+    window.__ALL_TABLE_BOXES = [];
+
+    ALLOWED_STORES.forEach(s => detailsByStore[s] = []);
+
+    const pivot = {};
+
+    data.forEach(row => {
+        // 🚫 REMOVE TEST ORDERS BASED ON COLUMN B ONLY
+// 🚫 REMOVE TEST ORDERS
+
+
+
+        // COLUMN D → Store
+        const store = row["Order Dark Store"];
+        if (!ALLOWED_STORES.includes(store)) return;
+        
+        let attempts = parseInt(
+    (row["No. of Attempts"] ?? row["No. Of Attempts"] ?? "0")
+        .toString()
+        .trim(),
+    10
+);
+
+if (isNaN(attempts)) attempts = 0;
+
+        // Status
+        const status = row["Order Status"]?.trim();
+        if (!ALLOWED_STATUS.includes(status)) return;
+
+
+// ✅ SAVE RAW ROW FOR STORE-WISE EXCEL
+detailsByStore[store].push(row);
+
+        pivot[store] ??= {};
+        pivot[store][attempts] ??=
+ {
+            "Attempted Delivery": 0,
+            "Not Dispatched": 0,
+            "Pickedup": 0,
+        };
+
+        pivot[store][attempts][status]++;
+    });
+renderMasterTable(pivot);
+// Show column checkboxes after first render
+document.getElementById("columnCheckboxes").style.display = "flex";
+
+}
+function populateClientFilter(data){
+
+if(!data.length) return;
+
+// Detect Column B (second column in file)
+const headers = Object.keys(data[0]);
+COLUMN_B_KEY = headers[1]; // Column B
+COLUMN_C_KEY = headers[2]; // Column C
+AI_COLUMN = headers[34];   // AI column
+ORDER_DATE_COLUMN = headers.find(
+  h => h.toLowerCase().includes("order") &&
+       h.toLowerCase().includes("date")
+);
+
+CLIENT_COLUMN = Object.keys(data[0])
+.find(k => k.trim().toLowerCase() === "client name");
+
+if(!CLIENT_COLUMN){
+    alert("Client Name column not found!");
+    return;
+}
+
+const clients = [...new Set(
+    data.map(r => 
+    r[CLIENT_COLUMN]?.trim().toUpperCase()
+).filter(Boolean)
+)].sort();
+
+
+const dropdown = document.getElementById("clientFilter");
+
+dropdown.innerHTML =
+'<option value="ALL">Brands</option>';
+
+clients.forEach(client=>{
+    dropdown.innerHTML +=
+    `<option value="${client}">${client}</option>`;
+});
+console.log("Detected ORDER_DATE_COLUMN:", ORDER_DATE_COLUMN);
+}
+function getFilteredData() {
+
+  const selectedClient =
+    document.getElementById("clientFilter").value;
+
+  const onTripChecked =
+    document.getElementById("onTripFilter").checked;
+
+    const cutoffChecked =
+  document.getElementById("cutoff3pmFilter").checked;
+
+  return FULL_DATA.filter(row => {
+
+    // 🚫 Remove test orders
+    const colB = (row[COLUMN_B_KEY] || "")
+      .toString().trim().toLowerCase();
+
+    if(colB.startsWith("testing_")) return false;
+
+    const colC = (row[COLUMN_C_KEY] || "")
+      .toString().trim().toLowerCase();
+
+    if(colC === "testing_fabbox") return false;
+
+    // 🚫 On-Trip filter
+    const aiValue = (row[AI_COLUMN] || "")
+  .toString().trim();
+
+if(!onTripChecked && aiValue !== ""){
+  return false;
+}
+
+// 🚫 3PM Cutoff filter
+// 🚫 3PM Cutoff filter
+if (cutoffChecked && ORDER_DATE_COLUMN) {
+
+  const orderDateStr = (row[ORDER_DATE_COLUMN] || "")
+  .toString()
+  .replace(/^=\s*"?/, "")     // remove = or ="
+  .replace(/[()"]/g, "")     // remove (, ), "
+  .trim();
+  console.log("Raw Date String:", orderDateStr);
+  if (!orderDateStr) return true;
+
+  // Expected format: 24/02/2026 02:02 PM
+  const parts = orderDateStr.split(/\s+/);
+  if (parts.length < 3) return true;
+
+  const [datePart, timePart, ampm] = parts;
+
+  let day, month, year;
+
+if (datePart.includes("/")) {
+  [day, month, year] = datePart.split("/").map(Number);
+} else if (datePart.includes("-")) {
+  const parts = datePart.split("-").map(Number);
+
+  // If first part is 4 digits → YYYY-MM-DD
+  if (parts[0] > 31) {
+    [year, month, day] = parts;
+  } else {
+    [day, month, year] = parts;
+  }
+}
+  let [hours, minutes] = timePart.split(":").map(Number);
+
+  // Convert to 24-hour format
+  if (ampm.toUpperCase() === "PM" && hours !== 12) hours += 12;
+  if (ampm.toUpperCase() === "AM" && hours === 12) hours = 0;
+
+  const now = new Date();
+console.log("Order Date:", day, month, year);
+console.log("Today:", now.getDate(), now.getMonth()+1, now.getFullYear());
+  const isToday =
+    day === now.getDate() &&
+    month === now.getMonth() + 1 &&
+    year === now.getFullYear();
+
+  if (isToday) {
+    const orderTotalMinutes = hours * 60 + minutes;
+    const cutoffMinutes = 15 * 60; // 3 PM
+
+    if (orderTotalMinutes > cutoffMinutes) {
+      return false; // ❌ Remove today orders after 3PM
+    }
+  }
+}
+
+    // 🚫 Brand filter
+    if(selectedClient !== "ALL"){
+      if((row[CLIENT_COLUMN] || "")
+        .trim().toUpperCase() !== selectedClient){
+        return false;
+      }
+    }
+
+    return true;
+  });
+}
+
+function renderMasterTable(pivot){
+    window.__LAST_PIVOT__ = pivot;
+
+let g = {
+  "Attempted Delivery":0,
+  "Not Dispatched":0,
+  "Pickedup":0
+};
+
+let h = `
+<div style="position:relative">
+
+<div class="table-header-bar">
+  <div class="table-header-title">
+    <div>
+      ${document.getElementById("clientFilter").value === "ALL"
+        ? "Brands"
+        : document.getElementById("clientFilter").value}
+      Pendancy
+    </div>
+    <div style="font-size:12px; font-weight:500; margin-top:4px;">
+      Generated on: ${new Date().toLocaleDateString("en-GB")} |
+${new Date().toLocaleTimeString("en-US", {
+  hour: '2-digit',
+  minute: '2-digit',
+  hour12: true
+})}
+    </div>
+  </div>
+</div>
+
+<table>
+<thead>
+<tr>
+<th>Store</th>
+
+${selectedColumns.includes("No. of Attempts")
+  ? "<th>No. of Attempts</th>" : ""}
+
+${selectedColumns.includes("Attempted Delivery")
+  ? "<th>Attempted Delivery</th>" : ""}
+
+${selectedColumns.includes("Not Dispatched")
+  ? "<th>Not Dispatched</th>" : ""}
+
+${selectedColumns.includes("Pickedup")
+  ? "<th>Pickedup</th>" : ""}
+
+${selectedColumns.some(c =>
+  ["Attempted Delivery","Not Dispatched","Pickedup"]
+  .includes(c))
+  ? "<th>Total</th>" : ""}
+</tr>
+</thead>
+<tbody>
+`;
+
+Object.keys(pivot)
+.sort()
+.forEach(store => {
+
+    const attemptsObj = pivot[store];
+
+const attempts = Object.keys(attemptsObj).sort((a,b)=>a-b);
+const rowspan = attempts.length;
+
+attempts.forEach((attempt, index)=>{
+
+    const r = attemptsObj[attempt];
+
+    g["Attempted Delivery"] += r["Attempted Delivery"];
+    g["Not Dispatched"] += r["Not Dispatched"];
+    g["Pickedup"] += r["Pickedup"];
+
+    h += `<tr>`;
+
+    // ✅ PRINT STORE ONLY ONCE
+    if(index === 0){
+        h += `<td class="store" rowspan="${rowspan}">
+                ${store}
+              </td>`;
+    }
+
+    h += `
+        ${selectedColumns.includes("No. of Attempts")
+  ? `<td>${attempt} Attempt${attempt==1?"":"s"}</td>` : ""}
+
+${selectedColumns.includes("Attempted Delivery")
+  ? `<td>${r["Attempted Delivery"]}</td>` : ""}
+
+${selectedColumns.includes("Not Dispatched")
+  ? `<td>${r["Not Dispatched"]}</td>` : ""}
+
+${selectedColumns.includes("Pickedup")
+  ? `<td>${r["Pickedup"]}</td>` : ""}
+
+${selectedColumns.some(c =>
+  ["Attempted Delivery","Not Dispatched","Pickedup"]
+  .includes(c))
+  ? `<td>${
+      (selectedColumns.includes("Attempted Delivery") ? r["Attempted Delivery"] : 0) +
+      (selectedColumns.includes("Not Dispatched") ? r["Not Dispatched"] : 0) +
+      (selectedColumns.includes("Pickedup") ? r["Pickedup"] : 0)
+    }</td>` : ""}
+    </tr>`;
+});
+});
+
+h += `
+</tbody>
+
+<tfoot>
+<tr>
+<td class="total-label">GRAND TOTAL</td>
+
+${selectedColumns.includes("No. of Attempts")
+  ? "<td></td>" : ""}
+
+${selectedColumns.includes("Attempted Delivery")
+  ? `<td>${g["Attempted Delivery"]}</td>` : ""}
+
+${selectedColumns.includes("Not Dispatched")
+  ? `<td>${g["Not Dispatched"]}</td>` : ""}
+
+${selectedColumns.includes("Pickedup")
+  ? `<td>${g["Pickedup"]}</td>` : ""}
+
+${selectedColumns.some(c =>
+  ["Attempted Delivery","Not Dispatched","Pickedup"]
+  .includes(c))
+  ? `<td>${
+      (selectedColumns.includes("Attempted Delivery") ? g["Attempted Delivery"] : 0) +
+      (selectedColumns.includes("Not Dispatched") ? g["Not Dispatched"] : 0) +
+      (selectedColumns.includes("Pickedup") ? g["Pickedup"] : 0)
+    }</td>` : ""}
+
+</tr>
+</tfoot>
+</table>
+
+</div>
+`;
+
+tableContainer.innerHTML = h;
+}
+
+
+function downloadFilteredExcel(){
+
+  if(!FULL_DATA || FULL_DATA.length === 0){
+    alert("Please upload file first.");
+    return;
+  }
+
+  if(!COLUMN_B_KEY || !COLUMN_C_KEY){
+    alert("File structure not detected properly.");
+    return;
+  }
+
+  const selectedClient =
+    document.getElementById("clientFilter").value;
+
+  const filteredRows = getFilteredData();
+
+  if(filteredRows.length === 0){
+    alert("No data after filtering.");
+    return;
+  }
+
+  try{
+// Extract only original headers safely
+const headers = Object.keys(FULL_DATA[0]);
+
+const cleanedRows = filteredRows.map(row => {
+  const cleanRow = {};
+  headers.forEach(h => {
+    cleanRow[h] = row[h] ?? "";
+  });
+  return cleanRow;
+});
+
+const worksheet = XLSX.utils.json_to_sheet(cleanedRows);
+const workbook = XLSX.utils.book_new();
+XLSX.utils.book_append_sheet(workbook, worksheet, "Filtered Data");
+
+const brand =
+  selectedClient === "ALL" ? "All_Brands" : selectedClient;
+
+// 🔥 Generate binary manually
+const wbout = XLSX.write(workbook, {
+  bookType: "xlsx",
+  type: "array"
+});
+
+// 🔥 Create blob
+const blob = new Blob([wbout], {
+  type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+});
+
+// 🔥 Force download
+const link = document.createElement("a");
+link.href = URL.createObjectURL(blob);
+link.download = `${brand}_Filtered_Data.xlsx`;
+document.body.appendChild(link);
+link.click();
+document.body.removeChild(link);
+
+  } catch(error){
+    console.error(error);
+    alert("Excel export failed. Check console.");
+  }
+}
+function downloadPNG(boxId, clientName) {
+  document.body.classList.remove("blur-active");
+    const element = document.getElementById(boxId);
+    if (!element) return;
+
+    html2canvas(element, {
+        scale: 2,
+        backgroundColor: "#ffffff"
+    }).then(canvas => {
+        const link = document.createElement("a");
+        link.download = `${clientName}_Order_Status_Report.png`;
+        link.href = canvas.toDataURL("image/png");
+        link.click();
+    });
+}
+function downloadStoreExcel(storeName) {
+  const rows = detailsByStore[storeName];
+  if (!rows || rows.length === 0) {
+    alert("No data available for Excel");
+    return;
+  }
+
+  const worksheet = XLSX.utils.json_to_sheet(rows);
+  const workbook = XLSX.utils.book_new();
+
+  XLSX.utils.book_append_sheet(workbook, worksheet, "Order Details");
+
+  XLSX.writeFile(
+    workbook,
+    `${storeName}_Order_Details.xlsx`
+  );
+}
+
+function downloadAllPNGs() {
+  document.body.classList.remove("blur-active");
+
+  if (!window.__ALL_TABLE_BOXES || window.__ALL_TABLE_BOXES.length === 0) {
+    alert("No reports available to download.");
+    return;
+  }
+
+  let delay = 0;
+
+  window.__ALL_TABLE_BOXES.forEach(({ boxId, clientName }) => {
+    const element = document.getElementById(boxId);
+    if (!element) return;
+
+    setTimeout(() => {
+      html2canvas(element, {
+        scale: 2,
+        backgroundColor: "#ffffff"
+      }).then(canvas => {
+        const link = document.createElement("a");
+        link.download = `${clientName}_Order_Pendency_Report.png`;
+        link.href = canvas.toDataURL("image/png");
+        link.click();
+      });
+    }, delay);
+
+    delay += 1200; // safe gap
+  });
+}
+
+  // ============ TAB SWITCH BLUR PROTECTION ============
+
+  document.addEventListener("visibilitychange", function () {
+    if (document.hidden) {
+      document.body.classList.add("blur-active");
+    } else {
+      document.body.classList.remove("blur-active");
+    }
+  });
+
+  // Extra safety: blur on window focus loss
+  window.addEventListener("blur", function () {
+    document.body.classList.add("blur-active");
+  });
+
+  window.addEventListener("focus", function () {
+    document.body.classList.remove("blur-active");
+  });
+</script>
+
+</body>
+</html>

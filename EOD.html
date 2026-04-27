@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Zippee – Last Mile EOD Report</title>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+<style>
+:root{
+    --primary-900:#003f8c;
+    --glass-bg:rgba(255,255,255,0.16);
+    --card-shadow:0 8px 30px rgba(0,0,0,0.25);
+}
+html,body{margin:0;padding:0;font-family:"Segoe UI",Arial}
+body{
+    background:url('Zippee.png') center/cover fixed no-repeat;
+}
+body::before{
+    content:"";position:fixed;inset:0;
+    background:rgba(255,255,255,.24);
+    backdrop-filter:blur(6px);
+    z-index:-1;
+}
+.fasr-label{
+    color:#0057FF;
+    font-weight:800;
+}
+.header{
+    background:linear-gradient(90deg,rgba(0,63,140,.85),rgba(0,89,179,.85));
+    color:white;padding:18px 36px;
+    display:flex;justify-content:space-between;align-items:center
+}
+.logo{height:48px}
+.card{
+    background:var(--glass-bg);
+    backdrop-filter:blur(10px) saturate(120%);
+    margin:30px auto;max-width:1300px;
+    padding:30px;border-radius:18px;
+    box-shadow:var(--card-shadow);
+}
+.title{font-size:22px;font-weight:700;color:var(--primary-900)}
+.controls{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.button{
+    background:linear-gradient(135deg,#0A66C2,#0078FF);
+    border:none;border-radius:10px;
+    padding:10px 16px;color:white;cursor:pointer;
+    font-weight:700
+}
+.whatsapp-button{background:linear-gradient(135deg,#28C76F,#20A65A)}
+#reportContainer{display:none;margin-top:18px;overflow-x:auto}
+
+table{
+    border-collapse:collapse;
+    background:white;border-radius:12px;
+    box-shadow:0 8px 20px rgba(0,0,0,.12);
+    position:relative;
+    z-index:1;
+}
+th,td{
+    border:1px solid #ddd;
+    padding:6px 10px;
+    white-space:nowrap;
+    font-size:13px
+}
+.manager-header{background:#d9dde2;font-weight:700}
+.sub-attempt-title{background:#999;color:#000;font-weight:700}
+
+.green-row td{background:#00b050;color:#000;font-weight:700;}
+.blue-row td{background:#B7DEE8;color:#000;font-weight:700;}
+.orange-row td{background:#FCE4D6;color:#000;font-weight:700;}
+
+.yellow-cell{
+    background:#FFD84D !important;
+    font-weight:700;
+    color:#000;
+}
+.green-cell{
+    background:#C6EFCE !important;
+    font-weight:700;
+    color:#000;
+}
+
+.cd-sub-row td{
+    background:#B7DEE8 !important;
+    font-weight:700;
+}
+.noncd-sub-row td{
+    background:#FCE4D6 !important;
+    font-weight:700;
+}
+
+.watermark{
+    position:absolute;
+    inset:0;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    pointer-events:none;
+    z-index:0;
+}
+.watermark span{
+    font-size:44px;
+    font-weight:900;
+    color:rgba(0,0,0,0.07);
+    transform:rotate(-25deg);
+    user-select:none;
+    text-align:center;
+    line-height:1.2;
+}
+#captureBox{
+    display:inline-block;
+}
+</style>
+</head>
+
+<body>
+
+<div class="header">
+    <h1>Zippee – Last Mile Report</h1>
+    <img class="logo" src="https://i.imgur.com/7yUVE8U.png">
+</div>
+
+<div class="card">
+    <div class="title">Upload .xlsx to Generate Report</div>
+
+    <div class="controls">
+        <input type="file" id="multiUpload" accept=".xlsx,.xls,.csv" multiple>
+        <input type="date" id="reportDate">
+        <button class="button" onclick="generateReport()">Generate Report</button>
+        <button class="button" onclick="downloadImage()">Download as Image</button>
+        <button class="button whatsapp-button" onclick="shareWhatsApp()">Share on WhatsApp 💬</button>
+    </div>
+
+    <p id="message" style="color:red;font-weight:600"></p>
+
+    <div id="reportContainer" style="position:relative; display:inline-block;">
+        <div id="captureBox" style="position:relative; display:inline-block;">
+
+            <div style="text-align:center; margin-bottom:8px;">
+                <div style="font-size:18px;font-weight:800;">
+                    Report: [FKG <> Zippee] Last Mile EOD Report
+                </div>
+                <div style="font-size:13px;">
+                    Date: <span id="autoDate"></span>
+                    &nbsp;&nbsp;&nbsp;&nbsp;
+                    
+                </div>
+            </div>
+
+            <div class="watermark">
+                <span>Harshit Saini, Zippee, Data Analyst</span>
+            </div>
+
+            <table id="finalReportTable"></table>
+
+            <!-- footer included in image download -->
+            <div style="display:flex; justify-content:center; align-items:center; margin:12px 0;">
+                <span style="font-size:12px; font-weight:700; text-align:center;">
+                    Powered by SASA Automation | Harshit Saini – Data Analyst, Zippee
+                </span>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script>
+const SUB_PARAMETERS=[
+ "Delivered","Delivery_Update","Expected","Out_For_Delivery",
+ "Partial_Delivery_Update","Partially_Delivered",
+ "Undelivered_Heavy_Rain","Undelivered_HeavyLoad",
+ "Undelivered_NonServiceablePincode","Undelivered_Security_Instability",
+ "Undelivered_Not_Attended","Undelivered_No_Response",
+ "Undelivered_Order_Rejected_By_Customer","Undelivered_Request_For_Reschedule",
+ "Undelivered_SameStateMisroute","Untraceable"
+];
+
+function detectCity(h){
+    h=h.toLowerCase();
+    if(h.includes("mor")||h.includes("mrd")||h.includes("FKL_gha_bul_3pl_g_01_Grocery")) return {city:"Moradabad",manager:"Sanjay"};
+    if(h.includes("alb")||h.includes("pray")||h.includes("prg")||h.includes("fkl_var_raj")||h.includes("fkl_ahd_nai_3pl_g_02_grocery"))
+        return {city:"Prayagraj",manager:"Vijay"};
+    if(h.includes("sil")||h.includes("slg")||h.includes("fkl_mal_mou")) return {city:"Siliguri",manager:"Tanmoy"};
+    if(h.includes("sur")||h.includes("str")||h.includes("fkl_ahm_bav")) return {city:"Surat",manager:"Umesh"};
+    return {city:h,manager:"Unknown"};
+}
+
+function cleanHeader(h){return String(h).trim().replace(/\s+/g,"");}
+function normalize(s){return String(s||"").trim().toUpperCase().replace(/[-\s]+/g,"_");}
+
+function generateReport(){
+    const files = Array.from(document.getElementById("multiUpload").files);
+    if(files.length===0){
+        document.getElementById("message").textContent="Upload files first.";
+        return;
+    }
+
+    let merged=[];let done=0;
+
+    files.forEach(file=>{
+        const r=new FileReader();
+        r.onload=e=>{
+            const wb=XLSX.read(new Uint8Array(e.target.result),{type:"array"});
+            const sh=wb.Sheets[wb.SheetNames[0]];
+            const js=XLSX.utils.sheet_to_json(sh,{defval:""});
+            merged=merged.concat(js);
+            done++;
+            if(done===files.length) processCombined(merged);
+        };
+        r.readAsArrayBuffer(file);
+    });
+}
+
+function processCombined(json){
+    const cleaned=json.map(r=>{
+        const n={};Object.keys(r).forEach(k=>n[cleanHeader(k)]=r[k]);return n;
+    });
+
+    const statusCol=Object.keys(cleaned[0]).find(h=>h.toLowerCase().includes("status"));
+    const hubCol=Object.keys(cleaned[0]).find(h=>h.toLowerCase().includes("deliveryhub"));
+    const attemptsCol=Object.keys(cleaned[0]).find(h=>h.toLowerCase().includes("attempt"));
+
+    const citiesData={};
+
+    cleaned.forEach(row=>{
+        const hub=String(row[hubCol]||"").trim();
+        const info=detectCity(hub);
+        const city=info.city;
+
+        if(!citiesData[city]){
+            citiesData[city]={
+                manager:info.manager,
+                totalShipments:0,
+                shipmentOrders:0,
+                shipmentDelivered:0,
+                prto:0,reattempt:0,returnToOrigin:0,notAttempted:0,
+                customerDependencyBreach:0,nonCustomerDependencyBreach:0,
+                fasr:0,
+                pivotCounts:{}
+            };
+            SUB_PARAMETERS.forEach(p=>citiesData[city].pivotCounts[p]=0);
+        }
+
+        const d=citiesData[city];
+        d.totalShipments++;
+
+        const st=normalize(row[statusCol]);
+
+        const isDeliveredShipment =
+            ["DELIVERED","DELIVERY_UPDATE","PARTIAL_DELIVERY_UPDATE","PARTIALLY_DELIVERED"].includes(st);
+
+        if(isDeliveredShipment){
+            d.shipmentDelivered++;
+            d.shipmentOrders++;
+        }
+
+        if(st.includes("NOT_ATTEMPTED")) d.notAttempted++;
+
+        SUB_PARAMETERS.forEach(p=>{
+            if(normalize(p)===st) d.pivotCounts[p]++;
+        });
+
+        const attempts = Number(row[attemptsCol] || 0);
+
+        if(isDeliveredShipment && attempts === 1){
+            d.fasr++;
+        }
+    });
+
+    Object.values(citiesData).forEach(d=>{
+        d.prto=(d.pivotCounts["Partial_Delivery_Update"]||0)+(d.pivotCounts["Partially_Delivered"]||0);
+        d.reattempt=(d.pivotCounts["Undelivered_HeavyLoad"]||0)+(d.pivotCounts["Undelivered_Request_For_Reschedule"]||0)+(d.pivotCounts["Undelivered_No_Response"]||0);
+        d.returnToOrigin=(d.pivotCounts["Undelivered_Order_Rejected_By_Customer"]||0);
+
+        d.customerDependencyBreach=
+            (d.pivotCounts["Undelivered_Order_Rejected_By_Customer"]||0)+
+            (d.pivotCounts["Undelivered_Request_For_Reschedule"]||0)+
+            (d.pivotCounts["Undelivered_SameStateMisroute"]||0)+
+            (d.pivotCounts["Undelivered_No_Response"]||0);
+
+        d.nonCustomerDependencyBreach=
+            (d.pivotCounts["Undelivered_Heavy_Rain"]||0)+
+            (d.pivotCounts["Undelivered_HeavyLoad"]||0)+
+            (d.pivotCounts["Undelivered_Security_Instability"]||0)+
+            (d.pivotCounts["Undelivered_NonServiceablePincode"]||0);
+
+        d.deliveryPercent=d.totalShipments?d.shipmentDelivered/d.totalShipments:0;
+        d.prtoPercent=d.totalShipments?d.prto/d.totalShipments:0;
+        d.reattemptPercent=d.totalShipments?d.reattempt/d.totalShipments:0;
+        d.rtoPercent=d.totalShipments?d.returnToOrigin/d.totalShipments:0;
+        d.cdBreachPercent=d.totalShipments?d.customerDependencyBreach/d.totalShipments:0;
+        d.nonCdBreachPercent=d.totalShipments?d.nonCustomerDependencyBreach/d.totalShipments:0;
+
+        d.fasrPercent = d.totalShipments ? d.fasr / d.totalShipments : 0;
+    });
+
+    const cities=Object.keys(citiesData);
+
+    let html="";
+    html+=`<tr><th>S. No.</th><th>Key Parameters</th>`;
+    cities.forEach(c=>html+=`<th class="manager-header">${c}<br>${citiesData[c].manager}</th>`);
+    html+=`</tr>`;
+
+    let serial=1;
+
+    function addRow(label,get,className=""){
+        html+=`<tr class="${className}"><td>${serial++}</td><td>${label}</td>`;
+        cities.forEach(c=>html+=`<td>${get(citiesData[c])}</td>`);
+        html+=`</tr>`;
+    }
+    addRow("Total Shipments",d=>d.totalShipments);
+    addRow("Delivered Shipments",d=>d.shipmentOrders);
+
+    html+=`<tr><td>${serial++}</td><td>Delivery % (KPI >90%)</td>`;
+    cities.forEach(c=>{
+        const v=(citiesData[c].deliveryPercent*100);
+        const cls=v>=90?"green-cell":"yellow-cell";
+        html+=`<td class="${cls}">${v.toFixed(2)}%</td>`;
+    });
+    html+=`</tr>`;
+
+    html+=`<tr><td>${serial++}</td><td style="color:#0057FF; font-weight:800;">FASR (First Attempt Success Ratio)</td>`;
+    cities.forEach(c=>html+=`<td>${citiesData[c].fasr}</td>`);
+    html+=`</tr>`;
+
+    html+=`<tr><td>${serial++}</td><td>FASR %</td>`;
+    cities.forEach(c=>{
+        const v=(citiesData[c].fasrPercent*100);
+        html+=`<td>${v.toFixed(2)}%</td>`;
+    });
+    html+=`</tr>`;
+
+    addRow("Partial Return to Origin (PRTO)",d=>d.prto);
+    addRow("PRTO %",d=>(d.prtoPercent*100).toFixed(2)+"%");
+    addRow("Re-Attempt (RA)",d=>d.reattempt);
+    addRow("Re-Attempt %",d=>(d.reattemptPercent*100).toFixed(2)+"%");
+    addRow("Return to Origin (RTO)",d=>d.returnToOrigin);
+    addRow("RTO %",d=>(d.rtoPercent*100).toFixed(2)+"%");
+
+    addRow("Customer Dependency Breach (CD Breach)",d=>d.customerDependencyBreach,"blue-row");
+    addRow("Customer Dependency Breach %",d=>(d.cdBreachPercent*100).toFixed(2)+"%");
+
+    addRow("Non Customer Dependency Breach",d=>d.nonCustomerDependencyBreach,"orange-row");
+    addRow("Non Customer Dependency Breach %",d=>(d.nonCdBreachPercent*100).toFixed(2)+"%");
+
+    html+=`<tr><td></td><td class="sub-attempt-title">Detailed Sub-Parameters (16)</td>`;
+    cities.forEach(c=>html+=`<th>${c}</th>`);
+    html+=`</tr>`;
+
+    SUB_PARAMETERS.forEach(p=>{
+        let rowClass="";
+        if([
+            "Undelivered_Order_Rejected_By_Customer",
+            "Undelivered_Request_For_Reschedule",
+            "Undelivered_SameStateMisroute",
+            "Undelivered_No_Response"
+        ].includes(p)) rowClass="cd-sub-row";
+
+        if([
+            "Undelivered_Heavy_Rain",
+            "Undelivered_HeavyLoad",
+            "Undelivered_Security_Instability",
+            "Undelivered_NonServiceablePincode"
+        ].includes(p)) rowClass="noncd-sub-row";
+
+        html+=`<tr class="${rowClass}"><td>${serial++}</td><td>${p.replace(/_/g," ")}</td>`;
+        cities.forEach(c=>html+=`<td>${citiesData[c].pivotCounts[p]}</td>`);
+        html+=`</tr>`;
+    });
+
+    document.getElementById("finalReportTable").innerHTML=html;
+    document.getElementById("reportContainer").style.display="block";
+    fillDateTime();
+}
+
+function fillDateTime(){
+    const selectedDate = document.getElementById("reportDate").value;
+
+    let d;
+
+    if(selectedDate){
+        d = new Date(selectedDate);
+    } else {
+        d = new Date();
+    }
+
+    document.getElementById("autoDate").innerText =
+        d.toLocaleDateString('en-GB',{day:"2-digit",month:"short",year:"numeric"});
+
+    let h = new Date().getHours();
+    let ampm = h >= 12 ? "PM" : "AM";
+    h = h % 12 || 12;
+
+    document.getElementById("autoTime").innerText = `${h} ${ampm}`;
+}
+function downloadImage(){
+    const element=document.getElementById("captureBox");
+    html2canvas(element,{backgroundColor:"#ffffff",scale:3,scrollX:0,scrollY:0}).then(canvas=>{
+        const a=document.createElement("a");
+        a.href=canvas.toDataURL("image/png");
+        a.download="Zippee_Report.png";
+        a.click();
+    });
+}
+
+function shareWhatsApp(){
+    alert("WhatsApp sharing coming soon 😊");
+}
+
+/* ------------- SCREENSHOT / COPY DETERRENCE -------------- */
+
+/* Block PrintScreen */
+// stronger detection for Snipping Tool (Win + Shift + anything)
+document.addEventListener("keydown", function(e){
+
+    // metaKey is Windows key on Windows, Command on Mac
+    if (e.shiftKey && e.metaKey) {
+        temporarilyBlur();
+    }
+
+    // direct Shift + S fallback pattern
+    if (e.shiftKey && (e.key.toLowerCase() === "s")) {
+        temporarilyBlur();
+    }
+});
+
+
+/* temporary blur overlay (breaks snip result) */
+function temporarilyBlur() {
+    const overlay = document.createElement("div");
+    overlay.style.position = "fixed";
+    overlay.style.inset = "0";
+    overlay.style.backdropFilter = "blur(18px)";
+    overlay.style.background = "rgba(255,255,255,0.25)";
+    overlay.style.zIndex = "999999";
+    overlay.style.pointerEvents = "none";
+    document.body.appendChild(overlay);
+    setTimeout(()=> overlay.remove(), 1400);
+}
+
+/* Win+Shift+S cannot be detected — blur on Shift+S */
+document.addEventListener("keydown", function(e){
+    if (e.key.toLowerCase() === "s" && e.shiftKey) {
+        temporarilyBlur();
+    }
+});
+
+/* Block mac Cmd+Shift+3/4 */
+document.addEventListener("keydown", function(e){
+    if (e.metaKey && e.shiftKey && (e.key === "3" || e.key === "4")) {
+        e.preventDefault();
+        temporarilyBlur();
+        alert("Mac screenshot shortcut blocked.");
+    }
+});
+
+/* Disable right click, copy, select */
+document.addEventListener('contextmenu', e => e.preventDefault());
+document.addEventListener('selectstart', e => e.preventDefault());
+document.addEventListener('copy', e => {
+    e.preventDefault();
+    alert("Copying is disabled on this page.");
+});
+</script>
+
+<script>
+// ============ ANTI-INSPECT + NO DEVTOOLS ============
+
+// Detect DevTools by window resize gap
+setInterval(function () {
+  const threshold = 160;
+  if (
+    window.outerWidth - window.innerWidth > threshold ||
+    window.outerHeight - window.innerHeight > threshold
+  ) {
+    document.body.innerHTML =
+      "<h2 style='text-align:center;margin-top:40px;'>Dev Tools are not allowed 🚫</h2>";
+  }
+}, 500);
+
+// Disable right-click everywhere
+document.addEventListener("contextmenu", function(e){
+  e.preventDefault();
+});
+
+// Block common inspect keys
+document.addEventListener("keydown", function(e){
+
+  // F12
+  if (e.keyCode === 123) e.preventDefault();
+
+  // Ctrl + Shift + I / J / C
+  if (e.ctrlKey && e.shiftKey &&
+     ['I','J','C','i','j','c'].includes(e.key)) {
+      e.preventDefault();
+  }
+
+  // Ctrl + U (View Source)
+  if (e.ctrlKey && ['U','u'].includes(e.key)) {
+      e.preventDefault();
+  }
+
+  // Block any Ctrl+Shift combination
+  if (e.ctrlKey && e.shiftKey) e.preventDefault();
+});
+</script>
+
+
+</body>
+</html>
+

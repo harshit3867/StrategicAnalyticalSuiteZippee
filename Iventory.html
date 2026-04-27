@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Inventory Pulse Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+
+<style>
+body{margin:0;font-family:'Segoe UI',sans-serif;background:linear-gradient(180deg,#0a0f1f,#060a14);color:#fff}
+.container{padding:20px}
+h1{font-size:26px;margin-bottom:16px}
+
+.kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:15px}
+.card{background:rgba(20,30,60,.7);border-radius:14px;padding:16px;box-shadow:0 0 20px rgba(0,0,0,.4);transition:.25s}
+.card:hover{transform:translateY(-4px)}
+.card h3{font-size:13px;opacity:.7;margin:0}
+.card h2{margin-top:8px;font-size:22px}
+
+.green{color:#22c55e}.red{color:#ef4444}.orange{color:#f59e0b}.blue{color:#3b82f6}.purple{color:#a855f7}
+
+.alert{margin-top:18px;padding:12px;border-radius:10px;background:rgba(239,68,68,.2);color:#ff6b6b;font-size:14px}
+
+.section{margin-top:22px}
+.section h2{margin:0 0 4px}
+.sub{opacity:.6;font-size:13px}
+.badge{background:rgba(245,158,11,.15);color:#f59e0b;padding:8px 12px;border-radius:20px;font-size:12px;display:inline-block;margin-top:10px}
+
+.chart-container{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:14px}
+
+.chart-box{
+  height:280px;
+  background:rgba(20,30,60,.7);
+  border-radius:14px;
+  padding:15px;
+  position:relative;
+  overflow:hidden;
+}
+
+.chart-box canvas{
+  width:100% !important;
+  height:100% !important;
+}
+
+.chart-box h3{font-size:14px;opacity:.7;margin:0 0 8px}
+
+table{width:100%;border-collapse:collapse;margin-top:12px}
+th,td{padding:10px;border-bottom:1px solid rgba(255,255,255,.1);text-align:left}
+th{background:#111827}
+
+.OOS{color:#ef4444;font-weight:600}
+.Low{color:#f59e0b}
+.Healthy{color:#22c55e}
+
+</style>
+</head>
+<body>
+
+<div class="container">
+
+<h1>⚡ Inventory Pulse Dashboard</h1>
+
+<div class="kpis">
+  <div class="card"><h3>📦 Total SKUs</h3><h2 id="total" class="blue"></h2></div>
+  <div class="card"><h3>📊 Fill Rate</h3><h2 id="fill" class="green"></h2></div>
+  <div class="card"><h3>❌ OOS %</h3><h2 id="oos" class="red"></h2></div>
+  <div class="card"><h3>⚠️ Low Stock</h3><h2 id="low" class="orange"></h2></div>
+  <div class="card"><h3>🚚 Total Gap</h3><h2 id="gap" class="purple"></h2></div>
+</div>
+
+<div id="alertBox" class="alert"></div>
+
+<div class="section">
+  <h2>🧠 Stock Health</h2>
+  <div class="sub">Overall inventory status distribution and location-wise stock risk analysis</div>
+  <div id="riskBadge" class="badge"></div>
+
+  <div class="chart-container">
+    <div class="chart-box">
+      <h3>Inventory Status Distribution</h3>
+      <canvas id="statusChart"></canvas>
+    </div>
+
+    <div class="chart-box">
+      <h3>Stock Health by Location</h3>
+      <canvas id="cityChart"></canvas>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h2>🚨 Risk Zone</h2>
+  <div class="sub">Critical SKUs requiring immediate restocking action</div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>SKU</th><th>Product</th><th>Brand</th><th>Location</th><th>Avail</th><th>Exp</th><th>Gap</th><th>Status</th>
+      </tr>
+    </thead>
+    <tbody id="tableBody"></tbody>
+  </table>
+</div>
+
+</div>
+
+<script>
+const url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRX6zwAnzuZdzZjljGpVcjYrsxBs40mvMRwsPfBfxhrLm5QKQIQYATY5k_lH6pFeWypQPdWU8Qm1NAX/pub?gid=0&single=true&output=csv";
+
+Papa.parse(url, {
+  download:true,
+  header:true,
+  complete: function(res){
+
+    const data = res.data.filter(r => r.SKU);
+
+    let total=data.length, oos=0, low=0, healthy=0;
+    let availSum=0, expSum=0, gapSum=0;
+    let cityMap={};
+
+    data.forEach(r=>{
+      const a=+r["Available Quantity"]||0;
+      const e=+r["Expected Quantity"]||0;
+      const gap=Math.max(e-a,0);
+
+      let status="Healthy";
+      if(a===0){status="OOS";oos++;}
+      else if(a<e*0.5){status="Low";low++;}
+      else{healthy++;}
+
+      availSum+=a;
+      expSum+=e;
+      gapSum+=gap;
+
+      if(!cityMap[r.Location]) cityMap[r.Location]=0;
+      cityMap[r.Location]+=gap;
+
+      if(status!="Healthy"){
+        document.getElementById("tableBody").insertAdjacentHTML('beforeend',`
+        <tr>
+          <td>${r.SKU}</td>
+          <td>${r["Product Name"]}</td>
+          <td>${r["Brand Name"]}</td>
+          <td>${r.Location}</td>
+          <td>${a}</td>
+          <td>${e}</td>
+          <td>${gap}</td>
+          <td class="${status}">${status}</td>
+        </tr>`);
+      }
+    });
+
+    document.getElementById("total").innerText=total;
+    document.getElementById("fill").innerText=((availSum/expSum)*100).toFixed(1)+"%";
+    document.getElementById("oos").innerText=((oos/total)*100).toFixed(1)+"%";
+    document.getElementById("low").innerText=((low/total)*100).toFixed(1)+"%";
+    document.getElementById("gap").innerText=gapSum;
+
+    const riskPct=((oos+low)/total)*100;
+    document.getElementById("alertBox").innerText=`🚨 ${oos} SKUs out of stock | Total Gap: ${gapSum}`;
+    document.getElementById("riskBadge").innerText=`⚠️ ${riskPct.toFixed(1)}% inventory at risk (Low + OOS)`;
+
+    new Chart(document.getElementById('statusChart'),{
+      type:'doughnut',
+      data:{labels:['Healthy','Low','OOS'],datasets:[{data:[healthy,low,oos]}]},
+      options:{
+        responsive:true,
+        maintainAspectRatio:false,
+        layout:{padding:10},
+        plugins:{legend:{labels:{color:'#ccc'}}}
+      }
+    });
+
+    new Chart(document.getElementById('cityChart'),{
+      type:'bar',
+      data:{labels:Object.keys(cityMap),datasets:[{label:'Gap',data:Object.values(cityMap)}]},
+      options:{
+        responsive:true,
+        maintainAspectRatio:false,
+        layout:{padding:10},
+        plugins:{legend:{labels:{color:'#ccc'}}}
+      }
+    });
+
+  }
+});
+</script>
+
+</body>
+</html>

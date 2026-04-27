@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>ZILO Advanced Analytics Dashboard</title>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+
+<style>
+:root{ --primary:#003f8c; }
+
+body{
+    margin:0;
+    font-family:"Segoe UI",Arial;
+    background:linear-gradient(135deg,#eef2f7,#d9e2ec);
+}
+
+.header{
+    background:linear-gradient(90deg,#003f8c,#0059b3);
+    color:white;
+    padding:22px 40px;
+    font-size:22px;
+    font-weight:800;
+    letter-spacing:.5px;
+}
+
+.card{
+    background:white;
+    margin:40px auto;
+    max-width:1800px;
+    padding:45px;
+    border-radius:18px;
+    box-shadow:0 25px 60px rgba(0,0,0,.12);
+}
+
+.controls{
+    margin-bottom:25px;
+}
+
+input[type="file"], select{
+    padding:10px;
+    border-radius:8px;
+    border:1px solid #ccd6e0;
+    margin-right:10px;
+}
+
+.button{
+    background:#0A66C2;
+    border:none;
+    border-radius:10px;
+    padding:11px 18px;
+    color:white;
+    cursor:pointer;
+    font-weight:700;
+    margin-left:10px;
+    box-shadow:0 6px 14px rgba(10,102,194,.25);
+    transition:.2s;
+}
+
+.button:hover{
+    transform:translateY(-2px);
+}
+
+.summary-section{
+    margin-top:10px;
+    padding:30px;
+    border-radius:14px;
+    background:#ffffff;
+    box-shadow:0 8px 25px rgba(0,0,0,.08);
+}
+
+.summary-heading{
+    font-weight:900;
+    font-size:26px;
+    text-align:center;
+    margin-bottom:6px;
+}
+
+.summary-subheading{
+    text-align:center;
+    font-size:15px;
+    margin-bottom:20px;
+    font-weight:600;
+}
+
+.summary-watermark{
+    text-align:center;
+    margin-top:20px;
+    font-size:14px;
+    font-weight:800;
+    color:#000000;
+}
+
+.section-title{
+    font-weight:900;
+    font-size:22px;
+    margin:35px 0 20px 0;
+}
+
+table{
+    width:100%;
+    border-collapse:collapse;
+    background:white;
+    border-radius:10px;
+    overflow:hidden;
+}
+
+th,td{
+    border:1px solid #d6dee6;
+    padding:10px;
+    font-size:14px;
+    text-align:center;
+}
+
+th{
+    background:#f1f5f9;
+    font-weight:800;
+}
+
+.total-row{
+    font-weight:900;
+    background:#eef4fb;
+}
+
+.scroll{
+    overflow:auto;
+    max-height:520px;
+    border-radius:12px;
+    border:1px solid #e3eaf2;
+}
+</style>
+</head>
+
+<body>
+
+<div class="header">
+    ZILO Advanced Analytics Dashboard
+</div>
+
+<div class="card">
+
+<div class="controls">
+<input type="file" id="fileUpload" accept=".xlsx,.xls">
+
+<select id="locationSelect">
+    <option value="Malad">Malad</option>
+    <option value="Ghatkopar">Ghatkopar</option>
+</select>
+
+<button class="button" onclick="downloadExcel()">Download Excel</button>
+<button class="button" onclick="downloadSummaryPNG()">Download PNG</button>
+</div>
+
+<div id="summarySection" class="summary-section">
+    <div id="mainHeading" class="summary-heading"></div>
+    <div id="generationTime" class="summary-subheading"></div>
+
+    <table id="pivotTable"></table>
+
+    <div class="summary-watermark">
+        Powered by SASA Automation | Harshit Saini – Data Analyst, Zippee
+    </div>
+</div>
+
+<div class="section-title">
+MASTER OPS DATASET
+</div>
+
+<div class="scroll">
+<table id="dataTable"></table>
+</div>
+
+</div>
+
+<script>
+
+let originalData = [];
+let filteredData = [];
+
+function getTodayFormatted(){
+    const today = new Date();
+    const day = String(today.getDate()).padStart(2,"0");
+    const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+    const month = months[today.getMonth()];
+    const year = today.getFullYear();
+    return `${day} ${month} ${year}`;
+}
+
+function getCurrentTime12Hour(){
+    const now = new Date();
+    let hours = now.getHours();
+    const minutes = String(now.getMinutes()).padStart(2,"0");
+    const ampm = hours >= 12 ? "PM" : "AM";
+    hours = hours % 12;
+    hours = hours ? hours : 12;
+    hours = String(hours).padStart(2,"0");
+    return `${hours}:${minutes} ${ampm}`;
+}
+
+function updateHeading(){
+    const location = document.getElementById("locationSelect").value;
+    const date = getTodayFormatted();
+    document.getElementById("mainHeading").innerText =
+        `Zilo - ${location} Report - ${date}`;
+}
+
+function updateGenerationTime(){
+    document.getElementById("generationTime").innerText =
+        `Generated at: ${getCurrentTime12Hour()}`;
+}
+
+updateHeading();
+document.getElementById("locationSelect").addEventListener("change",updateHeading);
+
+const isBlank = (val) =>
+  val === null || val === undefined || String(val).trim() === "";
+
+const timeToMinutes = (timeStr) => {
+  if (isBlank(timeStr)) return null;
+  const parts = String(timeStr).split(":");
+  if (parts.length < 2) return null;
+  const hours = parseInt(parts[0],10);
+  const minutes = parseInt(parts[1],10);
+  if (isNaN(hours)||isNaN(minutes)) return null;
+  return hours*60+minutes;
+};
+
+const formatToHHMM = (value) => {
+  if (isBlank(value)) return "";
+  if (typeof value === "number") {
+    const fractional = value - Math.floor(value);
+    const totalMinutes = Math.floor(1440*fractional);
+    const h = Math.floor(totalMinutes/60);
+    const m = totalMinutes%60;
+    return `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`;
+  }
+  const d = new Date(value);
+  if (!isNaN(d)) {
+    return `${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;
+  }
+  return "";
+};
+
+const getOrderType = (value)=>{
+    if(isBlank(value)) return "NONE";
+    const lastTwo=String(value).slice(-2);
+    if(lastTwo==="pk") return "PICKUP ORDER";
+    if(lastTwo==="PD") return "RTO ORDER";
+    return "NONE";
+};
+
+const getEDT = (o2)=> isBlank(o2)?"":String(o2).slice(-5);
+const getCheckTime = (ab2)=> formatToHHMM(ab2);
+
+const getTAT = (o2, ax, aw) => {
+    if (isBlank(o2)) return "Slot NA";
+    const axMin = timeToMinutes(ax);
+    const awMin = timeToMinutes(aw);
+    if (axMin === null || awMin === null) return "Slot NA";
+    const diffMinutes = axMin - awMin;
+    const sign = diffMinutes < 0 ? "-" : "";
+    const absMinutes = Math.abs(diffMinutes);
+    const hours = Math.floor(absMinutes / 60);
+    const minutes = absMinutes % 60;
+    return `${sign}${String(hours).padStart(2,"0")}:${String(minutes).padStart(2,"0")}`;
+};
+
+const getSign = (tat) => {
+    if (tat === "Slot NA") return "SLOT NA";
+    if (!tat.includes(":")) return "SLOT NA";
+    return tat.startsWith("-") ? -1 : 1;
+};
+
+const getTATStatus=(az)=>{
+    if(az==="SLOT NA") return "SLOT NA";
+    if(typeof az!=="number") return "SLOT NA";
+    return az<=0?"WITHIN TAT":"OUTSIDE TAT";
+};
+
+const getDelay = (tat) => {
+    if (tat === "Slot NA") return "00:00";
+    const negative = tat.startsWith("-");
+    const clean = negative ? tat.slice(1) : tat;
+    const parts = clean.split(":");
+    if (parts.length !== 2) return "00:00";
+    const hours = parseInt(parts[0], 10);
+    const minutes = parseInt(parts[1], 10);
+    if (isNaN(hours) || isNaN(minutes)) return "00:00";
+    return `${negative ? "-" : ""}${String(hours).padStart(2,"0")}:${String(minutes).padStart(2,"0")}`;
+};
+
+const hhmmToMinutes = (hhmm) => {
+    if (!hhmm || !hhmm.includes(":")) return 0;
+    const negative = hhmm.startsWith("-");
+    const clean = negative ? hhmm.slice(1) : hhmm;
+    const [h, m] = clean.split(":").map(Number);
+    const total = (h * 60) + m;
+    return negative ? -total : total;
+};
+
+const getDelayCategory=(av,ba,delayHHMM)=>{
+    const bb = hhmmToMinutes(delayHHMM);
+    if(av==="PICKUP ORDER") return "PICKUP ORDER";
+    if(av==="RTO ORDER") return "RTO ORDER";
+    if(ba==="WITHIN TAT") return "1. NO BREACH";
+    if(ba==="SLOT NA") return "SLOT NA";
+    if(bb<=0) return "1. NO BREACH";
+    if(bb<=15) return "2. WITHIN 15 MINS OF PROMISE";
+    if(bb<=30) return "3. BETWEEN 15-30 MINS OF PROMISE";
+    if(bb<=60) return "4. BETWEEN 30-60 MINS OF PROMISE";
+    return "5. MORE THAN 60 MINS OF PROMISE";
+};
+
+const service60=new Set([400024,400029,400042,400043,400055,400059,400070,400071,400072,400075,400076,400077,400078,400079,400083,400084,400086,400087,400089,400096,400047,400053,400058,400060,400062,400063,400064,400066,400067,400069,400090,400091,400092,400093,400095,400097,400101,400102,400103,400104]);
+const service90=new Set([400057,400099,400081,400082,400022,400074,400080,400085,400088,400016,400017,400019,400051,400094,400098,400029,400049,400054,400055,400056,400057,400059,400061,400065]);
+
+const getServiceDuration=(pin)=>{
+    const p=Number(pin);
+    if(service60.has(p)) return "60 min";
+    if(service90.has(p)) return "90 min";
+    return "Others";
+};
+
+document.getElementById("fileUpload").addEventListener("change",e=>{
+    const reader=new FileReader();
+    reader.onload=function(e){
+        const data=new Uint8Array(e.target.result);
+        const wb=XLSX.read(data,{type:"array"});
+        const sheet=wb.Sheets[wb.SheetNames[0]];
+        const raw=XLSX.utils.sheet_to_json(sheet,{header:1});
+        const headers=raw[0];
+        const rows=raw.slice(1);
+
+        originalData=rows.map(row=>{
+            let obj={};
+            headers.forEach((h,i)=>obj[h]=row[i]);
+            obj["Pincode"]=row[8]?Number(String(row[8]).slice(-6)):"";
+            obj["IS RTO ORDER OR PICKED UP"]=getOrderType(row[2]);
+            obj["EDT"]=getEDT(row[14]);
+            obj["Check Time"]=getCheckTime(row[27]);
+            obj["TAT"]=getTAT(row[14],obj["Check Time"],obj["EDT"]);
+            obj["Sign"]=getSign(obj["TAT"]);
+            obj["TAT Status"]=getTATStatus(obj["Sign"]);
+            obj["Delay"]=getDelay(obj["TAT"]);
+            obj["Delay Category"]=getDelayCategory(
+                obj["IS RTO ORDER OR PICKED UP"],
+                obj["TAT Status"],
+                obj["Delay"]
+            );
+            obj["Service Duration"]=getServiceDuration(obj["Pincode"]);
+            return obj;
+        });
+
+        filteredData=originalData;
+        renderPivotTable(filteredData);
+        renderTable(filteredData);
+        updateHeading();
+        updateGenerationTime();
+    };
+    reader.readAsArrayBuffer(e.target.files[0]);
+});
+
+function renderPivotTable(data){
+    const pivotTable = document.getElementById("pivotTable");
+    if(!data || data.length === 0){
+        pivotTable.innerHTML = "";
+        return;
+    }
+
+    const rowField = "Delay Category";
+    const colField = "Service Duration";
+    const valueField = "Reference ID";
+
+    const rowSet = new Set();
+    const colSet = new Set();
+    const matrix = {};
+    let grandTotal = 0;
+
+    data.forEach(item=>{
+        const rowKey = item[rowField] || "Unknown";
+        const colKey = item[colField] || "Unknown";
+        rowSet.add(rowKey);
+        colSet.add(colKey);
+        if(!matrix[rowKey]) matrix[rowKey] = {};
+        if(!matrix[rowKey][colKey]) matrix[rowKey][colKey] = 0;
+        if(item[valueField] !== undefined && item[valueField] !== null){
+            matrix[rowKey][colKey] += 1;
+            grandTotal += 1;
+        }
+    });
+
+    const rows = Array.from(rowSet);
+    const cols = Array.from(colSet);
+
+    let html = "<tr><th>Delay Category</th>";
+    cols.forEach(col=> html += `<th>${col}</th>`);
+    html += "<th>Grand Total</th></tr>";
+
+    rows.forEach(row=>{
+        html += `<tr><td><b>${row}</b></td>`;
+        let rowTotal = 0;
+        cols.forEach(col=>{
+            const value = matrix[row]?.[col] || 0;
+            rowTotal += value;
+            html += `<td>${value}</td>`;
+        });
+        html += `<td><b>${rowTotal}</b></td></tr>`;
+    });
+
+    html += "<tr class='total-row'><td><b>Grand Total</b></td>";
+    cols.forEach(col=>{
+        let colTotal = 0;
+        rows.forEach(row=>{
+            colTotal += matrix[row]?.[col] || 0;
+        });
+        html += `<td><b>${colTotal}</b></td>`;
+    });
+    html += `<td><b>${grandTotal}</b></td></tr>`;
+
+    pivotTable.innerHTML = html;
+}
+
+function renderTable(data){
+    if(data.length===0){dataTable.innerHTML="";return;}
+    const headers=Object.keys(data[0]);
+    let html="<tr>";
+    headers.forEach(h=>html+=`<th>${h}</th>`);
+    html+="</tr>";
+    data.forEach(row=>{
+        html+="<tr>";
+        headers.forEach(h=>{
+            html+=`<td>${row[h]??""}</td>`;
+        });
+        html+="</tr>";
+    });
+    dataTable.innerHTML=html;
+}
+
+function downloadExcel(){
+    if(filteredData.length===0)return alert("No data");
+    const ws=XLSX.utils.json_to_sheet(filteredData);
+    const wb=XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb,ws,"Zilo Data");
+    XLSX.writeFile(wb,"Zilo_Advanced_Analytics.xlsx");
+}
+
+function downloadSummaryPNG(){
+    const element = document.getElementById("summarySection");
+
+    html2canvas(element,{
+        scale:3,
+        backgroundColor:"#ffffff",
+        useCORS:true
+    }).then(canvas=>{
+        const link = document.createElement("a");
+        link.download = "Zilo_Report.png";
+        link.href = canvas.toDataURL("image/png");
+        link.click();
+    });
+}
+
+</script>
+</body>
+</html>

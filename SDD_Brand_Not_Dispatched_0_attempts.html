@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Brand Pendancy</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+
+<!-- Libraries -->
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+
+<style>
+/* ====== SASA LOADING SCREEN ====== */
+#sasaLoader{
+  position:fixed;
+  inset:0;
+  background:#001c38;
+  color:white;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  flex-direction:column;
+  z-index:99999;
+}
+
+.dots::after{
+  content:"";
+  animation:dots 1.4s steps(4,end) infinite;
+}
+
+@keyframes dots{
+  0%{content:"."}
+  33%{content:".."}
+  66%{content:"..."}
+}
+
+:root{
+    --primary-900:#003f8c;
+    --glass-bg:rgba(255,255,255,0.16);
+    --card-shadow:0 8px 30px rgba(0,0,0,0.25);
+}
+.blur-active #reportContainer {
+  filter: blur(8px);
+  pointer-events: none;
+  user-select: none;
+}
+
+html,body{
+    margin:0;
+    padding:0;
+    font-family:"Segoe UI",Arial;
+}
+
+body{
+    background:url('Zippee.png') center/cover fixed no-repeat;
+}
+
+body::before{
+    content:"";
+    position:fixed;
+    inset:0;
+    background:rgba(255,255,255,.24);
+    backdrop-filter:blur(6px);
+    z-index:-1;
+}
+
+/* HEADER */
+.header{
+    background:linear-gradient(90deg,rgba(0,63,140,.85),rgba(0,89,179,.85));
+    color:white;
+    padding:18px 36px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+}
+
+.logo{
+    height:48px;
+}
+
+/* CARD */
+.card{
+    background:var(--glass-bg);
+    backdrop-filter:blur(10px) saturate(120%);
+    margin:30px auto;
+    max-width:1300px;
+    padding:30px;
+    border-radius:18px;
+    box-shadow:var(--card-shadow);
+}
+
+.title{
+    font-size:22px;
+    font-weight:700;
+    color:var(--primary-900);
+}
+
+/* CONTROLS */
+.controls{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    margin-top:12px;
+}
+
+.button{
+    background:linear-gradient(135deg,#0A66C2,#0078FF);
+    border:none;
+    border-radius:10px;
+    padding:10px 16px;
+    color:white;
+    cursor:pointer;
+    font-weight:700;
+}
+td.store{
+    padding:3px 6px;
+    font-size:11px;
+}
+
+/* REPORT */
+#reportContainer{
+    margin-top:20px;
+    overflow-x:auto;
+}
+
+#captureBox{
+    display:inline-block;
+    position:relative;
+}
+
+/* REPORT HEADER */
+.report-head{
+    text-align:center;
+    margin-bottom:10px;
+}
+
+.report-title{
+    font-size:18px;
+    font-weight:800;
+}
+
+.report-meta{
+    font-size:13px;
+}
+.download-btn {
+    margin: 10px 0 15px;
+    background: linear-gradient(135deg,#28C76F,#20A65A);
+    border: none;
+    border-radius: 8px;
+    padding: 8px 14px;
+    color: white;
+    font-weight: 700;
+    cursor: pointer;
+    font-size: 13px;
+}
+.table-header-bar{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:#2f3e46;
+    color:white;
+    padding:12px;
+    font-weight:800;
+
+    /* ✅ FINAL FIX */
+    min-width: max-content;
+    box-sizing:border-box;
+}
+
+
+.table-header-title{
+    flex:1;
+    text-align:center;
+    font-size:16px;
+}
+
+.table-header-actions{
+    display:flex;
+    gap:8px;
+}
+
+/* WATERMARK */
+.watermark{
+    position:absolute;
+    inset:0;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    pointer-events:none;
+    z-index:0;
+}
+table{
+    border-radius:0 0 12px 12px;
+}
+
+.watermark span{
+    font-size:44px;
+    font-weight:900;
+    color:rgba(0,0,0,0.07);
+    transform:rotate(-25deg);
+    text-align:center;
+    line-height:1.2;
+}
+/* 🔒 Screenshot blur overlay */
+.screenshot-blur-overlay {
+  position: fixed;
+  inset: 0;
+  backdrop-filter: blur(18px);
+  background: rgba(255,255,255,0.25);
+  z-index: 9999999;
+  pointer-events: none;
+}
+
+/* TABLE */
+.table-wrapper{
+    overflow-x:auto;
+}
+
+table{
+    border-collapse:collapse;
+    background:white;
+    border-radius:0 0 12px 12px;
+    box-shadow:0 8px 20px rgba(51, 93, 229, 0.12);
+    position:relative;
+    z-index:1;
+    min-width:500px;
+    width: max-content;
+
+}
+th:first-child,
+td:first-child{
+    min-width:140px;
+    max-width:160px;
+}
+th:not(:first-child),
+td:not(:first-child){
+    min-width:70px;
+}
+
+th,td{
+    border:1px solid #ddd;
+    padding:3px 6px;        /* less space */
+    white-space:nowrap;
+    font-size:11px;         /* slightly smaller text */
+    text-align:center;      /* ⭐ everything centered */
+    vertical-align:middle;
+}
+
+th{
+    background:#062e44;
+    color:white;
+    text-align:center;
+    font-size:12px;
+    padding:6px;
+}
+
+td.store{
+    text-align:center;
+    font-weight:700;
+    background:#e9ecef;
+}
+
+td.date{
+    text-align:center;
+    padding-left:0;
+}
+
+td.total-label{
+    text-align:center !important;   /* ✅ center Total label */
+    font-weight:800;
+}
+
+tfoot td{
+    font-weight:800;
+    background:#dee2e6;
+    text-align:center;      /* ✅ center Grand Total row */
+}
+
+/* FOOTER */
+.report-footer{
+    display:flex;
+    align-items:center;        /* vertical center */
+    justify-content:center;    /* horizontal center */
+    text-align:center;
+    padding:12px 0;
+    font-size:12px;
+    font-weight:700;
+    width:100%;
+}
+</style>
+</head>
+
+<body>
+<!-- ⭐ SASA Loading Screen ⭐ -->
+<div id="sasaLoader" style="display:none;">
+  <img src="SASA.png" alt="SASA" style="height:120px;margin-bottom:8px;">
+  <div style="font-size:18px;font-weight:700">
+    SASA is loading your analytics<span class="dots"></span>
+  </div>
+</div>
+
+
+<!-- HEADER -->
+<div class="header">
+    <h1>Zippee – Report</h1>
+    <img class="logo" src="https://i.imgur.com/7yUVE8U.png">
+</div>
+
+<!-- CARD -->
+<div class="card">
+    <div class="title">Brand Pendancy</div>
+
+    <div class="controls">
+    <input type="file" id="zipFile" accept=".zip">
+
+</div>
+<button class="download-btn" onclick="downloadAllPNGs()">
+  Download All
+</button>
+
+    <div id="reportContainer">
+        <div id="captureBox">
+
+            <div class="report-head">
+                <div class="report-title">Not Dispatched</div>
+                <div class="report-meta" id="meta"></div>
+            </div>
+
+            <div class="table-wrapper" id="tableContainer"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+const ALL_CJ_VALUES = new Set();
+const CJ_INDEX = 87;
+const ALLOWED_STORES=[
+"DEL_malviya-nagar","HYD_manikonda","MUM_andheri","BLR_kalyan-nagar",
+"BLR_koramangala","CH_Periyamet","KOL-Topsia","PUN_koregaon-park","Gurugram-Clinikally"
+];
+const CLIENTS = [
+  "Kiro",
+  "GIVA",
+  "Kapiva",
+  "The Whole Truth",
+  "SANDIPANI HEALTHCARE",
+  "Traya",
+  "Clinikally"
+];
+// ===== EXCEL DATA STORAGE (CLIENT WISE) =====
+const detailsByClient = {};
+CLIENTS.forEach(c => detailsByClient[c] = []);
+
+const ALLOWED_STATUS=["Not Dispatched"];
+
+document.getElementById("meta").innerText =
+`Date: ${new Date().toLocaleDateString("en-GB")} | Time: ${new Date().toLocaleTimeString()}`;
+
+document.getElementById("zipFile").addEventListener("change", async e=>{
+    document.getElementById("sasaLoader").style.display = "flex";
+    const zip=await JSZip.loadAsync(e.target.files[0]);
+    for(const f of Object.keys(zip.files)){
+        if(f.endsWith(".csv")){
+            Papa.parse(await zip.files[f].async("text"),{
+                header:true,skipEmptyLines:true,
+                complete:r=>buildPivot(r.data)
+            });
+            break;
+        }
+        if(f.endsWith(".xlsx")){
+            const wb=XLSX.read(await zip.files[f].async("arraybuffer"),{type:"array"});
+            buildPivot(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:""}));
+            break;
+        }
+    }
+});
+
+const extractDate=r=>r?.toString().substring(3,13)||"";
+
+function buildPivot(data) {
+    document.getElementById("tableContainer").innerHTML = "";
+
+    CLIENTS.forEach(client => {
+        const pivot = {};
+
+        data.forEach(row => {
+            if (row["Client Name"] !== client) return;
+
+            const store = row["Order Dark Store"];
+            if (!ALLOWED_STORES.includes(store)) return;
+
+            const status = row["Order Status"];
+            if (!ALLOWED_STATUS.includes(status)) return;
+
+            const orderDateCol = Object.keys(row)[13]; // Column N
+            const date = extractDate(row[orderDateCol]);
+            if (!date) return;
+
+            // ✅ SAVE RAW ROW FOR CLIENT-WISE EXCEL
+detailsByClient[client].push(row);
+
+pivot[store] ??= {};
+pivot[store][date] ??= {};
+
+const cj = Number(row[Object.keys(row)[CJ_INDEX]]);
+if (isNaN(cj)) return;
+
+ALL_CJ_VALUES.add(cj);
+
+pivot[store][date][cj] ??= 0;
+pivot[store][date][cj] += 1;
+
+
+        });
+
+        if (Object.keys(pivot).length > 0) {
+            renderTable(pivot, client);
+        }
+    });
+    document.getElementById("sasaLoader").style.display = "none";
+}
+
+
+function renderTable(p, clientName){
+    const cjCols = [...ALL_CJ_VALUES].sort((a,b)=>a-b);
+    let g = {};
+
+    const safeName = clientName.replace(/\s+/g, "_");
+    const boxId = `box_${safeName}`;
+    const tableId = `table_${safeName}`;
+    window.__ALL_TABLE_BOXES = window.__ALL_TABLE_BOXES || [];
+window.__ALL_TABLE_BOXES.push({ boxId, clientName });
+
+
+let h = `
+<button class="download-btn"
+  onclick="downloadPNG('${boxId}', '${clientName}')">
+  Download PNG
+</button>
+
+<button class="download-btn"
+  style="margin-left:8px;background:linear-gradient(135deg,#F59E0B,#D97706)"
+  onclick="downloadClientExcel('${clientName}')">
+  Download Excel
+</button>
+
+
+<div id="${boxId}" style="margin-top:10px; position:relative; width:max-content">
+
+  <div class="table-header-bar">
+    <div class="table-header-title">
+      ${clientName} – Not Dispatched Orders
+    </div>
+  </div>
+
+  <table id="${tableId}">
+   <thead>
+  <tr>
+    <th>Order Dark Store / Date</th>
+    ${cjCols.map(cj => `<th>${cj}</th>`).join("")}
+    <th>Total</th>
+  </tr>
+</thead>
+
+    <tbody>
+`;
+
+
+    ALLOWED_STORES.forEach(s=>{
+        if(!p[s])return;
+let ss = { CJ: 0 };
+
+
+        h+=`<tr>
+  <td class="store">${s}</td>
+  <td colspan="${cjCols.length + 1}"></td>
+</tr>`;
+
+Object.keys(p[s]).sort().forEach(d => {
+  const r = p[s][d];
+
+  let rowTotal = 0;
+  let cells = "";
+
+  cjCols.forEach(cj => {
+    const count = r[cj] || 0;
+    rowTotal += count;
+
+    ss[cj] ??= 0;
+    ss[cj] += count;
+
+    cells += `<td>${count}</td>`;
+  });
+
+  h += `<tr>
+    <td class="date">${d}</td>
+    ${cells}
+    <td>${rowTotal}</td>
+  </tr>`;
+});
+
+let storeTotal = 0;
+let storeCells = "";
+
+cjCols.forEach(cj => {
+  const v = ss[cj] || 0;
+  storeCells += `<td>${v}</td>`;
+  storeTotal += v;
+
+  g[cj] ??= 0;
+  g[cj] += v;
+});
+
+h += `<tr>
+  <td class="total-label">Total</td>
+  ${storeCells}
+  <td>${storeTotal}</td>
+</tr>`;
+
+    });
+
+let grandCells = "";
+let grandTotal = 0;
+
+cjCols.forEach(cj => {
+  const v = g[cj] || 0;
+  grandCells += `<td>${v}</td>`;
+  grandTotal += v;
+});
+
+h += `</tbody>
+<tfoot>
+  <tr>
+    <td class="total-label">Grand Total</td>
+    ${grandCells}
+    <td>${grandTotal}</td>
+  </tr>
+</tfoot>
+</table>
+
+<div class="report-footer">
+  Powered by SASA Automation | Harshit Saini - Data Analyst, Zippee
+</div>
+
+</div>`;
+
+    tableContainer.innerHTML += h;
+}
+
+function downloadPNG(boxId, clientName) {
+  document.body.classList.remove("blur-active");
+    const element = document.getElementById(boxId);
+    if (!element) return;
+
+    html2canvas(element, {
+        scale: 2,
+        backgroundColor: "#ffffff"
+    }).then(canvas => {
+        const link = document.createElement("a");
+        link.download = `${clientName}_Order_Status_Report.png`;
+        link.href = canvas.toDataURL("image/png");
+        link.click();
+    });
+}
+function downloadClientExcel(clientName) {
+  const rows = detailsByClient[clientName];
+  if (!rows || rows.length === 0) {
+    alert("No data available for Excel");
+    return;
+  }
+
+  // Convert JSON to worksheet
+  const worksheet = XLSX.utils.json_to_sheet(rows);
+
+  // Create workbook
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, "Order Details");
+
+  // Download
+  XLSX.writeFile(
+    workbook,
+    `${clientName}_Order_Details.xlsx`
+  );
+}
+
+  // ============ TAB SWITCH BLUR PROTECTION ============
+
+  document.addEventListener("visibilitychange", function () {
+    if (document.hidden) {
+      document.body.classList.add("blur-active");
+    } else {
+      document.body.classList.remove("blur-active");
+    }
+  });
+
+  // Extra safety: blur on window focus loss
+  window.addEventListener("blur", function () {
+    document.body.classList.add("blur-active");
+  });
+
+  window.addEventListener("focus", function () {
+    document.body.classList.remove("blur-active");
+  });
+
+  function downloadAllPNGs() {
+  document.body.classList.remove("blur-active");
+
+  if (!window.__ALL_TABLE_BOXES || window.__ALL_TABLE_BOXES.length === 0) {
+    alert("No client tables available.");
+    return;
+  }
+
+  let delay = 0;
+
+  window.__ALL_TABLE_BOXES.forEach(({ boxId, clientName }) => {
+    const element = document.getElementById(boxId);
+    if (!element) return;
+
+    setTimeout(() => {
+      html2canvas(element, {
+        scale: 2,
+        backgroundColor: "#ffffff"
+      }).then(canvas => {
+        const link = document.createElement("a");
+        link.download = `${clientName}_Order_Status_Report.png`;
+        link.href = canvas.toDataURL("image/png");
+        link.click();
+      });
+    }, delay);
+
+    delay += 1200; // small gap to avoid browser choking
+  });
+}
+
+</script>
+
+<!-- 🔒 ADD BLOCKERS HERE (NEW SCRIPT) -->
+<script>
+  // ============ ANTI-INSPECT + NO DEVTOOLS ============
+/* 🔒 Temporarily blur screen to spoil screenshots */
+function temporarilyBlur() {
+  // Avoid stacking multiple overlays
+  if (document.querySelector(".screenshot-blur-overlay")) return;
+
+  const overlay = document.createElement("div");
+  overlay.className = "screenshot-blur-overlay";
+  document.body.appendChild(overlay);
+
+  // Remove blur after 1.4 seconds
+  setTimeout(() => {
+    overlay.remove();
+  }, 1400);
+}
+
+  // Detect DevTools by window resize gap
+  setInterval(function () {
+    const threshold = 160;
+    if (
+      window.outerWidth - window.innerWidth > threshold ||
+      window.outerHeight - window.innerHeight > threshold
+    ) {
+      document.body.innerHTML =
+        "<h2 style='text-align:center;margin-top:40px;'>Dev Tools are not allowed 🚫</h2>";
+    }
+  }, 500);
+
+  // Disable right-click everywhere
+  document.addEventListener("contextmenu", function(e){
+    e.preventDefault();
+  });
+
+  // Block common inspect keys
+  document.addEventListener("keydown", function(e){
+
+    // F12
+    if (e.keyCode === 123) e.preventDefault();
+
+    // Ctrl + Shift + I / J / C
+    if (e.ctrlKey && e.shiftKey &&
+       ['I','J','C','i','j','c'].includes(e.key)) {
+        e.preventDefault();
+    }
+
+    // Ctrl + U (View Source)
+    if (e.ctrlKey && ['U','u'].includes(e.key)) {
+        e.preventDefault();
+    }
+
+    // Block any Ctrl+Shift combination
+    if (e.ctrlKey && e.shiftKey) e.preventDefault();
+  });
+  /* ================= SCREENSHOT DETECTION (BEST EFFORT) ================= */
+
+// Windows: Win + Shift + S (Snipping Tool)
+document.addEventListener("keydown", function (e) {
+  if (e.shiftKey && e.metaKey) {
+    temporarilyBlur();
+  }
+});
+
+// Fallback: Shift + S (browser sometimes drops metaKey)
+document.addEventListener("keydown", function (e) {
+  if (e.shiftKey && e.key.toLowerCase() === "s") {
+    temporarilyBlur();
+  }
+});
+
+// macOS: Cmd + Shift + 3 / 4
+document.addEventListener("keydown", function (e) {
+  if (e.metaKey && e.shiftKey && (e.key === "3" || e.key === "4")) {
+    e.preventDefault();
+    temporarilyBlur();
+  }
+});
+
+// Print Screen (some browsers expose it)
+document.addEventListener("keyup", function (e) {
+  if (e.key === "PrintScreen") {
+    temporarilyBlur();
+  }
+});
+
+</script>
+
+</body>
+</html>
+

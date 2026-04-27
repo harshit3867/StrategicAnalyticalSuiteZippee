@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>FNP Pivot Report</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+  <style>
+    body { font-family: Arial; padding: 20px; background:#eef2f7 }
+    h2 { margin-bottom: 10px }
+
+    table {
+      border-collapse: collapse;
+      width: auto;
+      margin: 20px auto;
+    }
+
+    th, td {
+      border: 1px solid #ccc;
+      padding: 8px 12px;
+      text-align: center;
+    }
+
+    th {
+      background: #2f3640;
+      color: white;
+    }
+
+    .location { text-align:left; font-weight:600 }
+
+    .copy-btn {
+      cursor: pointer;
+      float: right;
+      margin-bottom: 5px;
+      color: #2563eb;
+      font-weight: bold;
+    }
+  </style>
+</head>
+
+<body>
+
+<h2>📊 FNP Pivot Report</h2>
+<input type="file" id="fileInput" />
+
+<div>
+  <div class="copy-btn" onclick="copyTable('outputTable')">📋 Copy Pivot</div>
+  <table id="outputTable"></table>
+</div>
+
+<h2>📈 Operations Summary</h2>
+<div>
+  <div class="copy-btn" onclick="copyTable('summaryTable')">📋 Copy Summary</div>
+  <table id="summaryTable"></table>
+</div>
+
+<script>
+
+document.getElementById('fileInput').addEventListener('change', handleFile);
+
+function handleFile(e) {
+  const file = e.target.files[0];
+  const reader = new FileReader();
+
+  reader.onload = function(e) {
+    const data = new Uint8Array(e.target.result);
+    const workbook = XLSX.read(data, { type: 'array' });
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    const json = XLSX.utils.sheet_to_json(sheet);
+
+    createPivot(json);
+  };
+
+  reader.readAsArrayBuffer(file);
+}
+
+function extractParts(locationRaw){
+  if(!locationRaw) return {store:'', brand:''};
+
+  let parts = locationRaw.replace(/\[|\]/g,'').split('-');
+
+  return {
+    store: parts[0]?.trim() || '',
+    brand: parts[1]?.trim() || ''
+  };
+}
+function normalizeCity(cityRaw) {
+  if (!cityRaw) return 'Unknown';
+
+  const city = cityRaw.toLowerCase().trim();
+
+  const ncrCities = ['delhi', 'gurgaon', 'gurugram', 'noida', 'faridabad'];
+
+  if (ncrCities.includes(city)) {
+    return 'Delhi NCR';
+  }
+
+  return cityRaw;
+}
+function createPivot(data) {
+  const pivot = {};
+  const summary = {};
+
+  data.forEach(row => {
+    const locationRaw = row['Location Name'];
+    const status = row['Bill Status'];
+    const sales = parseFloat(row['Net Sales']) || 0;
+    const city = normalizeCity(row['City']);  
+
+    if (!locationRaw || !status) return;
+
+    const {store, brand} = extractParts(locationRaw);
+
+    const key = city + '|' + store + '|' + brand;
+    const sumKey = city + '|' + store;
+
+    // Pivot table
+    if (!pivot[key]) {
+      pivot[key] = {
+        city, store, brand,
+        settled: {count:0, sum:0},
+        voided: {count:0, sum:0},
+        totalCount: 0,
+        totalSum: 0
+      };
+    }
+
+    let p = pivot[key];
+
+    if (status === 'Settled' || status === 'DELIVERED') {
+      p.settled.count++;
+      p.settled.sum += sales;
+    }
+
+    if (status === 'Voided' || status === 'CANCELLED') {
+      p.voided.count++;
+      p.voided.sum += sales;
+    }
+
+    p.totalCount++;
+    p.totalSum += sales;
+
+    // Summary table (City + Location)
+    if (!summary[sumKey]) {
+      summary[sumKey] = {
+        city, store,
+        complete: 0,
+        cancel: 0
+      };
+    }
+
+    if (status === 'Settled' || status === 'DELIVERED') {
+      summary[sumKey].complete++;
+    }
+
+    if (status === 'Voided' || status === 'CANCELLED') {
+      summary[sumKey].cancel++;
+    }
+
+  });
+
+  renderTable(pivot);
+  renderSummary(summary);
+}
+
+function renderTable(pivot) {
+  const table = document.getElementById('outputTable');
+  table.innerHTML = '';
+
+  table.innerHTML += `
+    <tr>
+      <th rowspan="2">City</th>
+      <th rowspan="2">Location Name</th>
+      <th rowspan="2">Brand</th>
+      <th colspan="2">Settled</th>
+      <th colspan="2">Voided</th>
+      <th rowspan="2">Total Count</th>
+      <th rowspan="2">Total Sum of Net Sales</th>
+    </tr>
+    <tr>
+      <th>Count</th>
+      <th>Sum</th>
+      <th>Count</th>
+      <th>Sum</th>
+    </tr>
+  `;
+
+  const sortedData = Object.values(pivot).sort((a, b) => {
+  // Sort by City (A → Z)
+  if (a.city.toLowerCase() < b.city.toLowerCase()) return -1;
+  if (a.city.toLowerCase() > b.city.toLowerCase()) return 1;
+
+  // If City same → Sort by Location Name (Store)
+  if (a.store.toLowerCase() < b.store.toLowerCase()) return -1;
+  if (a.store.toLowerCase() > b.store.toLowerCase()) return 1;
+
+  return 0;
+});
+
+sortedData.forEach(row => {
+    table.innerHTML += `
+      <tr>
+        <td>${row.city}</td>
+        <td class="location">${row.store}</td>
+        <td>${row.brand}</td>
+        <td>${row.settled.count}</td>
+        <td>${row.settled.sum.toFixed(2)}</td>
+        <td>${row.voided.count}</td>
+        <td>${row.voided.sum.toFixed(2)}</td>
+        <td>${row.totalCount}</td>
+        <td>${row.totalSum.toFixed(2)}</td>
+      </tr>
+    `;
+  });
+}
+
+function renderSummary(summary){
+  const table = document.getElementById('summaryTable');
+  table.innerHTML = '';
+
+  table.innerHTML += `
+    <tr>
+      <th>City</th>
+      <th>Location</th>
+      <th>Complete</th>
+      <th>Cancel</th>
+      <th>Total</th>
+    </tr>
+  `;
+
+  const sortedSummary = Object.values(summary).sort((a, b) => {
+  if (a.city.toLowerCase() < b.city.toLowerCase()) return -1;
+  if (a.city.toLowerCase() > b.city.toLowerCase()) return 1;
+
+  if (a.store.toLowerCase() < b.store.toLowerCase()) return -1;
+  if (a.store.toLowerCase() > b.store.toLowerCase()) return 1;
+
+  return 0;
+});
+
+sortedSummary.forEach(row => {
+    const total = row.complete + row.cancel;
+
+    table.innerHTML += `
+      <tr>
+        <td>${row.city}</td>
+        <td class="location">${row.store}</td>
+        <td>${row.complete}</td>
+        <td>${row.cancel}</td>
+        <td>${total}</td>
+      </tr>
+    `;
+  });
+}
+
+function copyTable(id){
+  const table = document.getElementById(id);
+  let text = "";
+
+  for(let row of table.rows){
+    let rowData = [];
+    for(let cell of row.cells){
+      rowData.push(cell.innerText);
+    }
+    text += rowData.join("\t") + "\n";
+  }
+
+  navigator.clipboard.writeText(text);
+  alert("Copied ✔");
+}
+
+</script>
+
+</body>
+</html>

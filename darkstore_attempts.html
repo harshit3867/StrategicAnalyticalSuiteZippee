@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Store Pendancy</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+
+<!-- Libraries -->
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+
+<style>
+:root{
+    --primary-900:#003f8c;
+    --glass-bg:rgba(255,255,255,0.16);
+    --card-shadow:0 8px 30px rgba(0,0,0,0.25);
+}
+.blur-active #reportContainer {
+  filter: blur(8px);
+  pointer-events: none;
+  user-select: none;
+}
+
+html,body{
+    margin:0;
+    padding:0;
+    font-family:"Segoe UI",Arial;
+}
+
+body{
+    background:url('Zippee.png') center/cover fixed no-repeat;
+}
+
+body::before{
+    content:"";
+    position:fixed;
+    inset:0;
+    background:rgba(255,255,255,.24);
+    backdrop-filter:blur(6px);
+    z-index:-1;
+}
+
+/* HEADER */
+.header{
+    background:linear-gradient(90deg,rgba(0,63,140,.85),rgba(0,89,179,.85));
+    color:white;
+    padding:18px 36px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+}
+
+.logo{
+    height:48px;
+}
+
+/* CARD */
+.card{
+    background:var(--glass-bg);
+    backdrop-filter:blur(10px) saturate(120%);
+    margin:30px auto;
+    max-width:1300px;
+    padding:30px;
+    border-radius:18px;
+    box-shadow:var(--card-shadow);
+}
+
+.title{
+    font-size:22px;
+    font-weight:700;
+    color:var(--primary-900);
+}
+
+/* CONTROLS */
+.controls{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    margin-top:12px;
+}
+
+.button{
+    background:linear-gradient(135deg,#0A66C2,#0078FF);
+    border:none;
+    border-radius:10px;
+    padding:10px 16px;
+    color:white;
+    cursor:pointer;
+    font-weight:700;
+}
+
+/* REPORT */
+#reportContainer{
+    margin-top:20px;
+    overflow-x:auto;
+}
+
+#captureBox{
+    display:inline-block;
+    position:relative;
+}
+
+/* REPORT HEADER */
+.report-head{
+    text-align:center;
+    margin-bottom:10px;
+}
+
+.report-title{
+    font-size:18px;
+    font-weight:800;
+}
+
+.report-meta{
+    font-size:11px;
+}
+.download-btn {
+    margin: 10px 0 15px;
+    background: linear-gradient(135deg,#28C76F,#20A65A);
+    border: none;
+    border-radius: 8px;
+    padding: 8px 14px;
+    color: white;
+    font-weight: 700;
+    cursor: pointer;
+    font-size: 13px;
+}
+.table-header-bar{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    background:#2f3e46;
+    color:white;
+    padding:10px 12px;
+    border-radius:0;
+    font-weight:800;
+}
+
+.table-header-title{
+    flex:1;
+    text-align:center;
+    font-size:16px;
+}
+
+.table-header-actions{
+    display:flex;
+    gap:8px;
+}
+
+/* WATERMARK */
+.watermark{
+    position:absolute;
+    inset:0;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    pointer-events:none;
+    z-index:0;
+}
+table{
+    border-radius:0 0 12px 12px;
+}
+
+.watermark span{
+    font-size:44px;
+    font-weight:900;
+    color:rgba(0,0,0,0.07);
+    transform:rotate(-25deg);
+    text-align:center;
+    line-height:1.2;
+}
+/* 🔒 Screenshot blur overlay */
+.screenshot-blur-overlay {
+  position: fixed;
+  inset: 0;
+  backdrop-filter: blur(18px);
+  background: rgba(255,255,255,0.25);
+  z-index: 9999999;
+  pointer-events: none;
+}
+
+/* TABLE */
+.table-wrapper{
+    overflow-x:auto;
+}
+
+table{
+    border-collapse:collapse;
+    background:white;
+    border-radius:0 0 12px 12px;
+    box-shadow:0 8px 20px rgba(51, 93, 229, 0.12);
+    position:relative;
+    z-index:1;
+    min-width:400px;
+}
+
+th, td{
+    border:1px solid #ddd;
+    padding:3px 7px;
+    white-space:nowrap;
+    font-size:11px;
+    text-align:center;   /* ✅ center everything */
+}
+
+th{
+    background:#062e44;
+    color:white;
+    text-align:center;
+}
+
+td.store{
+    text-align:center;
+    font-weight:700;
+    background:#e9ecef;
+}
+
+td.date{
+    text-align:center;
+    padding-left :12px;
+    font-weight:700;
+}
+
+td.total-label{
+    text-align:center !important;
+    font-weight:800;
+}
+
+tfoot td{
+    font-weight:800;
+    background:#dee2e6;
+}
+
+/* FOOTER */
+.report-footer{
+    display:flex;
+    align-items:center;        /* vertical center */
+    justify-content:center;    /* horizontal center */
+    text-align:center;
+    padding:12px 0;
+    font-size:12px;
+    font-weight:700;
+    width:100%;
+}
+</style>
+</head>
+
+<body>
+
+<!-- HEADER -->
+<div class="header">
+    <h1>Zippee – Report</h1>
+    <img class="logo" src="SASA.png">
+</div>
+
+<!-- CARD -->
+<div class="card">
+    <div class="title">Store Pendancy</div>
+
+<div class="controls">
+  <input type="file" id="zipFile" accept=".zip">
+
+<button class="download-btn"
+    onclick="downloadAllPNGs()">
+    Download ALL Images
+  </button>
+</div>
+
+    <div id="reportContainer">
+        <div id="captureBox">
+
+            <div class="report-head">
+                <div class="report-title">Attempted vs Not Dispatched vs Picked_up</div>
+                <div class="report-meta" id="meta"></div>
+            </div>
+
+            <div class="table-wrapper" id="tableContainer"></div>
+
+            <div class="report-footer">
+                Powered by SASA Automation | Harshit Saini - Data Analyst,Zippee
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script>
+const ALLOWED_STORES=[
+"DEL_malviya-nagar","HYD_manikonda","MUM_andheri","BLR_kalyan-nagar",
+"BLR_koramangala","CH_Periyamet","KOL-Topsia","PUN_koregaon-park"
+];
+// ===== EXCEL DATA STORAGE (STORE WISE) =====
+const detailsByStore = {};
+ALLOWED_STORES.forEach(s => detailsByStore[s] = []);
+
+const ALLOWED_STATUS=["Attempted Delivery","Not Dispatched","Pickedup"];
+
+document.getElementById("meta").innerText =
+`Date: ${new Date().toLocaleDateString("en-GB")} | Time: ${new Date().toLocaleTimeString()}`;
+
+document.getElementById("zipFile").addEventListener("change", async e=>{
+    const zip=await JSZip.loadAsync(e.target.files[0]);
+    for(const f of Object.keys(zip.files)){
+        if(f.endsWith(".csv")){
+            Papa.parse(await zip.files[f].async("text"),{
+                header:true,skipEmptyLines:true,
+                complete:r=>buildPivot(r.data)
+            });
+            break;
+        }
+        if(f.endsWith(".xlsx")){
+            const wb=XLSX.read(await zip.files[f].async("arraybuffer"),{type:"array"});
+            buildPivot(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:""}));
+            break;
+        }
+    }
+});
+
+
+function buildPivot(data) {
+    document.getElementById("tableContainer").innerHTML = "";
+    window.__ALL_TABLE_BOXES = [];
+
+    ALLOWED_STORES.forEach(s => detailsByStore[s] = []);
+
+    const pivot = {};
+
+    data.forEach(row => {
+
+        // COLUMN D → Store
+        const store = row["Order Dark Store"];
+        if (!ALLOWED_STORES.includes(store)) return;
+        
+        let attempts = Number(row["No. of Attempts"] ?? row["No. Of Attempts"]);
+if (isNaN(attempts)) attempts = 0;
+
+        // Status
+        const status = row["Order Status"]?.trim();
+        if (!ALLOWED_STATUS.includes(status)) return;
+
+
+// ✅ SAVE RAW ROW FOR STORE-WISE EXCEL
+detailsByStore[store].push(row);
+
+        pivot[store] ??= {};
+        pivot[store][attempts] ??=
+ {
+            "Attempted Delivery": 0,
+            "Not Dispatched": 0,
+            "Pickedup": 0,
+        };
+
+        pivot[store][attempts][status]++;
+    });
+
+    // render one table per store
+    Object.keys(pivot).forEach(store => {
+        renderStoreTable(pivot[store], store);
+    });
+}
+
+
+function renderStoreTable(p, storeName){
+    let g = {
+      "Attempted Delivery": 0,
+      "Not Dispatched": 0,
+      "Pickedup": 0,
+    };
+
+    const safeName = storeName.replace(/\W+/g, "_");
+    const boxId = `box_${safeName}`;
+
+    window.__ALL_TABLE_BOXES = window.__ALL_TABLE_BOXES || [];
+    window.__ALL_TABLE_BOXES.push({ boxId, clientName: storeName });
+
+let h = `
+<div style="display:flex; justify-content:flex-end; gap:8px; margin-top:40px">
+  <button class="download-btn"
+    onclick="downloadPNG('${boxId}', '${storeName}')">
+    Download PNG
+  </button>
+
+  <button class="download-btn"
+    style="background:linear-gradient(135deg,#F59E0B,#D97706)"
+    onclick="downloadStoreExcel('${storeName}')">
+    Download Excel
+  </button>
+</div>
+
+<div id="${boxId}" style="margin-top:10px; position:relative">
+
+  <div class="table-header-bar">
+    <div class="table-header-title">
+      ${storeName} – Order Pendancy
+    </div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>No. of Attempts</th>
+        <th>Attempted Delivery</th>
+        <th>Not Dispatched</th>
+        <th>Pickedup</th>
+        <th>Total</th>
+      </tr>
+    </thead>
+    <tbody>
+`;
+
+
+Object.keys(p)
+.sort((a,b)=>a-b)
+.forEach(d=>{
+        const r = p[d];
+        const t =
+r["Attempted Delivery"] +
+r["Not Dispatched"] +
+r["Pickedup"];
+
+        Object.keys(g).forEach(k => g[k] += r[k]);
+
+        h += `
+        <tr>
+          <td class="date">${d} Attempt${d==1?"":"s"}</td>
+          <td>${r["Attempted Delivery"]}</td>
+          <td>${r["Not Dispatched"]}</td>
+          <td>${r["Pickedup"]}</td>
+          <td>${t}</td>
+        </tr>`;
+    });
+
+    h += `
+        </tbody>
+        <tfoot>
+          <tr>
+            <td class="total-label">Total</td>
+<td>${g["Attempted Delivery"]}</td>
+<td>${g["Not Dispatched"]}</td>
+<td>${g["Pickedup"]}</td>
+<td>${
+g["Attempted Delivery"] +
+g["Not Dispatched"] +
+g["Pickedup"]
+}</td>
+
+          </tr>
+        </tfoot>
+      </table>
+
+      <div class="report-footer">
+        Powered by SASA Automation | Harshit Saini - Data Analyst, Zippee
+      </div>
+
+    </div>
+    `;
+
+    tableContainer.innerHTML += h;
+}
+
+
+function downloadPNG(boxId, clientName) {
+  document.body.classList.remove("blur-active");
+    const element = document.getElementById(boxId);
+    if (!element) return;
+
+    html2canvas(element, {
+        scale: 2,
+        backgroundColor: "#ffffff"
+    }).then(canvas => {
+        const link = document.createElement("a");
+        link.download = `${clientName}_Order_Status_Report.png`;
+        link.href = canvas.toDataURL("image/png");
+        link.click();
+    });
+}
+function downloadStoreExcel(storeName) {
+  const rows = detailsByStore[storeName];
+  if (!rows || rows.length === 0) {
+    alert("No data available for Excel");
+    return;
+  }
+
+  const worksheet = XLSX.utils.json_to_sheet(rows);
+  const workbook = XLSX.utils.book_new();
+
+  XLSX.utils.book_append_sheet(workbook, worksheet, "Order Details");
+
+  XLSX.writeFile(
+    workbook,
+    `${storeName}_Order_Details.xlsx`
+  );
+}
+
+function downloadAllPNGs() {
+  document.body.classList.remove("blur-active");
+
+  if (!window.__ALL_TABLE_BOXES || window.__ALL_TABLE_BOXES.length === 0) {
+    alert("No reports available to download.");
+    return;
+  }
+
+  let delay = 0;
+
+  window.__ALL_TABLE_BOXES.forEach(({ boxId, clientName }) => {
+    const element = document.getElementById(boxId);
+    if (!element) return;
+
+    setTimeout(() => {
+      html2canvas(element, {
+        scale: 2,
+        backgroundColor: "#ffffff"
+      }).then(canvas => {
+        const link = document.createElement("a");
+        link.download = `${clientName}_Order_Pendency_Report.png`;
+        link.href = canvas.toDataURL("image/png");
+        link.click();
+      });
+    }, delay);
+
+    delay += 1200; // safe gap
+  });
+}
+
+  // ============ TAB SWITCH BLUR PROTECTION ============
+
+  document.addEventListener("visibilitychange", function () {
+    if (document.hidden) {
+      document.body.classList.add("blur-active");
+    } else {
+      document.body.classList.remove("blur-active");
+    }
+  });
+
+  // Extra safety: blur on window focus loss
+  window.addEventListener("blur", function () {
+    document.body.classList.add("blur-active");
+  });
+
+  window.addEventListener("focus", function () {
+    document.body.classList.remove("blur-active");
+  });
+</script>
+
+<!-- 🔒 ADD BLOCKERS HERE (NEW SCRIPT) -->
+<script>
+  // ============ ANTI-INSPECT + NO DEVTOOLS ============
+/* 🔒 Temporarily blur screen to spoil screenshots */
+function temporarilyBlur() {
+  // Avoid stacking multiple overlays
+  if (document.querySelector(".screenshot-blur-overlay")) return;
+
+  const overlay = document.createElement("div");
+  overlay.className = "screenshot-blur-overlay";
+  document.body.appendChild(overlay);
+
+  // Remove blur after 1.4 seconds
+  setTimeout(() => {
+    overlay.remove();
+  }, 1400);
+}
+
+  // Detect DevTools by window resize gap
+  setInterval(function () {
+    const threshold = 160;
+    if (
+      window.outerWidth - window.innerWidth > threshold ||
+      window.outerHeight - window.innerHeight > threshold
+    ) {
+      document.body.innerHTML =
+        "<h2 style='text-align:center;margin-top:40px;'>Dev Tools are not allowed 🚫</h2>";
+    }
+  }, 500);
+
+  // Disable right-click everywhere
+  document.addEventListener("contextmenu", function(e){
+    e.preventDefault();
+  });
+
+  // Block common inspect keys
+  document.addEventListener("keydown", function(e){
+
+    // F12
+    if (e.keyCode === 123) e.preventDefault();
+
+    // Ctrl + Shift + I / J / C
+    if (e.ctrlKey && e.shiftKey &&
+       ['I','J','C','i','j','c'].includes(e.key)) {
+        e.preventDefault();
+    }
+
+    // Ctrl + U (View Source)
+    if (e.ctrlKey && ['U','u'].includes(e.key)) {
+        e.preventDefault();
+    }
+
+    // Block any Ctrl+Shift combination
+    if (e.ctrlKey && e.shiftKey) e.preventDefault();
+  });
+  /* ================= SCREENSHOT DETECTION (BEST EFFORT) ================= */
+
+// Windows: Win + Shift + S (Snipping Tool)
+document.addEventListener("keydown", function (e) {
+  if (e.shiftKey && e.metaKey) {
+    temporarilyBlur();
+  }
+});
+
+// Fallback: Shift + S (browser sometimes drops metaKey)
+document.addEventListener("keydown", function (e) {
+  if (e.shiftKey && e.key.toLowerCase() === "s") {
+    temporarilyBlur();
+  }
+});
+
+// macOS: Cmd + Shift + 3 / 4
+document.addEventListener("keydown", function (e) {
+  if (e.metaKey && e.shiftKey && (e.key === "3" || e.key === "4")) {
+    e.preventDefault();
+    temporarilyBlur();
+  }
+});
+
+// Print Screen (some browsers expose it)
+document.addEventListener("keyup", function (e) {
+  if (e.key === "PrintScreen") {
+    temporarilyBlur();
+  }
+});
+
+</script>
+
+</body>
+</html>

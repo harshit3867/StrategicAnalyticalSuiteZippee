@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Manpower Attendance</title>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+<style>
+    body {
+        font-family: Arial;
+        background: #eef2ff;
+        padding: 20px;
+    }
+    .container {
+        background: #fff;
+        padding: 20px;
+        border-radius: 12px;
+        max-width: 650px;
+        margin: auto;
+        box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    h2 {
+        text-align: center;
+        margin-bottom: 10px;
+    }
+    select {
+        width: 100%;
+        padding: 12px;
+        border-radius: 8px;
+        border: 1px solid #bbb;
+        margin-bottom: 15px;
+        font-size: 16px;
+    }
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 15px;
+    }
+    th, td {
+        border: 1px solid #444;
+        padding: 10px;
+        text-align: center;
+    }
+    td[contenteditable="true"] {
+        background: #f7f7f7;
+    }
+    button {
+        width: 100%;
+        padding: 12px;
+        border-radius: 8px;
+        border: none;
+        font-size: 16px;
+        cursor: pointer;
+        margin-top: 12px;
+    }
+    #addBtn { background: #007bff; color: white; }
+    #generateBtn { background: #111; color: white; }
+    #shareBtn { background: #25D366; color: white; display:none; }
+    #attendanceImage { display:none; margin-top:20px; width:100%; }
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <h2 id="reportHeading">Manpower Report</h2>
+
+    <select id="warehouse">
+        <option value="">Select Warehouse</option>
+        <option>ALB_F_FFC_SM</option>
+        <option>MOR_F_FFC_SM</option>
+        <option>SLG_F_FFC_SM</option>
+        <option>STR_F_FFC_SM</option>
+    </select>
+
+    <select id="shift">
+        <option value="">Select Shift</option>
+        <option>Morning Shift</option>
+        <option>Afternoon Shift</option>
+        <option>Evening Shift</option>
+        <option>Night Shift</option>
+    </select>
+
+    <table id="attTable">
+        <thead>
+            <tr>
+                <th>Warehouse</th>
+                <th>Shift</th>
+                <th>Name</th>
+                <th>Designation</th>
+                <th>Date</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+
+    <button id="addBtn" onclick="addRow()">+ Add Person</button>
+    <button id="generateBtn" onclick="generateImage()">Generate Image</button>
+    <button id="shareBtn" onclick="shareWhatsApp()">Share on WhatsApp</button>
+
+    <img id="attendanceImage">
+</div>
+
+<script>
+function addRow() {
+    let wh = document.getElementById("warehouse").value;
+    let shift = document.getElementById("shift").value;
+
+    if (wh === "") {
+        alert("Please select a Warehouse.");
+        return;
+    }
+
+    if (shift === "") {
+        alert("Please select a Shift.");
+        return;
+    }
+
+    document.getElementById("reportHeading").innerText = "Manpower Report – " + shift;
+
+    let tbody = document.querySelector("#attTable tbody");
+    let today = new Date().toLocaleDateString();
+
+    let row = document.createElement("tr");
+    row.innerHTML = `
+        <td>${wh}</td>
+        <td>${shift}</td>
+        <td class="editable" contenteditable="true"></td>
+        <td class="editable" contenteditable="true"></td>
+        <td>${today}</td>
+    `;
+    tbody.appendChild(row);
+
+    // focus first editable cell of new row
+    row.querySelector(".editable").focus();
+}
+
+// ADD ROW WHEN PRESSING ENTER
+document.addEventListener("keydown", function(e) {
+    let target = e.target;
+
+    // apply only on editable table cells
+    if (target.getAttribute("contenteditable") === "true") {
+        if (e.key === "Enter") {
+            e.preventDefault(); // stop new line
+            addRow();           // add new person row
+        }
+    }
+});
+
+function generateImage() {
+    html2canvas(document.querySelector(".container")).then(canvas => {
+        let img = document.getElementById("attendanceImage");
+        img.src = canvas.toDataURL("image/png");
+        img.style.display = "block";
+
+        document.getElementById("shareBtn").style.display = "block";
+
+        let a = document.createElement("a");
+        a.href = img.src;
+        a.download = "manpower_report.png";
+        a.click();
+    });
+}
+
+function shareWhatsApp() {
+    let msg = "Manpower report generated. Please find the attached image.";
+    window.open("https://wa.me/?text=" + encodeURIComponent(msg), "_blank");
+}
+</script>
+
+</body>
+</html>

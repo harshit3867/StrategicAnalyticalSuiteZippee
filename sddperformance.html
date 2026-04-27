@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>⚡ SDD Unified Dashboard</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+
+<style>
+body{margin:0;font-family:'Segoe UI',sans-serif;background:#0b1220;color:#fff}
+.container{padding:20px}
+h1{margin-bottom:10px}
+
+.kpis{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:16px;
+  margin-top:20px;
+  margin-bottom:20px;
+}
+.card{background:#121a2b;padding:15px;border-radius:12px}
+.card h3{font-size:12px;opacity:.7;margin:0}
+.card h2{margin:6px 0 0}
+
+.grid{
+  display:grid;
+  grid-template-columns:1fr;
+  gap:24px;
+  margin-top:10px;
+}
+
+.chart-box{
+  box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+  height:300px;
+  background:#121a2b;
+  border-radius:12px;
+  padding:14px;
+}
+
+.title{font-size:14px;margin-bottom:6px}
+
+select{padding:8px;border-radius:6px;border:none;margin-top:10px}
+</style>
+</head>
+
+<body>
+<div class="container">
+
+<h1>⚡ SDD Unified Performance Dashboard</h1>
+
+<div style="margin-top:15px; margin-bottom:20px; display:flex; align-items:center; gap:20px; flex-wrap:wrap; background:#121a2b; padding:12px 15px; border-radius:10px; width:fit-content;">
+  
+  <select id="storeFilter" style="min-width:220px; padding:8px;">
+    <option value="All" selected>All Stores</option>
+  </select>
+
+  <input type="date" id="startDate" style="padding:8px;">
+  
+  <input type="date" id="endDate" style="padding:8px;">
+
+</div>
+<div class="kpis">
+<div class="card"><h3>Total Orders</h3><h2 id="orders"></h2></div>
+<div class="card"><h3>D0 Dispatch %</h3><h2 id="d0"></h2></div>
+<div class="card"><h3>FASR %</h3><h2 id="fasr"></h2></div>
+<div class="card"><h3>Active Days</h3><h2 id="days"></h2></div>
+</div>
+
+<div id="charts" class="grid"></div>
+
+</div>
+
+<script>
+
+// 🔥 STORE LINKS
+const storeURLs = {
+  "Delhi Malviya Nagar": "https://docs.google.com/spreadsheets/d/e/2PACX-1vQG5iGYhUrfMGoCKQxOR4fa5aZVMVXWB77ZqyJuhCF1LhReTgf2i9NkVZ_YEjDm-MjICbuCdJRH6c6T/pub?gid=2075084073&single=true&output=csv",
+  "Mumbai Andheri": "https://docs.google.com/spreadsheets/d/e/2PACX-1vQG5iGYhUrfMGoCKQxOR4fa5aZVMVXWB77ZqyJuhCF1LhReTgf2i9NkVZ_YEjDm-MjICbuCdJRH6c6T/pub?gid=0&single=true&output=csv",
+  "Mumbai Matunga": "https://docs.google.com/spreadsheets/d/e/2PACX-1vQG5iGYhUrfMGoCKQxOR4fa5aZVMVXWB77ZqyJuhCF1LhReTgf2i9NkVZ_YEjDm-MjICbuCdJRH6c6T/pub?gid=95840656&single=true&output=csv",
+  "Bangalore KalyanNagar": "https://docs.google.com/spreadsheets/d/e/2PACX-1vQG5iGYhUrfMGoCKQxOR4fa5aZVMVXWB77ZqyJuhCF1LhReTgf2i9NkVZ_YEjDm-MjICbuCdJRH6c6T/pub?gid=1457798072&single=true&output=csv",
+  "Hyderabad Manikonda": "https://docs.google.com/spreadsheets/d/e/2PACX-1vQG5iGYhUrfMGoCKQxOR4fa5aZVMVXWB77ZqyJuhCF1LhReTgf2i9NkVZ_YEjDm-MjICbuCdJRH6c6T/pub?gid=1331722609&single=true&output=csv",
+  "Pune Koregaon": "https://docs.google.com/spreadsheets/d/e/2PACX-1vQG5iGYhUrfMGoCKQxOR4fa5aZVMVXWB77ZqyJuhCF1LhReTgf2i9NkVZ_YEjDm-MjICbuCdJRH6c6T/pub?gid=334028854&single=true&output=csv",
+  "Chennai Periyamet": "https://docs.google.com/spreadsheets/d/e/2PACX-1vQG5iGYhUrfMGoCKQxOR4fa5aZVMVXWB77ZqyJuhCF1LhReTgf2i9NkVZ_YEjDm-MjICbuCdJRH6c6T/pub?gid=1974639382&single=true&output=csv",
+  "Kolkata Topsia": "https://docs.google.com/spreadsheets/d/e/2PACX-1vQG5iGYhUrfMGoCKQxOR4fa5aZVMVXWB77ZqyJuhCF1LhReTgf2i9NkVZ_YEjDm-MjICbuCdJRH6c6T/pub?gid=841805636&single=true&output=csv",
+  "Bangalore Koramangala": "https://docs.google.com/spreadsheets/d/e/2PACX-1vQG5iGYhUrfMGoCKQxOR4fa5aZVMVXWB77ZqyJuhCF1LhReTgf2i9NkVZ_YEjDm-MjICbuCdJRH6c6T/pub?gid=444384825&single=true&output=csv"
+};
+
+let storeData = {};
+let charts = [];
+
+const percent = v => {
+  if(!v || v.includes('#DIV')) return 0;
+  return parseFloat(v.toString().replace('%','')) || 0;
+};
+
+// LOAD ALL STORES
+function loadData(){
+  const promises = Object.entries(storeURLs).map(([name,url])=>{
+    return new Promise(resolve=>{
+      Papa.parse(url,{
+        download:true,
+        header:true,
+        complete:(res)=>{
+          resolve({name,data:res.data.filter(r=>r.Date)});
+        }
+      });
+    });
+  });
+
+  Promise.all(promises).then(results=>{
+    results.forEach(r=>storeData[r.name]=r.data);
+    init();
+  });
+}
+
+function init(){
+  const select=document.getElementById("storeFilter");
+  Object.keys(storeData).forEach(s=>{
+    const opt=document.createElement("option");
+    opt.value=s;
+    opt.textContent=s;
+    select.appendChild(opt);
+  });
+
+  document.getElementById("storeFilter").value = "All";
+  render("All");
+  select.addEventListener("change",e=>render(e.target.value));
+  document.getElementById("startDate")
+  .addEventListener("change", ()=>render(document.getElementById("storeFilter").value));
+
+document.getElementById("endDate")
+  .addEventListener("change", ()=>render(document.getElementById("storeFilter").value));
+}
+
+function clearCharts(){
+  charts.forEach(c=>c.destroy());
+  charts=[];
+  document.getElementById("charts").innerHTML="";
+}
+
+function addChart(title,config){
+  const box=document.createElement("div");
+  box.className="chart-box";
+  box.innerHTML=`<div class="title">${title}</div><canvas></canvas>`;
+  document.getElementById("charts").appendChild(box);
+
+  const chart=new Chart(box.querySelector("canvas"),{
+    ...config,
+    options:{
+      responsive:true,
+      maintainAspectRatio:false,
+      interaction:{mode:'index',intersect:false},
+      plugins:{legend:{display:false}},
+      scales:{
+        x:{ticks:{color:"#fff",font:{weight:"bold"}}},
+        y:{ticks:{color:"#fff",font:{weight:"bold"}}}
+      }
+    }
+  });
+
+  charts.push(chart);
+
+  box.addEventListener("mouseenter",()=>{
+    chart.options.plugins.legend.display=true;
+    chart.update();
+  });
+  box.addEventListener("mouseleave",()=>{
+    chart.options.plugins.legend.display=false;
+    chart.update();
+  });
+}
+
+function render(store){
+
+  clearCharts();
+
+  const today=new Date().getDate();
+  let filtered = storeData[store] || [];
+
+  if(store==="All"){
+  renderAllDashboard();
+  return;
+}
+
+  const start = document.getElementById("startDate").value;
+const end = document.getElementById("endDate").value;
+
+filtered = filtered.filter(r => {
+  if(!r["Processed Order"]) return false;
+
+  const d = new Date(r.Date);
+  if(isNaN(d)) return false;
+
+  // default: till today
+  if(d.getDate() > today) return false;
+
+  if(start){
+    const s = new Date(start);
+    if(d < s) return false;
+  }
+
+  if(end){
+    const e = new Date(end);
+    if(d > e) return false;
+  }
+
+  return true;
+});
+  let tot = 0, d0 = 0, fasr = 0, days = 0;
+
+if(store === "All"){
+
+  let storeCount = 0;
+
+  Object.values(storeData).forEach(arr => {
+
+    let s_tot = 0, s_d0 = 0, s_fasr = 0, s_n = 0;
+
+    arr.forEach(r => {
+      const d = new Date(r.Date);
+      if(isNaN(d) || d.getDate() > new Date().getDate()) return;
+      if(!r["Processed Order"]) return;
+
+      s_tot += +r["Processed Order"] || 0;
+      s_d0 += percent(r["D0_Dispatch %"]);
+      s_fasr += percent(r["FASR%"]);
+      s_n++;
+    });
+
+    if(s_n > 0){
+      tot += s_tot;
+      d0 += (s_d0 / s_n);
+      fasr += (s_fasr / s_n);
+      days += s_n;
+      storeCount++;
+    }
+
+  });
+
+  d0 = d0 / storeCount;
+  fasr = fasr / storeCount;
+  days = Math.round(days / storeCount);
+
+} else {
+
+  let n = 0;
+
+  filtered.forEach(r=>{
+    tot += +r["Processed Order"] || 0;
+    d0 += percent(r["D0_Dispatch %"]);
+    fasr += percent(r["FASR%"]);
+    n++;
+  });
+
+  d0 = n ? d0/n : 0;
+  fasr = n ? fasr/n : 0;
+  days = n;
+}
+
+// FINAL OUTPUT
+document.getElementById("orders").innerText = tot;
+document.getElementById("d0").innerText = d0.toFixed(1)+"%";
+document.getElementById("fasr").innerText = fasr.toFixed(1)+"%";
+document.getElementById("days").innerText = days;
+  const labels=filtered.map(r=>r.Date);
+
+  const map=k=>filtered.map(r=>{
+    if(k==="ORD") return +r["Processed Order"]||0;
+    if(k==="D0") return percent(r["D0_Dispatch %"]);
+    if(k==="FASR") return percent(r["FASR%"]);
+  });
+
+  addChart("📦 Orders Trend",{type:"line",data:{labels,datasets:[{
+  label:"Orders",
+  data:map("ORD"),
+  borderColor:"#facc15",
+  backgroundColor:"#facc15",
+  tension:0.4,
+  pointRadius:4,
+  pointBackgroundColor:"#facc15",
+  borderWidth:3
+}]}});
+
+  addChart("🚚 D0 Dispatch",{
+  type:"line",
+  data:{
+    labels,
+    datasets:[{
+      label:"D0 %",
+      data:map("D0"),
+      borderColor:"#facc15",       // 🟡 Yellow
+      backgroundColor:"#facc15",
+      tension:0.4,
+      pointRadius:4,
+      pointBackgroundColor:"#facc15",
+      borderWidth:3
+    }]
+  }
+});;
+
+  addChart("⚡ FASR",{
+  type:"line",
+  data:{
+    labels,
+    datasets:[{
+      label:"FASR %",
+      data:map("FASR"),
+      borderColor:"#facc15",      
+      backgroundColor:"#66FF00",
+      tension:0.4,
+      pointRadius:4,
+      pointBackgroundColor:"#66FF00",
+      borderWidth:3
+    }]
+  }
+});;
+
+  addChart("📊 Performance Comparison",{
+  type:"line",
+  data:{
+    labels,
+    datasets:[
+      {
+        label:"D0 %",
+        data:map("D0"),
+        borderColor:"#facc15",        // 🟡 yellow
+        backgroundColor:"#facc15",
+        tension:0.4,
+        pointRadius:4,
+        pointBackgroundColor:"#facc15",
+        borderWidth:3
+      },
+      {
+        label:"FASR %",
+        data:map("FASR"),
+        borderColor:"#66FF00",        // 🟢 dark green
+        backgroundColor:"#66FF00",
+        tension:0.4,
+        pointRadius:4,
+        pointBackgroundColor:"#66FF00",
+        borderWidth:3
+      }
+    ]
+  }
+});
+}
+function renderAllDashboard(){
+
+  clearCharts();
+  
+  // 🔥 KPI CALCULATION FOR ALL STORES
+
+let tot = 0, d0 = 0, fasr = 0, days = 0;
+let storeCount = 0;
+
+Object.values(storeData).forEach(arr => {
+
+  let s_tot = 0, s_d0 = 0, s_fasr = 0, s_n = 0;
+
+  arr.forEach(r => {
+    const d = new Date(r.Date);
+    if(isNaN(d) || d.getDate() > new Date().getDate()) return;
+    if(!r["Processed Order"]) return;
+
+    s_tot += +r["Processed Order"] || 0;
+    s_d0 += percent(r["D0_Dispatch %"]);
+    s_fasr += percent(r["FASR%"]);
+    s_n++;
+  });
+
+  if(s_n > 0){
+    tot += s_tot;
+    d0 += (s_d0 / s_n);
+    fasr += (s_fasr / s_n);
+    days += s_n;
+    storeCount++;
+  }
+
+});
+
+// FINAL KPI
+d0 = storeCount ? d0 / storeCount : 0;
+fasr = storeCount ? fasr / storeCount : 0;
+days = storeCount ? Math.round(days / storeCount) : 0;
+
+// UPDATE UI
+document.getElementById("orders").innerText = tot;
+document.getElementById("d0").innerText = d0.toFixed(1) + "%";
+document.getElementById("fasr").innerText = fasr.toFixed(1) + "%";
+document.getElementById("days").innerText = days;
+
+  const today = new Date().getDate();
+
+  const storeNames = Object.keys(storeData);
+
+  let storeMetrics = [];
+
+  // 🔹 Calculate metrics per store
+  storeNames.forEach(store => {
+
+    let tot=0, d0=0, fasr=0, n=0;
+
+    storeData[store].forEach(r=>{
+      const d = new Date(r.Date);
+      if(isNaN(d) || d.getDate() > today) return;
+      if(!r["Processed Order"]) return;
+
+      tot += +r["Processed Order"] || 0;
+      d0 += percent(r["D0_Dispatch %"]);
+      fasr += percent(r["FASR%"]);
+      n++;
+    });
+
+    if(n>0){
+      storeMetrics.push({
+        name: store,
+        orders: tot,
+        d0: d0/n,
+        fasr: fasr/n
+      });
+    }
+
+  });
+
+  // =========================
+  // 📊 1. Orders by Store (BAR)
+  // =========================
+
+  addChart("📦 Orders by Store",{
+    type:"bar",
+    data:{
+      labels: storeMetrics.map(s=>s.name),
+      datasets:[{
+  label:"Orders",
+  data: storeMetrics.map(s=>s.orders),
+  backgroundColor: (ctx) => {
+    const chart = ctx.chart;
+    const {ctx:canvas, chartArea} = chart;
+    if (!chartArea) return;
+
+    const gradient = canvas.createLinearGradient(0, chartArea.bottom, 0, chartArea.top);
+    gradient.addColorStop(0, "#facc15");   // dark blue
+    gradient.addColorStop(1, "#fde047");   // light blue
+
+    return gradient;
+  },
+  borderRadius: 8
+}]
+    }
+  });
+
+  // =========================
+  // 🏆 2. Top vs Bottom (FUNNEL STYLE)
+  // =========================
+
+  // sort by FASR (you can switch to D0 if needed)
+  const sorted = [...storeMetrics].sort((a,b)=>b.fasr - a.fasr);
+
+  const top = sorted[0];
+  const bottom = sorted[sorted.length-1];
+
+const box = document.createElement("div");
+box.className = "chart-box";
+
+box.innerHTML = `
+  <div class="title">🏆 Top vs Bottom Store (FASR)</div>
+
+  <div style="display:flex; justify-content:space-between; gap:20px; margin-top:20px;">
+
+    <!-- TOP STORE -->
+    <div style="flex:1; background:#0f172a; padding:15px; border-radius:10px;">
+      <div style="font-size:12px; opacity:.7;">Top Store</div>
+      <div style="font-size:16px; font-weight:bold; margin-top:5px;">${top.name}</div>
+      <div style="font-size:22px; color:#22c55e; margin-top:10px;">
+        ${top.fasr.toFixed(1)}%
+      </div>
+
+      <div style="height:6px; background:#1f2937; border-radius:5px; margin-top:10px;">
+        <div style="width:${top.fasr}%; height:100%; background:#22c55e; border-radius:5px;"></div>
+      </div>
+    </div>
+
+    <!-- BOTTOM STORE -->
+    <div style="flex:1; background:#0f172a; padding:15px; border-radius:10px;">
+      <div style="font-size:12px; opacity:.7;">Bottom Store</div>
+      <div style="font-size:16px; font-weight:bold; margin-top:5px;">${bottom.name}</div>
+      <div style="font-size:22px; color:#ef4444; margin-top:10px;">
+        ${bottom.fasr.toFixed(1)}%
+      </div>
+
+      <div style="height:6px; background:#1f2937; border-radius:5px; margin-top:10px;">
+        <div style="width:${bottom.fasr}%; height:100%; background:#ef4444; border-radius:5px;"></div>
+      </div>
+    </div>
+
+  </div>
+`;
+
+document.getElementById("charts").appendChild(box);
+
+  // =========================
+  // 📈 3. Top 3 Store Trend
+  // =========================
+
+  const top3 = sorted.slice(0,3);
+
+  // assume same dates across stores (safe in your case)
+  const labels = storeData[top3[0].name].map(r=>r.Date);
+
+  const colors = ["#facc15", "#66FF00", "#facc15"]; // yellow, green, yellow
+
+const datasets = top3.map((store, index)=>{
+  return {
+    label: store.name,
+    data: storeData[store.name].map(r=>percent(r["FASR%"])),
+    borderColor: colors[index % colors.length],
+    backgroundColor: colors[index % colors.length],
+    tension: 0.4,
+    pointRadius: 4,
+    pointBackgroundColor: colors[index % colors.length],
+    borderWidth: 3
+  };
+});
+
+  addChart("📈 Top 3 Stores Trend (FASR)",{
+    type:"line",
+    data:{
+      labels,
+      datasets
+    }
+  });
+
+}
+loadData();
+
+</script>
+</body>
+</html>

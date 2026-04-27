@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>FNP Pivot Generator</title>
+
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+<style>
+.copy-btn{
+    cursor:pointer;
+    font-size:20px;
+    color:#2563eb;
+}
+
+.copy-btn:hover{
+    color:#1e40af;
+    transform:scale(1.1);
+}
+
+body{
+    font-family:Segoe UI;
+    background:#eef2f7;
+    padding:40px;
+}
+
+.container{
+    background:white;
+    padding:40px;
+    border-radius:14px;
+    max-width:1700px;
+    margin:auto;
+    box-shadow:0 20px 50px rgba(0,0,0,.08);
+}
+
+.title{
+    font-size:26px;
+    font-weight:800;
+    text-align:center;
+    margin-bottom:20px;
+}
+
+table{
+    width:auto;              /* KEY FIX */
+    border-collapse:collapse;
+    margin:30px auto;        /* centers the table */
+    table-layout:auto;
+}
+
+th,td{
+    border:1px solid #d9e1ea;
+    padding:8px 12px;   /* less padding = less width */
+    text-align:center;
+    white-space:nowrap; /* prevents text from expanding column */
+}
+.location{
+    text-align:left;
+    font-weight:600;
+    max-width:180px;
+    overflow:hidden;
+    text-overflow:ellipsis;
+}
+
+th{
+    background:#f2f6fb;
+    font-weight:700;
+}
+
+.location{
+    text-align:left;
+    font-weight:600;
+}
+
+.total-row{
+    background:#eef4fb;
+    font-weight:800;
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<div class="title">FNP Pivot Report</div>
+
+<input type="file" id="fileInput">
+
+<div style="text-align:right;">
+    <i class="fa-solid fa-copy copy-btn" onclick="copyTable('pivotTable')" title="Copy Pivot"></i>
+</div>
+
+<table id="pivotTable"></table>
+<h2 style="margin-top:60px;">Operations Summary</h2>
+
+<div style="text-align:right;">
+    <i class="fa-solid fa-copy copy-btn" onclick="copyTable('summaryTable')" title="Copy Summary"></i>
+</div>
+
+<table id="summaryTable"></table>
+
+</div>
+
+<script>
+
+document.getElementById("fileInput").addEventListener("change", function(e){
+
+const file = e.target.files[0];
+if(!file) return;
+
+const reader = new FileReader();
+
+reader.onload = function(evt){
+
+const wb = XLSX.read(evt.target.result, {type:'binary'});
+const sheet = wb.Sheets[wb.SheetNames[0]];
+const data = XLSX.utils.sheet_to_json(sheet, {header:1});
+
+generatePivot(data);
+
+};
+
+reader.readAsBinaryString(file);
+
+});
+
+function generatePivot(data){
+
+const header = data[0];
+const rows = data.slice(1);
+
+// Fixed column indexes
+const BILL_NUMBER = 0; // Column A
+const LOCATION = 4;    // Column E
+const BILL_STATUS = 9; // Column J
+const NET_SALES = 29;  // Column AD
+const CITY = 5; // Column F
+
+let pivot = {};
+
+rows.forEach(r=>{
+
+const bill = r[BILL_NUMBER];
+let city = r[CITY];
+
+if(!city) return;
+
+// Normalize city
+city = city.trim();
+
+if(
+city.toLowerCase() === "navi mumbai" ||
+city.toLowerCase() === "thane"
+){
+city = "Mumbai";
+}
+let locationRaw = r[LOCATION];
+const status = r[BILL_STATUS];
+const sales = parseFloat(r[NET_SALES]) || 0;
+
+if(!bill || !city || !locationRaw || !status) return;
+
+// Clean location
+let location = locationRaw
+.replace("FNP - ","")
+.replace("(CFC)","")
+.trim();
+
+// ✅ Create city
+if(!pivot[city]){
+pivot[city] = {};
+}
+
+// ✅ Create location inside city
+if(!pivot[city][location]){
+pivot[city][location] = {
+Settled:{count:0,sum:0},
+Voided:{count:0,sum:0},
+totalCount:0,
+totalSum:0
+};
+}
+
+let p = pivot[city][location];
+
+if(status === "Settled"){
+p.Settled.count++;
+p.Settled.sum += sales;
+}
+
+if(status === "Voided"){
+p.Voided.count++;
+p.Voided.sum += sales;
+}
+
+p.totalCount++;
+p.totalSum += sales;
+
+});
+
+
+buildTable(pivot);
+buildSummaryTable(pivot);
+
+}
+
+function buildTable(pivot){
+
+let html = `
+<tr>
+<th rowspan="2">City</th>
+<th rowspan="2">Location Name</th>
+<th colspan="2">Settled</th>
+<th colspan="2">Voided</th>
+<th rowspan="2">Total Count</th>
+<th rowspan="2">Total Sum of Net Sales</th>
+</tr>
+
+<tr>
+<th>Count</th>
+<th>Sum</th>
+<th>Count</th>
+<th>Sum</th>
+</tr>
+`;
+
+let grand = {
+settledCount:0,
+settledSum:0,
+voidedCount:0,
+voidedSum:0,
+totalCount:0,
+totalSum:0
+};
+
+Object.keys(pivot).sort().forEach(city=>{
+
+Object.keys(pivot[city]).sort().forEach(location=>{
+
+let p = pivot[city][location];
+
+grand.settledCount += p.Settled.count;
+grand.settledSum += p.Settled.sum;
+grand.voidedCount += p.Voided.count;
+grand.voidedSum += p.Voided.sum;
+grand.totalCount += p.totalCount;
+grand.totalSum += p.totalSum;
+
+html += `
+<tr>
+<td>${city}</td>
+<td class="location">${location}</td>
+<td>${p.Settled.count}</td>
+<td>${p.Settled.sum.toFixed(2)}</td>
+<td>${p.Voided.count}</td>
+<td>${p.Voided.sum.toFixed(2)}</td>
+<td>${p.totalCount}</td>
+<td>${p.totalSum.toFixed(2)}</td>
+</tr>
+`;
+
+});
+
+});
+
+html += `
+<tr class="total-row">
+<td colspan="2">Grand Total</td>
+<td>${grand.settledCount}</td>
+<td>${grand.settledSum.toFixed(2)}</td>
+<td>${grand.voidedCount}</td>
+<td>${grand.voidedSum.toFixed(2)}</td>
+<td>${grand.totalCount}</td>
+<td>${grand.totalSum.toFixed(2)}</td>
+</tr>
+`;
+
+document.getElementById("pivotTable").innerHTML = html;
+}
+function buildSummaryTable(pivot){
+
+let html = `
+<tr>
+<th>City</th>
+<th>Location</th>
+<th>Complete</th>
+<th>Total</th>
+<th>Cancelled</th>
+</tr>
+`;
+
+Object.keys(pivot).forEach(city=>{
+
+Object.keys(pivot[city]).forEach(location=>{
+
+let p = pivot[city][location];
+
+let complete = p.Settled.count;
+let cancelled = p.Voided.count;
+let total = complete + cancelled;
+
+html += `
+<tr>
+<td>${city}</td>
+<td class="location">${location}</td>
+<td>${complete}</td>
+<td>${total}</td>
+<td>${cancelled}</td>
+</tr>
+`;
+
+});
+
+});
+
+document.getElementById("summaryTable").innerHTML = html;
+}
+function copyTable(tableId){
+
+const table = document.getElementById(tableId);
+let text = "";
+
+// Detect if pivot table
+if(tableId === "pivotTable"){
+
+text += "City\tLocation\tSettled Count\tSettled Sum\tVoided Count\tVoided Sum\tTotal Count\tTotal Net Sales\n";
+
+// skip first TWO header rows
+for(let i=2; i<table.rows.length; i++){
+
+let cells = table.rows[i].cells;
+
+let rowData = [
+cells[0]?.innerText,
+cells[1]?.innerText,
+cells[2]?.innerText,
+cells[3]?.innerText,
+cells[4]?.innerText,
+cells[5]?.innerText,
+cells[6]?.innerText,
+cells[7]?.innerText
+];
+
+text += rowData.join("\t") + "\n";
+}
+
+}else{
+
+// Summary table (already single header)
+for(let row of table.rows){
+
+let rowData = [];
+
+for(let cell of row.cells){
+rowData.push(cell.innerText);
+}
+
+text += rowData.join("\t") + "\n";
+}
+
+}
+
+navigator.clipboard.writeText(text);
+
+// toast
+const msg = document.createElement("div");
+msg.innerText = "Copied to Excel ✔";
+msg.style.position="fixed";
+msg.style.bottom="30px";
+msg.style.right="30px";
+msg.style.background="#111";
+msg.style.color="#fff";
+msg.style.padding="10px 18px";
+msg.style.borderRadius="8px";
+document.body.appendChild(msg);
+
+setTimeout(()=>msg.remove(),2000);
+}
+
+
+
+</script>
+
+</body>
+</html>

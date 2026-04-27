@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>InduZippee <> Amazon Manpower Report</title>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+<style>
+:root{
+    --primary-900:#003f8c;
+    --glass-bg:rgba(255,255,255,0.16);
+    --card-shadow:0 8px 30px rgba(0,0,0,0.25);
+}
+
+html,body{
+    margin:0;
+    padding:0;
+    font-family:"Segoe UI",Arial;
+}
+
+body{
+    background:url('Zippee.png') center/cover fixed no-repeat;
+}
+
+body::before{
+    content:"";
+    position:fixed;
+    inset:0;
+    background:rgba(255,255,255,.24);
+    backdrop-filter:blur(6px);
+    z-index:-1;
+}
+#manpowerTable td:first-child,
+#manpowerTable th:first-child {
+    text-align: left;
+    padding-left: 12px;
+}
+/* HEADER */
+.header{
+    background:linear-gradient(90deg,rgba(0,63,140,.85),rgba(0,89,179,.85));
+    color:white;
+    padding:18px 36px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+}
+
+.logo{ height:48px; }
+
+/* CARD */
+.card{
+    background:var(--glass-bg);
+    backdrop-filter:blur(10px) saturate(120%);
+    margin:30px auto;
+    max-width:1300px;
+    padding:30px;
+    border-radius:18px;
+    box-shadow:var(--card-shadow);
+}
+
+.title{
+    font-size:22px;
+    font-weight:700;
+    color:var(--primary-900);
+}
+
+/* CONTROLS */
+.controls{
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+    margin-top:12px;
+}
+
+.button{
+    background:linear-gradient(135deg,#0A66C2,#0078FF);
+    border:none;
+    border-radius:10px;
+    padding:10px 16px;
+    color:white;
+    cursor:pointer;
+    font-weight:700;
+}
+
+.whatsapp-button{
+    background:linear-gradient(135deg,#28C76F,#20A65A);
+}
+
+/* REPORT AREA */
+#reportContainer{
+    margin-top:20px;
+    overflow-x:auto;
+}
+
+#captureBox{
+    display:inline-block;
+    position:relative;
+}
+
+/* REPORT HEADER */
+.report-head{
+    text-align:center;
+    margin-bottom:8px;
+}
+
+.report-title{
+    font-size:18px;
+    font-weight:800;
+}
+
+.report-meta{
+    font-size:13px;
+}
+
+/* WATERMARK */
+.watermark{
+    position:absolute;
+    inset:0;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    pointer-events:none;
+    z-index:0;
+}
+
+.watermark span{
+    font-size:44px;
+    font-weight:900;
+    color:rgba(0,0,0,0.07);
+    transform:rotate(-25deg);
+    text-align:center;
+    line-height:1.2;
+}
+
+/* TABLE */
+table{
+    border-collapse:collapse;
+    background:white;
+    border-radius:12px;
+    box-shadow:0 8px 20px rgba(0,0,0,.12);
+    position:relative;
+    z-index:1;
+}
+
+th,td{
+    border:1px solid #ddd;
+    padding:6px 10px;
+    white-space:nowrap;
+    font-size:13px;
+    text-align:center;
+}
+
+td[contenteditable="true"]{
+    background:#fafafa;
+}
+
+.total-row{
+    font-weight:700;
+    background:#f2f2f2;
+}
+
+.report-footer{
+    display:flex;
+    justify-content:center;
+    margin:12px 0;
+    font-size:12px;
+    font-weight:700;
+}
+</style>
+</head>
+
+<body>
+
+<div class="header">
+    <h1>Zippee – Amazon Manpower Report</h1>
+    <img class="logo" src="https://i.imgur.com/7yUVE8U.png">
+</div>
+
+<div class="card">
+
+<div class="controls">
+    <select id="shiftSelect">
+        <option>Morning Shift</option>
+        <option>Afternoon Shift</option>
+        <option>Evening Shift</option>
+        <option>Night Shift</option>
+    </select>
+    <button class="button" onclick="downloadImage()">Download Image</button>
+</div>
+
+<div id="reportContainer">
+<div id="captureBox">
+
+<div class="report-head">
+    <div class="report-title">Zippee <> Amazon Manpower Report</div>
+    <div class="report-meta">
+        Date: <span id="date"></span>
+    </div>
+</div>
+
+<div class="watermark">
+    <span>Zippee<br>Amazon Ops</span>
+</div>
+
+<table id="manpowerTable">
+<thead>
+<tr>
+<th>Warehouse</th>
+<th>Supervisor</th>
+<th>Team Leader</th>
+<th>Inventory Controller</th>
+<th>Associate</th>
+</tr>
+</thead>
+
+<tbody id="tableBody"></tbody>
+
+<tr class="total-row">
+<td>Total</td>
+<td id="t1">0</td>
+<td id="t2">0</td>
+<td id="t3">0</td>
+<td id="t4">0</td>
+</tr>
+</table>
+
+<div class="report-footer">
+Powered by SASA Automation | Zippee
+</div>
+
+</div>
+</div>
+
+</div>
+
+<script>
+// Date
+document.getElementById("date").innerText =
+new Date().toLocaleDateString("en-GB");
+
+// Generate 11 warehouse rows
+let body = document.getElementById("tableBody");
+let warehouses = [
+    "QDA9 - Arabian Center",
+    "QDB1 - Festival Plaza",
+    "QDE3 - Business Bay (Manara)",
+    "QDD8 - Al Raffa",
+    "QDB9 - Festival City",
+    "QDD2 - Al Furjan",
+    "QDD4 - Jabel Ali (Concord)",
+    "QDE6 - Marina",
+    "QDF8 - Jadaf",
+    "ODF9 - Barsha Height"
+];
+
+warehouses.forEach(wh => {
+    let row = `
+    <tr>
+        <td>${wh}</td>
+        <td contenteditable="true"></td>
+        <td contenteditable="true"></td>
+        <td contenteditable="true"></td>
+        <td contenteditable="true"></td>
+    </tr>`;
+    body.innerHTML += row;
+});
+
+// Auto totals
+document.addEventListener("input", function(){
+    let rows = document.querySelectorAll("#tableBody tr");
+    let s=0,t=0,i=0,a=0;
+    rows.forEach(r=>{
+        s+=parseInt(r.cells[1].innerText)||0;
+        t+=parseInt(r.cells[2].innerText)||0;
+        i+=parseInt(r.cells[3].innerText)||0;
+        a+=parseInt(r.cells[4].innerText)||0;
+    });
+    document.getElementById("t1").innerText=s;
+    document.getElementById("t2").innerText=t;
+    document.getElementById("t3").innerText=i;
+    document.getElementById("t4").innerText=a;
+});
+
+// Download
+function downloadImage(){
+    html2canvas(document.querySelector("#captureBox")).then(canvas=>{
+        let link=document.createElement("a");
+        link.download="Zippee_Amazon_Manpower_Report.png";
+        link.href=canvas.toDataURL();
+        link.click();
+    });
+}
+</script>
+<script>
+/* ------------- SCREENSHOT / COPY DETERRENCE -------------- */
+
+/* Temporary Blur Overlay */
+function temporarilyBlur() {
+    const overlay = document.createElement("div");
+    overlay.style.position = "fixed";
+    overlay.style.inset = "0";
+    overlay.style.backdropFilter = "blur(18px)";
+    overlay.style.background = "rgba(255,255,255,0.25)";
+    overlay.style.zIndex = "999999";
+    overlay.style.pointerEvents = "none";
+    document.body.appendChild(overlay);
+    setTimeout(()=> overlay.remove(), 1400);
+}
+
+/* Windows Snipping Tool (Win + Shift + S fallback detection) */
+document.addEventListener("keydown", function(e){
+    if (e.shiftKey && e.metaKey) {
+        temporarilyBlur();
+    }
+
+    if (e.shiftKey && e.key.toLowerCase() === "s") {
+        temporarilyBlur();
+    }
+});
+
+/* Mac Screenshot */
+document.addEventListener("keydown", function(e){
+    if (e.metaKey && e.shiftKey && (e.key === "3" || e.key === "4")) {
+        e.preventDefault();
+        temporarilyBlur();
+        alert("Mac screenshot shortcut blocked.");
+    }
+});
+
+/* Disable right-click, select, copy */
+document.addEventListener("contextmenu", e => e.preventDefault());
+document.addEventListener("selectstart", e => e.preventDefault());
+document.addEventListener("copy", e => {
+    e.preventDefault();
+    alert("Copying is disabled on this page.");
+});
+
+/* ------------- ANTI-INSPECT / DEVTOOLS -------------- */
+
+/* Detect DevTools */
+setInterval(function () {
+  const threshold = 160;
+  if (
+    window.outerWidth - window.innerWidth > threshold ||
+    window.outerHeight - window.innerHeight > threshold
+  ) {
+    document.body.innerHTML =
+      "<h2 style='text-align:center;margin-top:40px;'>Dev Tools are not allowed 🚫</h2>";
+  }
+}, 500);
+
+/* Block Inspect Keys */
+document.addEventListener("keydown", function(e){
+
+  // F12
+  if (e.keyCode === 123) e.preventDefault();
+
+  // Ctrl + Shift + I / J / C
+  if (e.ctrlKey && e.shiftKey &&
+     ['I','J','C','i','j','c'].includes(e.key)) {
+      e.preventDefault();
+  }
+
+  // Ctrl + U
+  if (e.ctrlKey && ['U','u'].includes(e.key)) {
+      e.preventDefault();
+  }
+
+  // Block any Ctrl + Shift combo
+  if (e.ctrlKey && e.shiftKey) e.preventDefault();
+});
+</script>
+</body>
+
+</html>

@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>SASA – Location Status Pivot</title>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+<style>
+:root{
+    --zippee-primary:#00305E;
+    --text-dark:#1d2a38;
+    --card-bg:rgba(255,255,255,.15);
+}
+
+body{
+    margin:0;
+    font-family:"Segoe UI",sans-serif;
+    background:url('Zippee.png') no-repeat center/cover;
+    min-height:100vh;
+}
+
+/* HEADER */
+.header-main{
+    background:rgba(0,48,94,.9);
+    color:white;
+    position:fixed;
+    top:0;
+    width:100%;
+    padding:12px 10px;
+    text-align:center;
+    z-index:10;
+}
+
+/* CARD */
+.container{
+    margin:120px auto 40px auto;
+    width:92%;
+    max-width:1100px;
+    padding:24px;
+    border-radius:18px;
+    background:var(--card-bg);
+    backdrop-filter:blur(12px);
+    box-shadow:0 8px 30px rgba(0,0,0,.25);
+}
+
+/* BUTTONS */
+button{
+    padding:8px 14px;
+    border-radius:8px;
+    border:none;
+    background:#00305E;
+    color:white;
+    cursor:pointer;
+    font-weight:600;
+}
+button:hover{background:#0054a3}
+
+/* TABLE WRAPPER */
+.table-wrapper{
+    margin-top:10px;
+    background:white;
+    border-radius:14px;
+    padding:14px;
+    box-shadow:0 6px 22px rgba(0,0,0,.18);
+}
+
+/* TABLE */
+table{
+    border-collapse:separate;
+    border-spacing:0;
+    width:100%;
+    font-size:14px;
+}
+
+/* HEADER */
+thead{
+    background:linear-gradient(135deg,#003f84,#0078d7);
+    color:white;
+}
+th{
+    padding:8px 10px;
+    text-align:center;
+}
+
+/* ROW STRIPES + HOVER */
+tbody tr:nth-child(even){background:#f6f7fb}
+tbody tr:hover{background:#e9f1ff}
+
+td{
+    padding:7px 9px;
+    text-align:right;
+}
+td:first-child{ text-align:left; font-weight:600 }
+
+/* STATUS COLORS */
+.status-assigned{color:#0a5bff;font-weight:700}
+.status-hold{color:#d98200;font-weight:700}
+.status-pending{color:#d40000;font-weight:700}
+.status-printed{color:#138a19;font-weight:700}
+
+tfoot{
+    background:#eef2f8;
+    font-weight:800;
+}
+
+/* DISCLAIMER ROW IN TABLE */
+.disclaimer-row{
+    background:#fff7d6;
+    font-weight:600;
+    color:#4a3b00;
+    text-align:center !important;
+}
+
+/* LOADER */
+.loader-screen{
+    position:fixed;
+    inset:0;
+    background:#001c38;
+    color:white;
+    display:none;
+    flex-direction:column;
+    justify-content:center;
+    align-items:center;
+    z-index:999;
+    font-size:18px;
+}
+.dots::after{
+    content:"";
+    animation:dots 1.4s steps(4,end) infinite;
+}
+@keyframes dots{
+    0%{content:"."}
+    33%{content:".."}
+    66%{content:"..."}
+}
+</style>
+</head>
+
+<body>
+
+<div class="header-main">
+    <h2>SASA – by Harshit Saini</h2>
+</div>
+
+<div class="loader-screen" id="loader">
+    <img src="SASA.png" height="120"><br>
+    SASA is loading your analytics<span class="dots"></span>
+</div>
+
+<div class="container">
+
+    <h2 style="text-align:center;margin-top:0">
+        📝 Process Pendancy Report
+    </h2>
+
+    <div style="text-align:center;">
+        📂 Upload CSV File :
+        <input type="file" id="fileInput">
+        <br><br>
+        <button onclick="downloadImage()">📥 Download Table as Image</button>
+    </div>
+
+    <div id="output" class="table-wrapper"></div>
+
+</div>
+
+<script>
+document.getElementById("fileInput").addEventListener("change", function(e){
+
+document.getElementById("loader").style.display="flex";
+
+Papa.parse(e.target.files[0], {
+header: true,
+skipEmptyLines: true,
+complete: function(result){
+
+const data = result.data;
+
+const rowField = "Aggregator Location";
+const columnField = "Order Status";
+const valueField = "Reference Code";
+
+const locations = [
+"Andheri","BLR Kalyan Nagar","Chennai",
+"Koregaon Park","Manikonda","Okhla",
+"TOPSIA | KOLKATA"
+];
+
+const statuses = ["Assigned","On Hold","Pending","Printed"];
+
+const pivot = {};
+locations.forEach(loc=>{
+pivot[loc]={};
+statuses.forEach(s=>pivot[loc][s]=0);
+pivot[loc].RowTotal=0;
+});
+
+let grand={Assigned:0,"On Hold":0,Pending:0,Printed:0,All:0};
+
+data.forEach(r=>{
+const loc=r[rowField];
+const st=r[columnField];
+const ref=r[valueField];
+
+if(!locations.includes(loc)) return;
+if(!statuses.includes(st)) return;
+if(!ref) return;
+
+pivot[loc][st]++;
+pivot[loc].RowTotal++;
+grand[st]++;
+grand.All++;
+});
+
+// build table including disclaimer row INSIDE table
+let html=`<table>
+<thead>
+<tr>
+<th>Aggregator Location</th>
+<th>Assigned</th>
+<th>On Hold</th>
+<th>Pending</th>
+<th>Printed</th>
+<th>Grand Total</th>
+</tr>
+</thead><tbody>`;
+
+locations.forEach(loc=>{
+html+=`
+<tr>
+<td>${loc}</td>
+<td class='status-assigned'>${pivot[loc]["Assigned"]}</td>
+<td class='status-hold'>${pivot[loc]["On Hold"]}</td>
+<td class='status-pending'>${pivot[loc]["Pending"]}</td>
+<td class='status-printed'>${pivot[loc]["Printed"]}</td>
+<td><b>${pivot[loc].RowTotal}</b></td>
+</tr>`;
+});
+
+html+=`</tbody>
+<tfoot>
+<tr>
+<td>Grand Total</td>
+<td>${grand["Assigned"]}</td>
+<td>${grand["On Hold"]}</td>
+<td>${grand["Pending"]}</td>
+<td>${grand["Printed"]}</td>
+<td>${grand["All"]}</td>
+</tr>
+
+<tr>
+<td colspan="6" class="disclaimer-row">
+This report is generated automatically using <b>SASA</b> by <b>Harshit Saini (Control Tower)</b>
+</td>
+</tr>
+
+</tfoot>
+</table>`;
+
+document.getElementById("output").innerHTML=html;
+document.getElementById("loader").style.display="none";
+}
+});
+});
+
+/* DOWNLOAD IMAGE */
+function downloadImage(){
+const element=document.getElementById("output");
+html2canvas(element,{scale:2}).then(canvas=>{
+const link=document.createElement("a");
+link.download="process_pendancy_report.png";
+link.href=canvas.toDataURL();
+link.click();
+});
+}
+</script>
+
+</body>
+</html>

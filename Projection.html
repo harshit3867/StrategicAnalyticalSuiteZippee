@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Flipkart – Projection & Expected Orders Dashboard</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+
+<style>
+  body{
+    font-family:"Segoe UI",Arial;
+    background:#ffffff;
+    color:#000000;
+    margin:0;
+    padding:0;
+  }
+
+  /* ====== SASA LOADING SCREEN ====== */
+  #sasaLoader{
+    position:fixed;
+    inset:0;
+    background:#001c38;
+    color:white;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    flex-direction:column;
+    z-index:9999;
+  }
+
+  #sasaLoader img{
+    height:120px;
+    margin-bottom:8px;
+  }
+
+  .dots::after{
+    content:"";
+    animation:dots 1.4s steps(4,end) infinite;
+  }
+
+  @keyframes dots{
+    0%{content:"."}
+    33%{content:".."}
+    66%{content:"..."}
+  }
+
+  /* ====== existing styles (unchanged) ====== */
+  .wrapper{
+    max-width:1200px;
+    margin:auto;
+    padding:30px 30px 60px 30px;
+  }
+
+  .page-title{font-size:26px;font-weight:800;margin-bottom:6px;}
+  .subtitle{margin-bottom:20px;}
+
+  .card{
+    background:#ffffff;
+    border:1px solid #d4d4d8;
+    border-radius:18px;
+    padding:24px 28px;
+    margin-top:22px;
+    box-shadow:0 10px 25px rgba(0,0,0,.08);
+    position:relative;
+  }
+
+  .watermark{
+    position:absolute;
+    top:50%;left:50%;
+    transform:translate(-50%,-50%) rotate(-20deg);
+    font-size:90px;
+    font-weight:900;
+    color:rgba(0,0,0,0.05);
+    pointer-events:none;
+  }
+
+  .canvas-box{
+    width:100%;
+    height:420px;
+  }
+</style>
+</head>
+
+<body>
+
+<!-- ⭐ SASA Loading Screen ⭐ -->
+<div id="sasaLoader">
+  <img src="SASA.png" alt="SASA">
+  <div style="font-size:18px;font-weight:700">
+    SASA is loading your analytics<span class="dots"></span>
+  </div>
+</div>
+
+<div class="wrapper">
+
+  <div class="page-title">📊 Flipkart – Order Projection Dashboard</div>
+  <div class="subtitle">Projection and expected achievement views</div>
+
+  <div class="card">
+    <div class="watermark">Harshit Saini</div>
+    <h3>Projected Orders – <b>100% Target</b></h3>
+    <div class="canvas-box"><canvas id="chart100"></canvas></div>
+  </div>
+
+  <div class="card">
+    <div class="watermark">Harshit Saini</div>
+    <h3>Expected Orders – <b>80% of Projection</b></h3>
+    <div class="canvas-box"><canvas id="chart80"></canvas></div>
+  </div>
+
+  <div class="card">
+    <div class="watermark">Harshit Saini</div>
+    <h3>Expected Orders – <b>90% of Projection</b></h3>
+    <div class="canvas-box"><canvas id="chart90"></canvas></div>
+  </div>
+
+</div>
+
+<script>
+Chart.register(ChartDataLabels);
+
+// ✅ Google Sheet CSV link (unchanged)
+const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRdsDkUWqMmiNRYZyR6ijd83gN_sNFbyf3MMVqc4E9WALVUiJix9tfI2oQLqwJE-WAQez_62dA0wJlv/pub?gid=0&single=true&output=csv";
+
+function parseCSV(text){
+  const rows = text.trim().split("\n").map(r=>r.split(","));
+  rows.shift(); 
+
+  const labels = rows.map((r,i)=>"Jan "+(i+1));
+
+  return {
+    labels,
+    moradabad: rows.map(r=>+r[1]),
+    allahabad: rows.map(r=>+r[2]),
+    surat: rows.map(r=>+r[3]),
+    siliguri: rows.map(r=>+r[4])
+  };
+}
+
+function calcPct(arr,p){return arr.map(v=>Math.round(v*p));}
+
+function drawChart(id,labels,d1,d2,d3,d4){
+  new Chart(document.getElementById(id),{
+    type:"line",
+    data:{
+      labels,
+      datasets:[
+        {label:"Moradabad FFC",data:d1,borderWidth:3,tension:.35,pointRadius:2},
+        {label:"Allahabad FFC",data:d2,borderWidth:3,tension:.35,pointRadius:2},
+        {label:"Surat FFC",data:d3,borderWidth:3,tension:.35,pointRadius:2},
+        {label:"Siliguri FFC",data:d4,borderWidth:3,tension:.35,pointRadius:2}
+      ]
+    },
+    options:{
+      maintainAspectRatio:false,
+      plugins:{
+        legend:{labels:{color:"black"}},
+        datalabels:{color:"black",align:"top",anchor:"end"}
+      },
+      scales:{
+        x:{ticks:{color:"black"}},
+        y:{ticks:{color:"black"}}
+      }
+    }
+  });
+}
+
+/* ⭐ FETCH + SHOW LOADER ⭐ */
+fetch(SHEET_CSV_URL)
+.then(r=>r.text())
+.then(csv=>{
+  const {labels,moradabad,allahabad,surat,siliguri}=parseCSV(csv);
+
+  const m80=calcPct(moradabad,.8), a80=calcPct(allahabad,.8), s80=calcPct(surat,.8), si80=calcPct(siliguri,.8);
+  const m90=calcPct(moradabad,.9), a90=calcPct(allahabad,.9), s90=calcPct(surat,.9), si90=calcPct(siliguri,.9);
+
+  drawChart("chart100",labels,moradabad,allahabad,surat,siliguri);
+  drawChart("chart80",labels,m80,a80,s80,si80);
+  drawChart("chart90",labels,m90,a90,s90,si90);
+
+  // ✅ hide loader only after charts rendered
+  document.getElementById("sasaLoader").style.display="none";
+})
+.catch(err=>{
+  document.getElementById("sasaLoader").innerHTML =
+    "<b>❌ Failed to load data from Google Sheet</b><br><br>Please check internet or sheet access.";
+  console.error(err);
+});
+</script>
+
+<script>
+// ============ ANTI-INSPECT + NO DEVTOOLS ============
+
+// Detect DevTools by window resize gap
+setInterval(function () {
+  const threshold = 160;
+  if (
+    window.outerWidth - window.innerWidth > threshold ||
+    window.outerHeight - window.innerHeight > threshold
+  ) {
+    document.body.innerHTML =
+      "<h2 style='text-align:center;margin-top:40px;'>Dev Tools are not allowed 🚫</h2>";
+  }
+}, 500);
+
+// Disable right-click everywhere
+document.addEventListener("contextmenu", function(e){
+  e.preventDefault();
+});
+
+// Block common inspect keys
+document.addEventListener("keydown", function(e){
+
+  // F12
+  if (e.keyCode === 123) e.preventDefault();
+
+  // Ctrl + Shift + I / J / C
+  if (e.ctrlKey && e.shiftKey &&
+     ['I','J','C','i','j','c'].includes(e.key)) {
+      e.preventDefault();
+  }
+
+  // Ctrl + U (View Source)
+  if (e.ctrlKey && ['U','u'].includes(e.key)) {
+      e.preventDefault();
+  }
+
+  // Block any Ctrl+Shift combination
+  if (e.ctrlKey && e.shiftKey) e.preventDefault();
+});
+</script>
+
+<script>
+// ============ ANTI-INSPECT + NO DEVTOOLS ============
+
+// Detect DevTools by window resize gap
+setInterval(function () {
+  const threshold = 160;
+  if (
+    window.outerWidth - window.innerWidth > threshold ||
+    window.outerHeight - window.innerHeight > threshold
+  ) {
+    document.body.innerHTML =
+      "<h2 style='text-align:center;margin-top:40px;'>Dev Tools are not allowed 🚫</h2>";
+  }
+}, 500);
+
+// Disable right-click everywhere
+document.addEventListener("contextmenu", function(e){
+  e.preventDefault();
+});
+
+// Block common inspect keys
+document.addEventListener("keydown", function(e){
+
+  // F12
+  if (e.keyCode === 123) e.preventDefault();
+
+  // Ctrl + Shift + I / J / C
+  if (e.ctrlKey && e.shiftKey &&
+     ['I','J','C','i','j','c'].includes(e.key)) {
+      e.preventDefault();
+  }
+
+  // Ctrl + U (View Source)
+  if (e.ctrlKey && ['U','u'].includes(e.key)) {
+      e.preventDefault();
+  }
+
+  // Block any Ctrl+Shift combination
+  if (e.ctrlKey && e.shiftKey) e.preventDefault();
+});
+</script>
+
+
+  
+</body>
+</html>
+
+

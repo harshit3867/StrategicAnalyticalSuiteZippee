@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Zippee – Last Mile EOD Report</title>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+<style>
+/* === FULL BACKGROUND IMAGE + SOFT BLUR OVERLAY === */
+:root{
+    --primary-900: #003f8c;
+    --primary-700: #0059b3;
+    --glass-bg: rgba(255,255,255,0.16);
+    --card-shadow: 0 8px 30px rgba(0,0,0,0.25);
+}
+
+html,body{
+    height:100%;
+    margin:0;
+    padding:0;
+    font-family: "Segoe UI", Arial, sans-serif;
+    -webkit-font-smoothing:antialiased;
+    -moz-osx-font-smoothing:grayscale;
+}
+
+body{
+    background: url('Zippee.png') no-repeat center center/cover;
+    background-attachment: fixed;
+    min-height:100vh;
+}
+
+/* overlay blur for readability */
+body::before{
+    content:"";
+    position:fixed;
+    inset:0;
+    background: rgba(255,255,255,0.24); /* lighten image for contrast */
+    backdrop-filter: blur(6px);
+    z-index:-1;
+}
+
+/* === Transparent premium header === */
+.header {
+    background: linear-gradient(90deg, rgba(0,63,140,0.85), rgba(0,89,179,0.85));
+    backdrop-filter: blur(4px);
+    padding: 18px 36px;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.25);
+    position: sticky;
+    top: 0;
+    z-index: 30;
+}
+
+.header h1 { margin: 0; font-size: 26px; font-weight: 700; letter-spacing: .2px; }
+.logo { height: 48px; }
+
+/* === GLASS CARD === */
+.card {
+    background: var(--glass-bg);
+    backdrop-filter: blur(10px) saturate(120%);
+    margin: 40px auto;
+    width: 92%;
+    max-width: 1300px;
+    padding: 32px 36px 120px 36px;
+    border-radius: 18px;
+    box-shadow: var(--card-shadow);
+    position: relative;
+    overflow: visible;
+}
+
+/* Watermark stays but softened and subtle */
+.card::before {
+    content: "Report by Harshit Saini";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) rotate(-30deg);
+    font-size: 48px;
+    color: rgba(0,0,0,0.06);
+    white-space: nowrap;
+    pointer-events: none;
+    z-index: 0;
+}
+
+/* Title & controls */
+.title {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--primary-900);
+    margin-bottom: 18px;
+    z-index: 2;
+    position: relative;
+}
+.controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    z-index: 2;
+    position: relative;
+}
+
+input[type="file"] {
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1px solid rgba(0,0,0,0.08);
+    font-size: 14px;
+    cursor: pointer;
+    background: rgba(255,255,255,0.85);
+}
+
+/* === PREMIUM BUTTON STYLE (consistent with dashboard) === */
+.button {
+    background: linear-gradient(135deg, #0A66C2, #0078FF);
+    color: white;
+    padding: 10px 18px;
+    border-radius: 10px;
+    border: none;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform .18s ease, box-shadow .18s ease;
+    box-shadow: 0 6px 16px rgba(0,0,0,0.18);
+}
+.button:hover{ transform: translateY(-3px); box-shadow: 0 10px 26px rgba(0,0,0,0.22); }
+.button:active{ transform: translateY(1px); }
+
+.whatsapp-button{
+    background: linear-gradient(135deg, #28C76F, #20A65A);
+    box-shadow: 0 6px 16px rgba(32,166,90,0.18);
+}
+
+/* message area */
+#message { margin-top:12px; color: #cf2d2d; font-weight:600; z-index:2; position:relative; }
+
+/* REPORT TABLE container (keeps white table for readability) */
+#reportContainer {
+    margin-top: 25px;
+    display: none;
+    overflow-x: auto;
+    padding: 0;
+    max-width: 100%;
+    width: max-content;
+    z-index: 2;
+    position: relative;
+}
+
+table {
+    border-collapse: collapse;
+    background: white;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.12);
+    font-size: 13px;
+    width: max-content;
+    min-width: 100%;
+    color: #111;
+}
+
+/* table header and body */
+th {
+    background: #e6e9ec;
+    color: #111;
+    padding: 6px 8px;
+    border: 1px solid #cfcfcf;
+    text-align: center;
+    font-weight: 700;
+    white-space: nowrap;
+    font-size: 12px;
+}
+
+td {
+    padding: 6px 8px;
+    background: #fff;
+    border: 1px solid #e6e6e6;
+    text-align: center;
+    white-space: nowrap;
+    color: #111;
+    font-weight: 600;
+}
+
+/* first sticky column */
+table th:nth-child(1),
+table td:nth-child(1) {
+    width: 220px;
+    min-width: 220px;
+    text-align: left;
+    background: #fbfbfb;
+    position: sticky;
+    left: 0;
+    z-index: 11;
+    padding-left: 14px;
+}
+
+/* styles carried from your original */
+.city-header, .manager-header { background: #bbbbbb; color: black; font-weight: 700; }
+.key-param-row td { background: #e6f2ff; color: black; font-weight: 500; }
+.key-param-row:nth-child(even) td { background: #d9ecff; color: black; font-weight: 500; }
+.delivery-percent { font-weight: 700; color: black !important; }
+.delivery-percent.pass { background-color: #a8e6a8; }
+.delivery-percent.fail { background-color: #ff9999; }
+.delivery-percent.warning { background-color: #ffda7f; }
+.sub-attempt-title { background: #999999; color: black !important; text-align: left; font-weight: 700; padding-left: 10px; }
+
+#finalReportTable tr:nth-child(n+13) td:first-child { font-weight: 700; background: #e6f2ff; }
+
+/* Footer Links (inside card) */
+.report-footer-links {
+    position: absolute;
+    bottom: 45px;
+    right: 18px;
+    font-size: 13px;
+    color: var(--primary-900);
+    z-index: 3;
+    text-align: right;
+}
+.report-footer-links a { color: var(--primary-900); text-decoration: none; margin-left: 10px; }
+.report-footer-links a:hover { text-decoration: underline; }
+
+/* Project Credit badge */
+.project-credit {
+    position: absolute;
+    bottom: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: linear-gradient(90deg, rgba(255,255,255,0.85), rgba(255,255,255,0.88));
+    padding: 8px 18px;
+    border-radius: 14px;
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--primary-900);
+    text-align: center;
+    z-index: 3;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+}
+.project-credit span.name { font-weight: 800; color: var(--primary-900); font-size: 14px; }
+.project-credit span.position { font-weight: 700; color: #ff6600; font-size: 13px; }
+
+/* Responsive tweaks */
+@media (max-width:880px){
+    .card{ padding: 22px 18px 110px 18px; }
+    .header h1{ font-size: 20px; }
+    .logo{ height:40px; }
+    input[type="file"]{ width:100%; }
+    .controls{ flex-direction: column; align-items: stretch; gap:8px; }
+    .button{ min-width: 100%; }
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+    <h1>Zippee – Last Mile EOD Report</h1>
+    <img class="logo" src="https://i.imgur.com/7yUVE8U.png" alt="Zippee Logo">
+</div>
+
+<div class="card">
+    <div class="title">Upload LM.xlsx to Generate Report</div>
+
+    <div class="controls">
+        <input type="file" id="excelFile" accept=".xlsx,.xls" />
+        <button class="button" onclick="generateReport()">Generate Report</button>
+        <button class="button" onclick="downloadImage()">Download as Image</button>
+        <button class="button whatsapp-button" onclick="shareWhatsApp()">Share on WhatsApp 💬</button>
+    </div>
+
+    <p id="message" style="color: red; margin-top: 15px;"></p>
+
+    <div id="reportContainer">
+        <table id="finalReportTable"></table>
+    </div>
+
+    <!-- Footer Links -->
+    <div class="report-footer-links">
+        <a href="https://www.linkedin.com/in/harshit-saini1/" target="_blank" rel="noopener">LinkedIn</a> |
+        <a href="https://harshit3867.github.io/" target="_blank" rel="noopener">Portfolio</a>
+    </div>
+
+    <!-- Project Credit -->
+    <div class="project-credit">
+        <span class="name">Harshit Saini</span> &nbsp; - &nbsp;
+        <span class="position">Data Analyst</span>, Control Tower Team, Zippee
+    </div>
+</div>
+
+<script>
+// --- Global Variables ---
+let globalCitiesData = {};
+let globalCities = [];
+
+const SUB_PARAMETERS = [
+    "Delivered", "Delivery_Update", "Expected", "Out_For_Delivery",
+    "Partial_Delivery_Update", "Partially_Delivered", "Undelivered_Heavy_Rain",
+    "Undelivered_HeavyLoad", "Undelivered_No_Response", "Undelivered_NonServiceablePincode",
+    "Undelivered_Not_Attended", "Undelivered_Order_Rejected_By_Customer",
+    "Undelivered_Request_For_Reschedule", "Undelivered_SameStateMisroute",
+    "Undelivered_Security_Instability", "Untraceable"
+];
+
+const HUB_MAP = {
+    "MOR_F_FFC_SM": { city: "Moradabad", manager: "Sanjay", shortHub: "MOR_F_FFC_SM" },
+    "FKL_mrd_npr_3pl_g_02_Grocery": { city: "Moradabad", manager: "Sanjay", shortHub: "MOR_F_FFC_SM" },
+    "ALB_F_FFC_SM": { city: "Prayagraj", manager: "Vijay", shortHub: "ALB_F_FFC_SM" },
+    "SLG_F_FFC_SM": { city: "Siliguri", manager: "Tanmoy", shortHub: "SLG_F_FFC_SM" },
+    "STR_F_FFC_SM": { city: "Surat", manager: "Shubham", shortHub: "STR_F_FFC_SM" },
+};
+
+// --- Helper Functions ---
+function mapHubData(hub) {
+    const defaultHub = { city: String(hub).trim(), manager: "Unknown", shortHub: String(hub).trim() };
+    const cleanedHub = String(hub).trim();
+    return HUB_MAP[cleanedHub] || defaultHub;
+}
+function cleanHeader(h) { return String(h).trim().replace(/[\r\n]+/g, "").replace(/\s/g, ''); }
+function getStatusColor(percentage) { if (percentage >= 95) return "pass"; if (percentage >= 70) return "warning"; return "fail"; }
+function formatPercentage(value) { if (isNaN(value) || !isFinite(value)) return "0.00%"; return `${(value * 100).toFixed(2)}%`; }
+
+// --- Main Report Generation Function ---
+function generateReport() {
+    document.getElementById("message").textContent = "";
+    const file = document.getElementById("excelFile").files[0];
+    if (!file) {
+        document.getElementById("message").textContent = "Please upload an Excel file first.";
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            document.getElementById("message").textContent = "Processing data...";
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: "array" });
+            const sheet = workbook.Sheets[workbook.SheetNames[0]];
+            let json = XLSX.utils.sheet_to_json(sheet, { defval: "" });
+
+            if (json.length === 0) {
+                document.getElementById("message").textContent = "Error: Empty sheet!";
+                return;
+            }
+
+            const cleanedJson = json.map(row => {
+                let newRow = {};
+                Object.keys(row).forEach(k => { newRow[cleanHeader(k)] = row[k]; });
+                return newRow;
+            });
+
+            const statusCol = Object.keys(cleanedJson[0]).find(h => h.toLowerCase().includes("status"));
+            const hubCol = Object.keys(cleanedJson[0]).find(h => h.toLowerCase().includes("deliveryhub"));
+
+            if (!statusCol || !hubCol) {
+                document.getElementById("message").textContent = "Error: 'Status' or 'DeliveryHub' column not found in the Excel file.";
+                return;
+            }
+
+            const citiesData = {};
+
+            cleanedJson.forEach(row => {
+                const hubName = String(row[hubCol]).trim();
+                if (!hubName) return;
+
+                const hubInfo = mapHubData(hubName);
+                const city = hubInfo.city;
+                const status = String(row[statusCol]).trim();
+                const shortHub = hubInfo.shortHub;
+
+                if (!citiesData[city]) {
+                    citiesData[city] = {
+                        manager: hubInfo.manager,
+                        shortHub: shortHub,
+                        totalShipments: 0,
+                        delivered: 0,
+                        shipmentOrders: 0,
+                        reattempt: 0,
+                        partialReturnToOrigin: 0,
+                        customerDependencyBreach: 0,
+                        returnToOrigin: 0,
+                        pivotCounts: {}
+                    };
+                    SUB_PARAMETERS.forEach(p => citiesData[city].pivotCounts[p] = 0);
+                }
+
+                const cityData = citiesData[city];
+                cityData.totalShipments++;
+
+                if (SUB_PARAMETERS.includes(status)) {
+                    cityData.pivotCounts[status]++;
+                }
+
+                if (status === "Delivered") {
+                    cityData.delivered++;
+                    cityData.shipmentOrders++;
+                } else if (status === "Partial_Delivery_Update" || status === "Partially_Delivered") {
+                    cityData.delivered++;
+                    cityData.shipmentOrders++;
+                } else if (status === "Delivery_Update") {
+                    cityData.reattempt++;
+                } else if (status.startsWith("Undelivered_")) {
+                    cityData.shipmentOrders++;
+
+                    if (status.includes("Order_Rejected_By_Customer")) {
+                        cityData.customerDependencyBreach++;
+                    } else if (status.includes("SameStateMisroute")) {
+                        cityData.partialReturnToOrigin++;
+                    } else {
+                        cityData.returnToOrigin++;
+                    }
+                }
+            });
+
+            // Calculations
+            const cities = Object.keys(citiesData).sort();
+            cities.forEach(city => {
+                const data = citiesData[city];
+
+                const deliveryBase = data.shipmentOrders;
+                data.deliveryPercent = deliveryBase > 0 ? (data.delivered / deliveryBase) : 0;
+
+                const totalAttempts = data.totalShipments;
+                data.reattemptPercent = totalAttempts > 0 ? (data.reattempt / totalAttempts) : 0;
+
+                const RTO_PRTO_Base = data.shipmentOrders;
+                data.prtoPercent = RTO_PRTO_Base > 0 ? (data.partialReturnToOrigin / RTO_PRTO_Base) : 0;
+                data.rtoPercent = RTO_PRTO_Base > 0 ? (data.returnToOrigin / RTO_PRTO_Base) : 0;
+
+                data.cdBreachPercent = data.totalShipments > 0 ? (data.customerDependencyBreach / data.totalShipments) : 0;
+            });
+
+            globalCitiesData = citiesData;
+            globalCities = cities;
+
+            // Build HTML table
+            let html = "";
+
+            html += "<tr><th colspan='1'>Zippee – Last Mile EOD Report</th>";
+            cities.forEach(city => {
+                const manager = citiesData[city].manager;
+                html += `<th class='manager-header' colspan='1'>${manager}</th>`;
+            });
+            html += "</tr>";
+
+            html += "<tr><th>Key Parameters</th>";
+            cities.forEach(city => {
+                html += `<th class='city-header'>${city}</th>`;
+            });
+            html += "</tr>";
+
+            const REPORT_ROWS = [
+                [1, "Total Shipments", "totalShipments", false],
+                [2, "Shipment Orders", "shipmentOrders", false],
+                [3, "Delivery % (KPI >95%)", "deliveryPercent", true],
+                [4, "Re-Attempt (RA)", "reattempt", false],
+                [5, "Re-Attempt %", "reattemptPercent", true],
+                [6, "Partially Return to Origin (PRTO)", "partialReturnToOrigin", false],
+                [7, "Partial Return to Origin %", "prtoPercent", true],
+                [8, "Return to Origin", "returnToOrigin", false],
+                [9, "Return to Origin %", "rtoPercent", true],
+                [10, "Customer Dependency Breach (CD Breach)", "customerDependencyBreach", false],
+                [11, "Customer Dependency Breach %", "cdBreachPercent", true],
+            ];
+
+            REPORT_ROWS.forEach(([sNo, name, key, isPercent]) => {
+                html += `<tr class='key-param-row'><td style='font-weight: 700;'>${name}</td>`;
+                cities.forEach(city => {
+                    let value = citiesData[city][key];
+                    let displayValue = value;
+                    let className = "";
+
+                    if (isPercent) {
+                        displayValue = formatPercentage(value);
+                        className = (key === "deliveryPercent") ? ("delivery-percent " + getStatusColor(value * 100)) : "";
+                    } else {
+                        displayValue = Math.round(value);
+                    }
+
+                    html += `<td class="${className}">${displayValue}</td>`;
+                });
+                html += "</tr>";
+            });
+
+            // Detailed sub-attempts
+            html += `<tr><td colspan='1' class='sub-attempt-title'>1. Detailed Sub-Attempts (${SUB_PARAMETERS.length})</td>`;
+            cities.forEach(city => {
+                html += `<th class='sub-attempt-title'>${citiesData[city].shortHub}</th>`;
+            });
+            html += "</tr>";
+
+            SUB_PARAMETERS.forEach((param) => {
+                html += `<tr><td style='font-weight: 700; background: #e6f2ff; text-align: left; padding-left: 10px;'>${param.replace(/_/g, " ")}</td>`;
+                cities.forEach(city => {
+                    const count = citiesData[city].pivotCounts[param] || 0;
+                    html += `<td>${count}</td>`;
+                });
+                html += "</tr>";
+            });
+
+            document.getElementById("finalReportTable").innerHTML = html;
+            document.getElementById("reportContainer").style.display = 'block';
+            document.getElementById("message").textContent = "Report generated successfully! Ready to share or download.";
+
+        } catch (error) {
+            document.getElementById("message").textContent = "An error occurred during processing: " + error.message;
+            console.error(error);
+        }
+    };
+
+    reader.readAsArrayBuffer(file);
+}
+
+// --- WhatsApp Sharing Function ---
+function shareWhatsApp() {
+    if (Object.keys(globalCitiesData).length === 0) {
+        alert("Please generate the report first by uploading the Excel file.");
+        return;
+    }
+
+    let message = "*📊 Zippee Last Mile EOD Report - Key Metrics*\n\n";
+
+    globalCities.forEach(city => {
+        const data = globalCitiesData[city];
+        message += `*--- ${city} (${data.manager}) ---\n*`;
+        message += `📦 Shipments: ${data.shipmentOrders}\n`;
+        message += `✅ *Delivery %: ${formatPercentage(data.deliveryPercent)}*\n`;
+
+        if (data.returnToOrigin > 0 || data.partialReturnToOrigin > 0) {
+             message += `🔄 RTO + PRTO: ${Math.round(data.returnToOrigin + data.partialReturnToOrigin)}\n`;
+        }
+        if (data.customerDependencyBreach > 0) {
+            message += `🚨 CD Breach: ${Math.round(data.customerDependencyBreach)}\n`;
+        }
+        message += "\n";
+    });
+
+    message += "*For detailed breakdown, please refer to the downloaded report image.*";
+
+    const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`;
+    window.open(whatsappUrl, '_blank');
+}
+
+function downloadImage() {
+    const element = document.getElementById("finalReportTable");
+    if (!element || element.innerHTML === "") {
+        alert("Generate the report first!");
+        return;
+    }
+
+    document.getElementById("message").textContent = "Generating image...";
+
+    const container = document.getElementById("reportContainer");
+    const clone = container.cloneNode(true);
+    clone.style.maxWidth = 'none';
+    clone.style.overflow = 'visible';
+
+    const tableClone = clone.querySelector('table');
+    tableClone.style.width = 'max-content';
+
+    tableClone.querySelectorAll('td:nth-child(1), th').forEach(el => {
+        el.style.position = 'static';
+        el.style.left = 'auto';
+    });
+
+    document.body.appendChild(clone);
+
+    html2canvas(tableClone, {
+        scale: 2,
+        logging: false,
+        useCORS: true
+    }).then(canvas => {
+        document.body.removeChild(clone);
+        const link = document.createElement("a");
+        link.download = "LastMileReport.png";
+        link.href = canvas.toDataURL("image/png");
+        link.click();
+        document.getElementById("message").textContent = "Image downloaded successfully!";
+    }).catch(error => {
+        document.body.removeChild(clone);
+        document.getElementById("message").textContent = "Error generating image: " + error.message;
+        console.error("Image generation failed:", error);
+    });
+}
+</script>
+
+<script>
+// ============ ANTI-INSPECT + NO DEVTOOLS ============
+
+// Detect DevTools by window resize gap
+setInterval(function () {
+  const threshold = 160;
+  if (
+    window.outerWidth - window.innerWidth > threshold ||
+    window.outerHeight - window.innerHeight > threshold
+  ) {
+    document.body.innerHTML =
+      "<h2 style='text-align:center;margin-top:40px;'>Dev Tools are not allowed 🚫</h2>";
+  }
+}, 500);
+
+// Disable right-click everywhere
+document.addEventListener("contextmenu", function(e){
+  e.preventDefault();
+});
+
+// Block common inspect keys
+document.addEventListener("keydown", function(e){
+
+  // F12
+  if (e.keyCode === 123) e.preventDefault();
+
+  // Ctrl + Shift + I / J / C
+  if (e.ctrlKey && e.shiftKey &&
+     ['I','J','C','i','j','c'].includes(e.key)) {
+      e.preventDefault();
+  }
+
+  // Ctrl + U (View Source)
+  if (e.ctrlKey && ['U','u'].includes(e.key)) {
+      e.preventDefault();
+  }
+
+  // Block any Ctrl+Shift combination
+  if (e.ctrlKey && e.shiftKey) e.preventDefault();
+});
+</script>
+
+    
+</body>
+</html>
+

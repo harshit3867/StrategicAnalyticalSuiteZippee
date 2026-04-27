@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Rider Reports</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+
+<style>
+body{
+  margin:0;
+  font-family:Segoe UI,sans-serif;
+  background:linear-gradient(rgba(0,0,0,.75),rgba(0,0,0,.75)),
+  url("zippee.png") no-repeat center center fixed;
+  background-size:cover;
+  color:#fff;
+}
+.header{text-align:center;padding:14px;font-size:22px;font-weight:700}
+.container{width:95%;margin:auto}
+
+textarea{
+  width:100%;
+  height:260px;
+  border:none;
+  border-radius:8px;
+  padding:10px;
+  font-size:13px;
+  margin-bottom:15px;
+}
+
+button{border:none;border-radius:6px;cursor:pointer;font-weight:700}
+.action-btn{background:#0d6efd;color:white;padding:8px 18px}
+.download-btn{background:#16a34a;color:white;padding:8px 16px}
+
+.report{
+  background:white;
+  color:black;
+  padding:12px;
+  border-radius:8px;
+  margin:20px auto;
+  max-width:20cm;
+}
+.report-title{text-align:center;font-size:18px;font-weight:700}
+.report-time{text-align:center;font-size:13px;margin:4px 0 8px}
+
+table{width:100%;border-collapse:collapse}
+th,td{
+  padding:4px 6px;
+  font-size:13px;
+  border-bottom:1px solid #ddd;
+  text-align:center;
+}
+th{background:#c55a11;color:white;font-weight:700}
+.total-row td{background:#f2f2f2;font-weight:700}
+
+.bf-green{background:#dcfce7;color:#166534;font-weight:700}
+.bf-yellow{background:#fef9c3;color:#854d0e;font-weight:700}
+.bf-red{background:#fee2e2;color:#991b1b;font-weight:700}
+.diff-pos{background:#dcfce7;color:#166534;font-weight:700}
+.diff-neg{background:#fee2e2;color:#991b1b;font-weight:700}
+
+.footer{text-align:center;font-size:11px;margin-top:6px;color:#333}
+.bottom-disclaimer{
+  text-align:center;
+  font-size:12px;
+  margin-bottom:20px;
+  color:#facc15;
+  font-weight:600;
+}
+</style>
+</head>
+
+<body>
+
+<div class="header">Rider Report</div>
+<div class="container">
+
+<textarea id="bulkData" placeholder="Paste full rider raw data here..."></textarea>
+
+<div style="text-align:center;margin:14px 0">
+  <button class="action-btn" onclick="generate()">Generate Reports</button>
+  <button class="download-btn" onclick="downloadBoth()">Download Both Reports</button>
+  <button class="download-btn" onclick="downloadSingle('report1','Active_Rider_Report.png')">
+    Download Active Report
+  </button>
+</div>
+
+<!-- ACTIVE REPORT -->
+<div id="report1" class="report" style="display:none">
+  <div class="report-title">Active Rider Report</div>
+  <div class="report-time" id="time1"></div>
+  <table>
+    <thead>
+      <tr>
+        <th>Darkstore Name</th>
+        <th>Active Riders</th>
+        <th>Idle Riders</th>
+        <th>Check Out Rider</th>
+        <th>Pending Orders</th>
+        <th>BF</th>
+      </tr>
+    </thead>
+    <tbody id="body1"></tbody>
+  </table>
+  <div class="footer"><b>Powered by SASA Automation | Harshit Saini – Data Analyst, Zippee</b></div>
+</div>
+
+<!-- PLANNED REPORT -->
+<div id="report2" class="report" style="display:none">
+  <div class="report-title" id="title2"></div>
+  <table>
+    <thead>
+      <tr>
+        <th>Darkstore Name</th>
+        <th>Planned Riders</th>
+        <th>Active Riders</th>
+        <th>Check Out Rider</th>
+        <th>Difference</th>
+      </tr>
+    </thead>
+    <tbody id="body2"></tbody>
+  </table>
+  <div class="footer"><b>Powered by SASA Automation | Harshit Saini – Data Analyst, Zippee</b></div>
+</div>
+
+<div class="bottom-disclaimer">
+⚠ Kindly update the Planned Riders in the Google Sheet every day at 6:00 AM.
+</div>
+
+</div>
+
+<script>
+
+/* ===== FETCH PLANNED DATA ===== */
+let planned={};
+
+fetch("https://docs.google.com/spreadsheets/d/e/2PACX-1vSZ-18de0srb6yUjkIVdVlZkZqzNAPD6XcLC8ZFPckoyAjTLxgpLekUd4KHoX95M2oqZP5ZUF9b19kQ/pub?gid=0&single=true&output=csv")
+.then(r=>r.text())
+.then(t=>{
+  const rows=t.split("\n").map(r=>r.split(","));
+  const headers=rows[0];
+  rows.slice(1).forEach(r=>{
+    planned[r[0]]={};
+    headers.slice(1).forEach((h,i)=>{
+      planned[r[0]][h]=parseInt(r[i+1])||0;
+    });
+  });
+});
+
+/* ===== HELPERS ===== */
+const bfCls=v=>v>2?"bf-red":v>1.7?"bf-yellow":"bf-green";
+
+function getCurrentTime(){
+  const now=new Date();
+  let hours=now.getHours();
+  const minutes=now.getMinutes();
+  const ampm=hours>=12?"PM":"AM";
+  hours=hours%12||12;
+  return{
+    displayTime:`${hours}:${minutes<10?"0"+minutes:minutes} ${ampm}`,
+    planTime:`${hours}:00 ${ampm}`
+  };
+}
+
+/* ===== GENERATE ===== */
+function generate(){
+
+  const raw=document.getElementById("bulkData").value;
+  const blocks=raw.split("----------------------");
+
+  const timeObj=getCurrentTime();
+  time1.innerText=`Time: ${timeObj.displayTime}`;
+  title2.innerText=`Planned Rider Report – Time: ${timeObj.displayTime}`;
+
+  body1.innerHTML="";
+  body2.innerHTML="";
+
+  let ta=0,ti=0,tc=0,tp=0,tbf=0,c=0;
+  let pp=0,pa=0,pc=0,pd=0;
+
+  blocks.forEach(block=>{
+    if(!block.trim())return;
+
+    const storeMatch=block.match(/Store:\s*(.*)/);
+    const activeMatch=block.match(/Active\s*:\s*(\d+)/);
+const idleMatch=block.match(/Idle\s*:\s*(\d+)/);
+const checkoutMatch=block.match(/CheckedOut\s*:\s*(\d+)/);
+const bannerMatch=block.match(/Banner\s*:\s*([\d.]+)/);
+const pendingMatch=block.match(/Pending\s*:\s*(\d+)/);
+
+    if(!storeMatch)return;
+
+    const store=storeMatch[1].replace("_mnow"," Mnow").trim();
+    const active=activeMatch?parseInt(activeMatch[1]):0;
+    const idle=idleMatch?parseInt(idleMatch[1]):0;
+    const checkout=checkoutMatch?parseInt(checkoutMatch[1]):0;
+    const banner=bannerMatch?parseFloat(bannerMatch[1]):0;
+    const pending=pendingMatch?parseInt(pendingMatch[1]):0;
+
+    ta+=active;
+    ti+=idle;
+    tc+=checkout;
+    tp+=pending;
+    if(banner){tbf+=banner;c++;}
+
+    body1.innerHTML+=`
+      <tr>
+        <td>${store}</td>
+        <td>${active}</td>
+        <td>${idle}</td>
+        <td>${checkout}</td>
+        <td>${pending}</td>
+        <td class="${bfCls(banner)}">${banner.toFixed(2)}</td>
+      </tr>`;
+
+    const plannedVal=planned[store]?.[timeObj.planTime]||0;
+    const diff=active-plannedVal;
+
+    pp+=plannedVal;
+    pa+=active;
+    pc+=checkout;
+    pd+=diff;
+
+    body2.innerHTML+=`
+      <tr>
+        <td>${store}</td>
+        <td>${plannedVal}</td>
+        <td>${active}</td>
+        <td>${checkout}</td>
+        <td class="${diff>0?"diff-pos":diff<0?"diff-neg":""}">
+          ${diff}
+        </td>
+      </tr>`;
+  });
+
+  body1.innerHTML+=`
+    <tr class="total-row">
+      <td>Total</td>
+      <td>${ta}</td>
+      <td>${ti}</td>
+      <td>${tc}</td>
+      <td>${tp}</td>
+      <td class="${bfCls(tbf/c)}">${c?(tbf/c).toFixed(2):"0.00"}</td>
+    </tr>`;
+
+  body2.innerHTML+=`
+    <tr class="total-row">
+      <td>Total</td>
+      <td>${pp}</td>
+      <td>${pa}</td>
+      <td>${pc}</td>
+      <td class="${pd>0?"diff-pos":pd<0?"diff-neg":""}">
+        ${pd}
+      </td>
+    </tr>`;
+
+  report1.style.display="block";
+  report2.style.display="block";
+}
+
+/* ===== DOWNLOAD ===== */
+function downloadSingle(id,name){
+  html2canvas(document.getElementById(id),{scale:4,backgroundColor:"#fff"})
+  .then(c=>{
+    const a=document.createElement("a");
+    a.href=c.toDataURL("image/png");
+    a.download=name;
+    a.click();
+  });
+}
+
+function downloadBoth(){
+  downloadSingle("report1","Active_Rider_Report.png");
+  setTimeout(()=>downloadSingle("report2","Planned_Rider_Report.png"),700);
+}
+
+</script>
+
+</body>
+</html>

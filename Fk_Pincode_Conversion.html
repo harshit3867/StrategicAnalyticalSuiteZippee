@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>SASA – City Pincodewise Conversion Report</title>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+<style>
+:root{
+    --zippee-primary:#00305E;
+    --zippee-secondary:#0078D4;
+    --text-dark:#1d2a38;
+    --card-bg:rgba(255,255,255,.15);
+}
+
+body.dark{
+    --zippee-primary:#dce9ff;
+    --text-dark:#f5f5f5;
+    --card-bg:rgba(0,0,0,.35);
+    background:#0b1320 !important;
+}
+
+/* BASE */
+body{
+  font-family:"Segoe UI",sans-serif;
+  margin:0;
+  background:url('Zippee.png') no-repeat center/cover;
+  min-height:100vh;
+}
+
+body::before{
+  content:"";
+  position:fixed;
+  inset:0;
+  background:rgba(255,255,255,.25);
+  z-index:-1;
+}
+
+/* HEADER */
+.header-main{
+  background:rgba(0,48,94,.85);
+  color:white;
+  position:fixed;
+  top:0;
+  width:100%;
+  padding:10px 8px;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  gap:10px;
+  z-index:20;
+}
+
+.header-logo{height:36px}
+h1{margin:0;font-size:20px}
+
+/* MAIN CARD */
+.container{
+  margin:110px auto 60px auto;
+  width:92%;
+  max-width:1150px;
+  padding:22px;
+  border-radius:18px;
+  background:var(--card-bg);
+  backdrop-filter:blur(10px);
+  box-shadow:0 8px 30px rgba(0,0,0,.2);
+  color:var(--text-dark);
+}
+
+/* TABLE STYLING */
+.city-wrapper{
+  display:inline-block;
+  margin:10px;
+}
+
+.city-block{
+  display:inline-block;
+  padding:12px 16px;
+  background:white;
+  border-radius:12px;
+  box-shadow:0 4px 22px rgba(0,0,0,.18);
+}
+
+table{
+  border-collapse:collapse;
+  font-size:13px;
+}
+
+th,td{
+  border:1px solid #ccc;
+  padding:4px 6px;
+  text-align:center;
+  white-space:nowrap;
+}
+
+h3{
+  margin:6px 0 6px 0;
+  text-align:center;
+}
+
+.subtotal-row td{
+  background:#ffecb3;
+  font-weight:700;
+}
+
+.footer-text{
+  text-align:center;
+  font-size:12px;
+  font-weight:700;
+  margin-top:5px;
+}
+
+/* BUTTONS */
+button{
+  margin-top:6px;
+  padding:6px 10px;
+  border:none;
+  background:#0a66c2;
+  color:white;
+  border-radius:8px;
+  cursor:pointer;
+  font-weight:600;
+}
+
+/* DARK MODE TOGGLE */
+.toggle-dark{
+  position:fixed;
+  top:10px;
+  right:15px;
+  background:white;
+  border-radius:50px;
+  padding:6px 12px;
+  cursor:pointer;
+  font-size:14px;
+}
+
+/* LOADER */
+.loader-screen{
+  position:fixed;
+  inset:0;
+  background:#001c38;
+  color:white;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  align-items:center;
+  z-index:999;
+}
+
+/* FLOATING PARTICLES */
+.particle{
+  position:fixed;
+  border-radius:50%;
+  background:rgba(255,255,255,.35);
+  animation:floatUp 12s linear infinite;
+}
+
+@keyframes floatUp{
+  from{transform:translateY(100vh) scale(.6);opacity:.8}
+  to{transform:translateY(-10vh) scale(1.2);opacity:0}
+}
+
+/* TICKER */
+.ticker-bar{
+  position:fixed;
+  bottom:10px;
+  width:100%;
+  background:rgba(0,48,94,.92);
+  color:white;
+  padding:6px 0;
+  text-align:center;
+}
+</style>
+</head>
+
+<body>
+
+<!-- LOADING -->
+<div class="loader-screen" id="loader">
+    <img src="SASA.png" height="120"><br>
+    <div>Loading Report…</div>
+</div>
+
+<!-- DARK TOGGLE -->
+<div class="toggle-dark" onclick="document.body.classList.toggle('dark')">🌙 / ☀️</div>
+
+<!-- HEADER -->
+<div class="header-main">
+    <img src="ZippeeSocial-Image.webp" class="header-logo">
+    <h1>SASA – City Pincode Conversion Report</h1>
+</div>
+
+<!-- PARTICLES -->
+<script>
+for(let i=0;i<18;i++){
+  const p=document.createElement("div");
+  p.className="particle";
+  const size=Math.random()*8+4;
+  p.style.width=p.style.height=size+"px";
+  p.style.left=Math.random()*100+"%";
+  p.style.animationDuration=10+Math.random()*10+"s";
+  document.body.appendChild(p);
+}
+</script>
+
+<!-- MAIN CARD -->
+<div class="container">
+
+  <h2 style="text-align:center;">City wise Pincode Conversion Report</h2>
+
+  <center>
+    <input type="file" id="fileUpload" multiple>
+    <button onclick="generateReport()">Generate Report</button>
+  </center>
+
+  <div id="output" style="margin-top:15px;"></div>
+
+</div>
+
+<!-- FOOTER TICKER -->
+<div class="ticker-bar">
+  SASA Automation — Created by Harshit Saini | Control Tower
+</div>
+
+<script>
+window.onload=()=>setTimeout(()=>loader.style.display="none",900);
+
+function normalize(s){return String(s||"").trim().toUpperCase();}
+
+function detectCity(hub){
+  hub=hub.toUpperCase();
+
+  if(hub.startsWith("ALB")||hub.startsWith("PRG")||hub.startsWith("PRAY")||hub.includes("FKL_AHD_NAI_3PL_G_02_GROCERY"))
+    return "Prayagraj";
+
+  if(hub.startsWith("MRD")||hub.startsWith("MOR")||hub.includes("FKL_MRD_NPR_3PL_G_02_GROCERY"))
+    return "Moradabad";
+
+  if(hub.startsWith("SUR")||hub.includes("FKL_SUR_KUM_3PL_G_02_GROCERY")||hub.startsWith("STR_F_FFC_SM"))
+    return "Surat";
+
+  if(hub.startsWith("SIL")||hub.startsWith("SLG_F_FFC_SM")||hub.includes("FKL_SIL_PKS_3PL_G_02_GROCERY"))
+    return "Siliguri";
+
+  return hub;
+}
+
+function generateReport(){
+  const files=document.getElementById("fileUpload").files;
+  if(files.length==0){alert("Upload file first");return;}
+
+  let merged=[],done=0;
+
+  [...files].forEach(file=>{
+    const r=new FileReader();
+    r.onload=e=>{
+      const wb=XLSX.read(e.target.result,{type:"binary"});
+      const sh=wb.Sheets[wb.SheetNames[0]];
+      const js=XLSX.utils.sheet_to_json(sh,{defval:""});
+      merged=merged.concat(js);
+      done++;
+      if(done===files.length) buildReport(merged);
+    };
+    r.readAsBinaryString(file);
+  });
+}
+
+function buildReport(data){
+
+  const keys=Object.keys(data[0]);
+  const hubCol=keys.find(h=>h.toLowerCase().includes("deliveryhub"));
+  const pincodeCol=keys.find(h=>h.toLowerCase().includes("pin"));
+  const statusCol=keys.find(h=>h.toLowerCase().includes("status"));
+
+  const deliveredStatus=[
+    "DELIVERED","DELIVERY_UPDATE",
+    "PARTIAL_DELIVERY_UPDATE","PARTIALLY_DELIVERED"
+  ];
+
+  const cityData={};
+
+  data.forEach(row=>{
+    const hub=String(row[hubCol]||"");
+    const pin=String(row[pincodeCol]||"NA");
+    const st=normalize(row[statusCol]);
+    const city=detectCity(hub);
+
+    if(!cityData[city]) cityData[city]={};
+    if(!cityData[city][pin]) cityData[city][pin]={total:0,delivered:0};
+
+    cityData[city][pin].total++;
+    if(deliveredStatus.includes(st)) cityData[city][pin].delivered++;
+  });
+
+  let html="";
+
+  Object.keys(cityData).forEach((city,i)=>{
+
+    const blockId=`city_block_${i}`;
+
+    html+=`
+    <div class="city-wrapper">
+    <div class="city-block" id="${blockId}">
+    <h3>${city} – Pincode wise conversion</h3>
+
+    <table>
+      <tr>
+        <th>Pincode</th>
+        <th>Total</th>
+        <th>Delivered</th>
+        <th>Undelivered</th>
+        <th>Delivery %</th>
+      </tr>
+    `;
+
+    let gTot=0,gDel=0,gUnd=0;
+
+    Object.keys(cityData[city]).forEach(pin=>{
+      const o=cityData[city][pin];
+      const und=o.total-o.delivered;
+      const perc=o.total?((o.delivered/o.total)*100).toFixed(2):"0.00";
+
+      gTot+=o.total; gDel+=o.delivered; gUnd+=und;
+
+      html+=`
+      <tr>
+        <td>${pin}</td>
+        <td>${o.total}</td>
+        <td>${o.delivered}</td>
+        <td>${und}</td>
+        <td>${perc}%</td>
+      </tr>`;
+    });
+
+    const gPerc=gTot?((gDel/gTot)*100).toFixed(2):"0.00";
+
+    html+=`
+      <tr class="subtotal-row">
+        <td>Subtotal</td>
+        <td>${gTot}</td>
+        <td>${gDel}</td>
+        <td>${gUnd}</td>
+        <td>${gPerc}%</td>
+      </tr>
+    </table>
+
+    <div class="footer-text">
+      Powered by SASA Automation | Harshit Saini – Data Analyst, Zippee
+    </div>
+
+    </div>
+
+    <button onclick="downloadCity('${blockId}','${city}')">
+      Download ${city} Report
+    </button>
+    </div>`;
+  });
+
+  document.getElementById("output").innerHTML=html;
+}
+
+function downloadCity(id,city){
+  const el=document.getElementById(id);
+  html2canvas(el,{backgroundColor:"#ffffff",scale:3}).then(canvas=>{
+    const a=document.createElement("a");
+    a.href=canvas.toDataURL("image/png");
+    a.download=city+"_Pincode_Report.png";
+    a.click();
+  });
+}
+</script>
+
+</body>
+</html>

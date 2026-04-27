@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Excel → Text & Table Converter (Bangalore)</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<!-- XLSX Library -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<style>
+body{
+    font-family: Arial, sans-serif;
+    background:#f4f7fb;
+    padding:20px;
+}
+h1{
+    text-align:center;
+    color:#00305E;
+}
+.upload-box{
+    max-width:500px;
+    margin:20px auto;
+    background:#fff;
+    padding:20px;
+    border-radius:10px;
+    box-shadow:0 8px 25px rgba(0,0,0,0.1);
+    text-align:center;
+}
+.section-title{
+    margin-top:30px;
+    color:#00305E;
+}
+.output-box{
+    margin-top:10px;
+    background:#0f172a;
+    color:#e5e7eb;
+    padding:20px;
+    border-radius:10px;
+    font-family: Consolas, monospace;
+    max-height:400px;
+    overflow:auto;
+    white-space:pre;
+}
+.copy-btn{
+    margin-top:10px;
+    padding:10px 16px;
+    background:#00305E;
+    color:#fff;
+    border:none;
+    border-radius:6px;
+    cursor:pointer;
+}
+.table-container{
+    margin-top:30px;
+    overflow-x:auto;
+}
+table{
+    width:100%;
+    border-collapse:collapse;
+    background:#fff;
+}
+thead{
+    background:#00305E;
+    color:#fff;
+}
+th,td{
+    padding:10px;
+    border:1px solid #ddd;
+    text-align:center;
+    white-space:nowrap;
+}
+tbody tr:nth-child(even){
+    background:#f2f6ff;
+}
+</style>
+</head>
+
+<body>
+
+<h1>Excel → Textual Data & Table Converter (Bangalore)</h1>
+
+<div class="upload-box">
+    <input type="file" id="excelFile" accept=".xlsx,.xls">
+</div>
+
+<h2 class="section-title">Generated Text Output</h2>
+<button class="copy-btn" onclick="copyText()">Copy Output</button>
+<div class="output-box" id="textOutput"></div>
+
+<div class="table-container">
+    <table id="excelTable"></table>
+</div>
+
+<script>
+// 🔒 Exact Bangalore output store names
+const STORE_NAME_MAP = {
+    basaveshwar: "Basaveshwar_Nagar_mnow",
+    begur: "Begur_mnow",
+    brookfield: "Brookfield_mnow",
+    jakkur: "Jakkur_mnow",
+    jp: "JP_nagar_mnow",
+    kalyan: "Kalyan_Nagar_mnow",
+    sarjapur: "Sarjapur_Road_mnow",
+    thyagaraja: "Thyagaraja_Nagar_mnow"
+};
+
+// 🔹 Excel serial date → JS date
+function excelDateToJSDate(serial) {
+    const utc_days = Math.floor(serial - 25569);
+    const utc_value = utc_days * 86400;
+    const date_info = new Date(utc_value * 1000);
+    return new Date(
+        date_info.getFullYear(),
+        date_info.getMonth(),
+        date_info.getDate()
+    );
+}
+
+// 📂 File Upload
+document.getElementById("excelFile").addEventListener("change", function(e){
+    const file = e.target.files[0];
+    if(!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(evt){
+        const data = new Uint8Array(evt.target.result);
+        const workbook = XLSX.read(data, {type:"array"});
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const sheetData = XLSX.utils.sheet_to_json(sheet,{header:1});
+
+        renderTable(sheetData);
+        generateText(sheetData);
+    };
+    reader.readAsArrayBuffer(file);
+});
+
+// 📊 Render Excel Table (unchanged)
+function renderTable(data){
+    const table = document.getElementById("excelTable");
+    table.innerHTML = "";
+
+    const thead = document.createElement("thead");
+    const headRow = document.createElement("tr");
+
+    data[0].forEach(h => {
+        const th = document.createElement("th");
+        th.textContent = h;
+        headRow.appendChild(th);
+    });
+
+    thead.appendChild(headRow);
+    table.appendChild(thead);
+
+    const tbody = document.createElement("tbody");
+
+    for(let i = 1; i < data.length; i++){
+        const tr = document.createElement("tr");
+
+        for(let j = 0; j < data[i].length; j++){
+            const td = document.createElement("td");
+            const cell = data[i][j];
+
+            if(j === 0 && typeof cell === "number"){
+                const d = excelDateToJSDate(cell);
+                td.textContent = d.toLocaleDateString("en-US");
+            } else {
+                td.textContent = cell ?? "";
+            }
+
+            tr.appendChild(td);
+        }
+
+        tbody.appendChild(tr);
+    }
+
+    table.appendChild(tbody);
+}
+
+// 🧾 Generate Text Output (Bangalore only + correct total)
+function generateText(data){
+    const headers = data[0];
+    const output = [];
+
+    for(let i = 1; i < data.length; i++){
+        const row = data[i];
+        if(!row[0]) continue;
+
+        let dateObj = typeof row[0] === "number"
+            ? excelDateToJSDate(row[0])
+            : new Date(row[0]);
+
+        if(isNaN(dateObj)) continue;
+
+        const day = dateObj.toLocaleDateString("en-US", { weekday: "long" });
+        const date = dateObj.toLocaleDateString("en-US");
+
+        const stores = {};
+        let total = 0;
+
+        for (let j = 1; j < headers.length; j++) {
+            if (!headers[j]) continue;
+
+            const rawHeader = headers[j].toString().trim();
+            const value = Number(row[j]) || 0;
+
+            const normalized = rawHeader
+                .replace(/_/g, " ")
+                .toLowerCase();
+
+            // ✅ ONLY Bangalore stores contribute
+            for (const area in STORE_NAME_MAP) {
+                if (normalized.includes(area)) {
+                    const finalKey = STORE_NAME_MAP[area];
+                    stores[finalKey] = (stores[finalKey] || 0) + value;
+                    total += value;
+                    break;
+                }
+            }
+        }
+
+        output.push(`{
+  day: "${day}",
+  date: "${date}",
+  stores: ${JSON.stringify(stores, null, 4)},
+  total: ${total}
+}`);
+    }
+
+    document.getElementById("textOutput").textContent =
+`[
+${output.join(",\n")}
+];`;
+}
+
+// 📋 Copy Output
+function copyText(){
+    navigator.clipboard.writeText(
+        document.getElementById("textOutput").textContent
+    );
+    alert("Text copied to clipboard");
+}
+</script>
+
+</body>
+</html>

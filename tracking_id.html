@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tracking ID Extractor – SASA</title>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<style>
+:root{
+    --zippee-primary:#00305E;
+    --zippee-secondary:#0078D4;
+    --text-dark:#1d2a38;
+    --card-bg:rgba(255,255,255,.15);
+}
+
+body.dark{
+    --zippee-primary:#dce9ff;
+    --text-dark:#f5f5f5;
+    --card-bg:rgba(0,0,0,.35);
+    background:#0b1320 !important;
+}
+
+/* GLOBAL */
+body{
+    margin:0;
+    font-family:"Segoe UI",sans-serif;
+    background:url('Zippee.png') no-repeat center/cover;
+    min-height:100vh;
+    overflow-x:hidden;
+}
+
+body::before{
+    content:"";
+    position:fixed;
+    inset:0;
+    background:rgba(255,255,255,.25);
+    z-index:-1;
+}
+
+/* HEADER */
+.header-main{
+    background:rgba(0,48,94,.85);
+    color:white;
+    position:fixed;
+    top:0;
+    width:100%;
+    padding:10px 8px;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    gap:10px;
+    z-index:20;
+}
+
+.header-logo{height:36px}
+h1{margin:0;font-size:22px}
+
+/* MAIN CONTAINER */
+.container{
+    margin:110px auto 70px auto;
+    width:92%;
+    max-width:1100px;
+    padding:30px 22px;
+    border-radius:18px;
+    background:var(--card-bg);
+    backdrop-filter:blur(10px);
+    box-shadow:0 8px 30px rgba(0,0,0,.2);
+    color:var(--text-dark);
+}
+
+/* FILE BOXES */
+.fileBox{
+    background:rgba(255,255,255,.55);
+    border-radius:14px;
+    padding:15px;
+    margin-top:15px;
+    box-shadow:0 6px 18px rgba(0,0,0,.25);
+}
+
+body.dark .fileBox{
+    background:rgba(0,0,0,.55);
+    color:white;
+}
+
+.headerRow{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:6px;
+    flex-wrap:wrap;
+}
+
+.cityName{
+    font-size:18px;
+    font-weight:bold;
+}
+
+.countText{
+    font-size:14px;
+    margin-bottom:6px;
+    color:#111;
+}
+
+body.dark .countText{
+    color:white;
+}
+
+.copy-btn{
+    cursor:pointer;
+    border:none;
+    background:#0078ff;
+    color:white;
+    padding:6px 12px;
+    border-radius:8px;
+    font-weight:600;
+}
+
+.textareaBox{
+    width:100%;
+    min-height:170px;
+    resize:none;
+    padding:10px;
+    border-radius:12px;
+    border:1px solid #ccc;
+    font-size:14px;
+}
+
+/* UPLOAD CARD */
+.upload-card{
+    text-align:center;
+    background:rgba(255,255,255,.55);
+    padding:15px;
+    border-radius:16px;
+    box-shadow:0 6px 18px rgba(0,0,0,.25);
+    margin-bottom:10px;
+    font-weight:600;
+}
+
+body.dark .upload-card{
+    background:rgba(0,0,0,.55);
+    color:white;
+}
+
+/* DARK TOGGLE */
+.toggle-dark{
+    position:fixed;
+    top:10px;
+    right:15px;
+    background:white;
+    border-radius:50px;
+    padding:6px 12px;
+    cursor:pointer;
+    z-index:50;
+}
+
+/* LOADER */
+.loader-screen{
+    position:fixed;
+    inset:0;
+    background:#001c38;
+    color:white;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    align-items:center;
+    z-index:999;
+}
+.dots::after{
+    content:"";
+    animation:dots 1.4s steps(4,end) infinite;
+}
+@keyframes dots{
+    0%{content:"."}
+    33%{content:".."}
+    66%{content:"..."}
+}
+</style>
+</head>
+
+<body>
+
+<!-- LOADER -->
+<div class="loader-screen" id="loader">
+    <img src="SASA.png" height="120"><br>
+    <div>Loading Tracking ID Extractor<span class="dots"></span></div>
+</div>
+
+<!-- DARK MODE -->
+<div class="toggle-dark" onclick="document.body.classList.toggle('dark')">🌙 / ☀️</div>
+
+<!-- HEADER -->
+<div class="header-main">
+    <img src="ZippeeSocial-Image.webp" class="header-logo">
+    <h1>Tracking ID Extractor – SASA</h1>
+</div>
+
+<!-- MAIN CARD -->
+<div class="container">
+
+    <h2 style="text-align:center">Tracking ID Extractor</h2>
+    <p style="text-align:center">Auto applies column logic based on Column B header</p>
+
+    <div class="upload-card">
+        Upload raw files<br><br>
+        <input type="file" id="fileUpload" multiple>
+    </div>
+
+    <div id="resultArea"></div>
+
+</div>
+
+<script>
+/* LOADER */
+window.onload=()=>setTimeout(()=>loader.style.display="none",900);
+
+/* CITY MAP */
+function detectCity(warehouseCodes){
+    const w = warehouseCodes.join(" ").toLowerCase();
+
+    if(w.includes("ahd")) return "Prayagraj";
+    if(w.includes("sil")) return "Siliguri";
+    if(w.includes("mor") || w.includes("mrd")) return "Moradabad";
+    if(w.includes("sur")) return "Surat";
+    if(w.includes("nsk")) return "Nasik";
+    if(w.includes("vdr")) return "Vadodara";
+
+    return "City Not Detected";
+}
+
+/* COPY */
+function copyText(id){
+    const box=document.getElementById(id);
+    box.select();
+    navigator.clipboard.writeText(box.value);
+}
+
+/* MAIN LOGIC BASED ON YOUR RULE */
+document.getElementById("fileUpload").addEventListener("change", function(e){
+
+    const files = Array.from(e.target.files);
+    const resultArea = document.getElementById("resultArea");
+    resultArea.innerHTML = "";
+
+    files.forEach((file,index)=>{
+
+        const reader = new FileReader();
+
+        reader.onload = function(e){
+
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data,{type:'array'});
+            const sheet = workbook.Sheets[workbook.SheetNames[0]];
+            const json = XLSX.utils.sheet_to_json(sheet,{header:1});
+
+            const header = json[0];
+            const colBHeader = String(header[1]).toLowerCase().trim();
+
+            let warehouseCol = null;
+            let trackingCol = null;
+            let detectedCase = "";
+
+            /* RULE 1: Column B = origin_party_id */
+            if(colBHeader === "origin_party_id"){
+                warehouseCol = 1;   // B
+                trackingCol  = 6;   // G
+                detectedCase = "origin_party_id in B → Tracking ID in G";
+            }
+
+            /* RULE 2: Column B = origin_address_id */
+            else if(colBHeader === "origin_address_id"){
+                warehouseCol = 0;   // A
+                trackingCol  = 5;   // F
+                detectedCase = "origin_address_id in B → Tracking ID in F";
+            }
+
+            else{
+                alert("Column B is neither origin_party_id nor origin_address_id in file: " + file.name);
+                return;
+            }
+
+            let warehouseCodes=[];
+            let trackingIds=[];
+
+            json.forEach((row,i)=>{
+                if(i===0) return;
+
+                const wh=row[warehouseCol];
+                const tid=row[trackingCol];
+
+                if(wh) warehouseCodes.push(String(wh).toLowerCase());
+                if(tid) trackingIds.push(tid);
+            });
+
+            const city=detectCity(warehouseCodes);
+            const count=trackingIds.length;
+            const taId="box"+index;
+
+            const div=document.createElement("div");
+            div.className="fileBox";
+
+            div.innerHTML=`
+                <div class="headerRow">
+                    <div class="cityName">${city} — ${file.name}</div>
+                    <button class="copy-btn" onclick="copyText('${taId}')">Copy All</button>
+                </div>
+
+                <div class="countText">
+                    Rule Applied: <b>${detectedCase}</b><br>
+                    Total Tracking IDs: <b>${count}</b>
+                </div>
+
+                <textarea id="${taId}" class="textareaBox" readonly>${trackingIds.join("\n")}</textarea>
+            `;
+
+            resultArea.appendChild(div);
+        };
+
+        reader.readAsArrayBuffer(file);
+    });
+});
+</script>
+
+    <script>
+// ============ ANTI-INSPECT + NO DEVTOOLS ============
+
+// Detect DevTools by window resize gap
+setInterval(function () {
+  const threshold = 160;
+  if (
+    window.outerWidth - window.innerWidth > threshold ||
+    window.outerHeight - window.innerHeight > threshold
+  ) {
+    document.body.innerHTML =
+      "<h2 style='text-align:center;margin-top:40px;'>Dev Tools are not allowed 🚫</h2>";
+  }
+}, 500);
+
+// Disable right-click everywhere
+document.addEventListener("contextmenu", function(e){
+  e.preventDefault();
+});
+
+// Block common inspect keys
+document.addEventListener("keydown", function(e){
+
+  // F12
+  if (e.keyCode === 123) e.preventDefault();
+
+  // Ctrl + Shift + I / J / C
+  if (e.ctrlKey && e.shiftKey &&
+     ['I','J','C','i','j','c'].includes(e.key)) {
+      e.preventDefault();
+  }
+
+  // Ctrl + U (View Source)
+  if (e.ctrlKey && ['U','u'].includes(e.key)) {
+      e.preventDefault();
+  }
+
+  // Block any Ctrl+Shift combination
+  if (e.ctrlKey && e.shiftKey) e.preventDefault();
+});
+</script>
+
+
+</body>
+</html>
+

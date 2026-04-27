@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Multi-Brand Pendency – SASA Layout</title>
+
+<!-- IMPORTS -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+<!-- html2canvas FOR IMAGE DOWNLOAD -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+<style>
+:root{
+    --zippee-primary:#00305E;
+    --zippee-secondary:#0078D4;
+    --text-dark:#1d2a38;
+    --card-bg:rgba(255,255,255,.15);
+}
+
+body.dark{
+    --zippee-primary:#dce9ff;
+    --text-dark:#f5f5f5;
+    --card-bg:rgba(0,0,0,.35);
+    background:#0b1320 !important;
+}
+
+/* BODY */
+body{
+    margin:0;
+    font-family:"Segoe UI",sans-serif;
+    background:url('Zippee.png') no-repeat center/cover;
+    min-height:100vh;
+}
+
+/* HEADER */
+.header-main{
+    background:rgba(0,48,94,.85);
+    color:white;
+    position:fixed;
+    top:0;
+    width:100%;
+    padding:10px 8px;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    gap:10px;
+    z-index:20;
+}
+
+.header-logo{height:36px}
+h1{margin:0;font-size:22px}
+
+/* MAIN CONTAINER CARD */
+.container{
+    margin:110px auto 70px auto;
+    width:92%;
+    max-width:1100px;
+    padding:30px 22px;
+    border-radius:18px;
+    background:var(--card-bg);
+    backdrop-filter:blur(10px);
+    box-shadow:0 8px 30px rgba(0,0,0,.2);
+    color:var(--text-dark);
+}
+
+/* ========== PENDENCY TOOL ================= */
+
+/* brand header wrapper */
+.brand-head{
+  text-align:center;
+  margin-top:18px;
+}
+
+/* brand title chip */
+.brand-title{
+  background:#00305e;
+  color:white;
+  padding:6px 10px;
+  width:fit-content;
+  border-radius:6px;
+  margin:0 auto 6px auto;
+}
+
+/* download button */
+.dl-btn{
+  background:#0078ff;
+  color:white;
+  border:none;
+  padding:6px 10px;
+  border-radius:6px;
+  cursor:pointer;
+  font-size:12px;
+  margin-bottom:6px;
+}
+.dl-btn:hover{opacity:.85}
+
+.report-box{
+  width:100%;
+  max-width:950px;
+  margin:0 auto 25px auto;
+  border:2px solid #555;
+  border-radius:10px;
+  padding:12px;
+  background:white;
+  box-shadow:0 4px 20px rgba(0,0,0,.25);
+}
+
+
+/* table */
+table{
+  border-collapse:collapse;
+  width:100%;
+  font-size:13px;
+}
+th,td{
+  border:1px solid #555;
+  padding:5px 7px;
+}
+th{
+  background:#7a3b00;
+  color:white;
+  text-align:center;
+}
+
+.store{background:#ffd966;font-weight:800}
+.date-row{background:#fff2cc}
+.total{background:#d9ead3;font-weight:900}
+
+.upload-box{
+  text-align:center;
+  background:white;
+  padding:10px 14px;
+  border-radius:12px;
+  box-shadow:0 6px 20px rgba(0,0,0,.25);
+  width:fit-content;
+  margin:0 auto 15px auto;
+}
+
+</style>
+</head>
+
+<body>
+
+<!-- HEADER -->
+<div class="header-main">
+    <img src="ZippeeSocial-Image.webp" class="header-logo">
+    <h1>SASA – Multi-Brand Pendency Tool</h1>
+</div>
+
+<!-- MAIN CARD -->
+<div class="container">
+
+    <div class="upload-box">
+        📂 Upload ZIP or CSV:
+        <input type="file" id="fileInput">
+    </div>
+
+    <div id="containerReports"></div>
+
+</div>
+
+<script>
+// DOWNLOAD AS IMAGE
+function downloadImage(id, brand){
+    const node = document.getElementById(id);
+
+    html2canvas(node,{scale:2}).then(canvas=>{
+        const link=document.createElement("a");
+        link.download=brand.replaceAll(" ","_")+".png";
+        link.href=canvas.toDataURL("image/png");
+        link.click();
+    });
+}
+
+document.getElementById("fileInput").addEventListener("change", async function(e){
+
+  const brands=[
+    "Kiro",
+    "The Whole Truth",
+    "SANDIPANI HEALTHCARE",
+    "Traya",
+    "d'you",
+    "GIVA",
+    "Clinikally",
+    "Indian Snack House",
+    "Kapiva"
+  ];
+
+  const file=e.target.files[0];
+  if(!file) return;
+
+  const name=file.name.toLowerCase();
+  let csvText="";
+
+  if(name.endsWith(".zip")){
+      const zip=await JSZip.loadAsync(file);
+      const inner=Object.keys(zip.files)[0];
+      csvText=await zip.files[inner].async("string");
+  } else {
+      csvText=await file.text();
+  }
+
+  Papa.parse(csvText,{
+    header:false,
+    skipEmptyLines:true,
+    complete:function(res){
+
+        const rows=res.data;
+
+        const CLIENT = 2;
+        const STORE  = 3;
+        const STATUS = 27;
+        const DATE_N = 13;
+
+        let htmlAll="";
+
+        brands.forEach((brand,idx)=>{
+
+            const pivot={};
+
+            rows.forEach(r=>{
+
+                const client=String(r[CLIENT]||"").trim();
+                if(client!==brand) return;
+
+                const store=r[STORE];
+                const status=r[STATUS];
+                let rawDate=r[DATE_N];
+
+                if(!store||!status||!rawDate) return;
+
+                rawDate=String(rawDate);
+                let date="";
+                if(rawDate.length>=13){
+                    date=rawDate.substring(3,13);
+                } else date=rawDate;
+
+                if(!pivot[store]) pivot[store]={};
+                if(!pivot[store][date])
+                    pivot[store][date]={attempt:0,notdisp:0,pick:0,total:0};
+
+                let matched=false;
+
+                if(status==="Attempted Delivery"){
+                    pivot[store][date].attempt++; matched=true;
+                }
+                if(status==="Not Dispatched"){
+                    pivot[store][date].notdisp++; matched=true;
+                }
+                if(status==="Pickedup"){
+                    pivot[store][date].pick++; matched=true;
+                }
+
+                if(matched) pivot[store][date].total++;
+            });
+
+            const boxId="box_"+idx;
+
+            htmlAll+=`
+              <div class="brand-head">
+                <div class="brand-title">${brand}</div>
+                <button class="dl-btn" onclick="downloadImage('${boxId}','${brand}')">
+                    ⬇️ Download Image
+                </button>
+              </div>
+            `;
+
+            htmlAll+=`<div class="report-box" id="${boxId}">
+    <h3 style="text-align:center;margin-top:2px;margin-bottom:8px;">
+        ${brand} Pendency
+    </h3>
+`;
+
+            if(Object.keys(pivot).length===0){
+                htmlAll+=`<p style="text-align:center;">No data found</p></div>`;
+                return;
+            }
+
+            let html=`<table>
+            <tr>
+              <th>Dark Store</th>
+              <th>Date</th>
+              <th>Attempted Delivery</th>
+              <th>Not Dispatched</th>
+              <th>Pickedup</th>
+              <th>Grand Total</th>
+            </tr>`;
+
+            let G1=0,G2=0,G3=0,GT=0;
+
+            Object.keys(pivot).forEach(store=>{
+                html+=`<tr class="store"><td colspan="6">${store}</td></tr>`;
+
+                let S1=0,S2=0,S3=0,ST=0;
+
+                Object.keys(pivot[store]).forEach(date=>{
+                    const p=pivot[store][date];
+
+                    html+=`
+                    <tr class="date-row">
+                      <td></td>
+                      <td>${date}</td>
+                      <td>${p.attempt}</td>
+                      <td>${p.notdisp}</td>
+                      <td>${p.pick}</td>
+                      <td>${p.total}</td>
+                    </tr>`;
+
+                    S1+=p.attempt;
+                    S2+=p.notdisp;
+                    S3+=p.pick;
+                    ST+=p.total;
+                });
+
+                html+=`
+                <tr class="total">
+                  <td colspan="2">Subtotal</td>
+                  <td>${S1}</td>
+                  <td>${S2}</td>
+                  <td>${S3}</td>
+                  <td>${ST}</td>
+                </tr>`;
+
+                G1+=S1;G2+=S2;G3+=S3;GT+=ST;
+            });
+
+            html+=`
+            <tr class="total">
+              <td colspan="2">Grand Total</td>
+              <td>${G1}</td>
+              <td>${G2}</td>
+              <td>${G3}</td>
+              <td>${GT}</td>
+            </tr></table>`;
+
+            htmlAll+=html+`</div>`;
+        });
+
+        document.getElementById("containerReports").innerHTML=htmlAll;
+    }
+  });
+});
+</script>
+
+    <script>
+// ============ ANTI-INSPECT + NO DEVTOOLS ============
+
+// Detect DevTools by window resize gap
+setInterval(function () {
+  const threshold = 160;
+  if (
+    window.outerWidth - window.innerWidth > threshold ||
+    window.outerHeight - window.innerHeight > threshold
+  ) {
+    document.body.innerHTML =
+      "<h2 style='text-align:center;margin-top:40px;'>Dev Tools are not allowed 🚫</h2>";
+  }
+}, 500);
+
+// Disable right-click everywhere
+document.addEventListener("contextmenu", function(e){
+  e.preventDefault();
+});
+
+// Block common inspect keys
+document.addEventListener("keydown", function(e){
+
+  // F12
+  if (e.keyCode === 123) e.preventDefault();
+
+  // Ctrl + Shift + I / J / C
+  if (e.ctrlKey && e.shiftKey &&
+     ['I','J','C','i','j','c'].includes(e.key)) {
+      e.preventDefault();
+  }
+
+  // Ctrl + U (View Source)
+  if (e.ctrlKey && ['U','u'].includes(e.key)) {
+      e.preventDefault();
+  }
+
+  // Block any Ctrl+Shift combination
+  if (e.ctrlKey && e.shiftKey) e.preventDefault();
+});
+</script>
+
+
+</body>
+</html>
+

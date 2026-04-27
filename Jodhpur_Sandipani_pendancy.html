@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Sandipani <> Jodhpur Pendancy</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+<script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+
+<style>
+body{
+  margin:0;
+  font-family:"Segoe UI";
+  background:url('Zippee.png') center/cover fixed no-repeat;
+}
+body::before{
+  content:"";
+  position:fixed;
+  inset:0;
+  background:rgba(255,255,255,.2);
+  backdrop-filter:blur(6px);
+  z-index:-1;
+}
+
+/* HEADER */
+.header{
+  background:linear-gradient(90deg,rgba(0,63,140,.85),rgba(0,89,179,.85));
+  color:white;
+  padding:18px 36px;
+}
+
+/* CARD */
+.card{
+  background:rgba(255,255,255,0.16);
+  backdrop-filter:blur(10px);
+  margin:40px auto;
+  max-width:700px;
+  padding:30px;
+  border-radius:18px;
+  text-align:left;
+  box-sizing:border-box;
+
+}
+
+/* FILTER */
+.filter-box{
+  margin-top:15px;
+}
+
+/* TABLE */
+table{
+  width:100%;
+  max-width:700px;
+  margin:auto;
+  border-collapse:collapse;
+  border-radius:0 0 6px 6px;
+  overflow:hidden;
+  box-shadow:0 8px 20px rgba(0,0,0,0.2);
+}
+
+th,td{
+  border:1px solid #ddd;
+  padding:6px;
+  font-size:12px;
+  text-align:center;
+}
+
+th{
+  background:#062e44;
+  color:white;
+}
+#downloadArea{
+  padding:3px 10px;
+  background:rgb(255, 255, 255);
+  border-radius:5px;
+}
+.total{
+  background:#dee2e6;
+  font-weight:bold;
+}
+th,td{
+  padding:10px;
+  font-size:13px;
+}
+.table-header-bar{
+  background:#2f3e46;
+  color:white;
+  padding:14px 0;
+  text-align:center;
+  font-weight:800;
+  font-size:18px;
+  font-size:20px;
+  letter-spacing:0.5px;
+  width:100%;
+  max-width:700px;
+  margin:30px auto 0;
+
+  border-radius:6px 6px 0 0;
+  box-shadow:0 4px 10px rgba(0,0,0,0.2);
+}
+
+.watermark{
+  width:100%;
+  max-width:700px;
+  margin:10px auto 30px;
+  text-align:center;
+  font-weight:bold;
+}
+</style>
+
+</head>
+
+<body>
+
+<div class="header">
+  <h2>Zippee – Pendancy Report</h2>
+</div>
+
+<button onclick="downloadImage()" style="
+  margin:15px 0 15px 20px;  /* 👈 left spacing add */
+  padding:8px 16px;
+  background:#062e44;
+  color:white;
+  border:none;
+  border-radius:6px;
+  cursor:pointer;
+">
+Download Report
+</button>
+<div class="card">
+
+<input type="file" id="fileInput">
+<div class="filter-box" id="filterBox"></div>
+
+<div id="tableContainer"></div>
+
+</div>
+
+<script>
+
+let globalPivot = {};
+let statusesList = ["DELIVERED","DELIVERY_ATTEMPTED","PICKUP_COMPLETED","READY"];
+
+document.getElementById("fileInput").addEventListener("change", function(e){
+
+  Papa.parse(e.target.files[0], {
+    header:true,
+    skipEmptyLines:true,
+    complete:function(res){
+      processData(res.data);
+    }
+  });
+});
+
+function processData(data){
+
+  let pivot = {};
+  let latestMap = {};
+
+  data.forEach(row=>{
+    let awb = (row["AWB Number"]||"").trim();
+    let attempts = parseInt(row["No. of Attempts"])||0;
+
+    if(!awb) return;
+
+    if(!latestMap[awb] || attempts > latestMap[awb].attempts){
+      latestMap[awb] = {attempts,row};
+    }
+  });
+
+  Object.values(latestMap).forEach(obj=>{
+    let row = obj.row;
+
+    let store = (row["Darkstore"]||"").trim();
+    let attempts = obj.attempts.toString();
+    let status = (row["Current Status"]||"").trim().toUpperCase();
+    let awb = (row["AWB Number"]||"").trim();
+
+    if(status==="RTO") return;
+
+    let key = store+"|"+attempts;
+
+    if(!pivot[key]) pivot[key]={};
+    if(!pivot[key][status]) pivot[key][status]=new Set();
+
+    pivot[key][status].add(awb);
+  });
+
+  globalPivot = pivot;
+
+  createFilter();
+  renderTable(["READY"]);
+}
+
+function createFilter(){
+  let html = "<b>Status Filter:</b><br>";
+
+  statusesList.forEach(s=>{
+    html += `<label>
+      <input type="checkbox" value="${s}" ${s==="READY"?"checked":""}
+      onchange="updateTable()"> ${s}
+    </label>`;
+  });
+
+  document.getElementById("filterBox").innerHTML = html;
+}
+
+function updateTable(){
+  let selected=[];
+
+  document.querySelectorAll("#filterBox input:checked").forEach(cb=>{
+    selected.push(cb.value);
+  });
+
+  renderTable(selected);
+}
+
+function renderTable(statuses){
+
+  let grouped = {};
+
+  for(let key in globalPivot){
+    let [store,attempt]=key.split("|");
+
+    if(!grouped[store]) grouped[store]=[];
+    grouped[store].push({attempt,data:globalPivot[key]});
+  }
+
+  let html = "";
+
+  for(let store in grouped){
+
+    let gTotal = {};
+    statuses.forEach(s=>gTotal[s]=0);
+    let grand = 0;
+
+    html += `
+    <div id="downloadArea">
+    <div class="table-header-bar">
+      Zippee <> Krishna Herbal Pendancy Report
+    </div>
+
+    <table>
+      <tr>
+        <th>No. of Attempts</th>
+        ${statuses.map(s=>`<th>${s}</th>`).join("")}
+        <th>Total</th>
+      </tr>
+    `;
+
+    grouped[store].sort((a,b)=>a.attempt-b.attempt);
+
+    grouped[store].forEach(r=>{
+
+      let hasData=false;
+      statuses.forEach(s=>{
+        if((r.data[s]?.size||0)>0) hasData=true;
+      });
+
+      if(!hasData) return;
+
+      let rowTotal = 0;
+
+      html += `<tr>
+        <td><b>${r.attempt} Attempts</b></td>`;
+
+      statuses.forEach(s=>{
+        let val = r.data[s] ? r.data[s].size : 0;
+        rowTotal += val;
+        gTotal[s]+=val;
+
+        html += `<td>${val}</td>`;
+      });
+
+      grand += rowTotal;
+
+      html += `<td>${rowTotal}</td></tr>`;
+    });
+
+    html += `<tr class="total">
+      <td><b>Total</b></td>`;
+
+    statuses.forEach(s=>{
+      html += `<td>${gTotal[s]}</td>`;
+    });
+
+    html += `<td>${grand}</td></tr></table>
+
+    <div class="watermark">
+      Powered by SASA Automation | Zippee
+    </div>
+
+</div>
+`;
+  }
+
+  document.getElementById("tableContainer").innerHTML = html;
+}
+function downloadImage(){
+  let area = document.getElementById("downloadArea");
+
+  html2canvas(area).then(canvas=>{
+    let link = document.createElement("a");
+    link.download = "report.png";
+    link.href = canvas.toDataURL();
+    link.click();
+  });
+}
+</script>
+
+</body>
+</html>

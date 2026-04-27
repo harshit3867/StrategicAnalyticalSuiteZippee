@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Zilo Performance Dashboard</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+
+<style>
+body{margin:0;font-family:'Segoe UI',sans-serif;background:#0b1220;color:#fff}
+.container{padding:20px}
+h1{margin-bottom:10px}
+.filter{margin-bottom:15px}
+select{padding:8px;border-radius:6px;border:none}
+
+.kpis{display:grid;grid-template-columns:repeat(6,1fr);gap:12px}
+.card{background:#121a2b;padding:15px;border-radius:12px}
+.card h3{font-size:12px;opacity:.7;margin:0}
+.card h2{margin:6px 0 0}
+
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:18px}
+.chart-box{height:280px;background:#121a2b;border-radius:12px;padding:14px}
+.chart-box canvas{width:100%!important;height:100%!important}
+.title{font-size:14px;margin-bottom:6px}
+</style>
+</head>
+
+<body>
+<div class="container">
+
+<h1>⚡ Zilo Performance Dashboard</h1>
+
+<div class="filter">
+<label>Select Location: </label>
+<select id="locationFilter">
+<option value="All">All</option>
+<option value="Malad">Malad</option>
+<option value="Ghatkopar">Ghatkopar</option>
+</select>
+</div>
+
+<div class="kpis">
+<div class="card"><h3>Total Orders</h3><h2 id="orders"></h2></div>
+<div class="card"><h3>Attainment %</h3><h2 id="att"></h2></div>
+<div class="card"><h3>SLA %</h3><h2 id="sla"></h2></div>
+<div class="card"><h3>Rider Attainment</h3><h2 id="rider"></h2></div>
+<div class="card"><h3>Breach %</h3><h2 id="breach"></h2></div>
+<div class="card"><h3>Deep Pain</h3><h2 id="deep"></h2></div>
+</div>
+
+<div id="charts" class="grid"></div>
+
+</div>
+
+<script>
+
+const maladURL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQu4pYMSETMm4ZgQvAAXpI7UPxw9IqnBbexPS2WAu1y97FqUjtZ9o97JsROmgfYaOzv6M9hIBu8NtxD/pub?gid=0&single=true&output=csv";
+const ghatURL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQu4pYMSETMm4ZgQvAAXpI7UPxw9IqnBbexPS2WAu1y97FqUjtZ9o97JsROmgfYaOzv6M9hIBu8NtxD/pub?gid=2009809733&single=true&output=csv";
+
+let storeData = {};
+let charts = [];
+
+const percent = v => {
+  if(!v || v.includes('#DIV')) return 0;
+  return parseFloat(v.toString().replace('%','')) || 0;
+};
+
+function load(url,name){
+  return new Promise(res=>{
+    Papa.parse(url,{
+      download:true,
+      header:true,
+      complete:(r)=>{
+        res({name,data:r.data.filter(x=>x.Date)});
+      }
+    });
+  });
+}
+
+Promise.all([load(maladURL,'Malad'),load(ghatURL,'Ghatkopar')]).then(r=>{
+  r.forEach(x=>storeData[x.name]=x.data);
+  render('All');
+  document.getElementById('locationFilter').addEventListener('change',e=>render(e.target.value));
+});
+
+function clearCharts(){
+  charts.forEach(c=>c.destroy());
+  charts=[];
+  document.getElementById('charts').innerHTML='';
+}
+
+function addChart(title,config){
+  const box=document.createElement('div');
+  box.className='chart-box';
+  box.innerHTML=`<div class="title">${title}</div><canvas></canvas>`;
+  document.getElementById('charts').appendChild(box);
+  const c=new Chart(box.querySelector('canvas'),config);
+  charts.push(c);
+}
+
+// KPI FIX (ONLY VALID DATA)
+function kpis(filter){
+  let tot=0,att=0,sla=0,rider=0,breach=0,deep=0,n=0;
+  const today=new Date().getDate();
+  const stores=filter==='All'?['Malad','Ghatkopar']:[filter];
+
+  stores.forEach(s=>{
+    storeData[s].forEach(r=>{
+      const day=parseInt(r.Date.split('-')[0]);
+
+      if(day>today) return;
+      if(!r["Actual Order"]) return;
+
+      tot+=+r["Actual Order"]||0;
+      att+=percent(r["Attainment %"]);
+      sla+=percent(r["SLA %"]);
+      rider+=percent(r["Rider Attainment"]);
+      breach+=percent(r["Breach %"]);
+      deep+=+r["Deep Pain"]||0;
+      n++;
+    });
+  });
+
+  document.getElementById('orders').innerText=tot;
+  document.getElementById('att').innerText=(att/n).toFixed(1)+'%';
+  document.getElementById('sla').innerText=(sla/n).toFixed(1)+'%';
+  document.getElementById('rider').innerText=(rider/n).toFixed(1)+'%';
+  document.getElementById('breach').innerText=(breach/n).toFixed(1)+'%';
+  document.getElementById('deep').innerText=deep;
+}
+
+function render(filter){
+
+  clearCharts();
+  kpis(filter);
+
+  const today=new Date().getDate();
+
+  // 🔥 PERFECT FILTER
+  const mData = storeData['Malad'].filter(r=>{
+    const day=parseInt(r.Date.split('-')[0]);
+    return day<=today && r["Actual Order"];
+  });
+
+  const gData = storeData['Ghatkopar'].filter(r=>{
+    const day=parseInt(r.Date.split('-')[0]);
+    return day<=today && r["Actual Order"];
+  });
+
+  const labels = mData.map(r=>r.Date);
+
+  const getData = store => store==='Malad'?mData:gData;
+
+  const map = (store,key)=> getData(store).map(r=>{
+    if(key==='PO') return +r["Projected Order"]||0;
+    if(key==='AO') return +r["Actual Order"]||0;
+    if(key==='SLA') return percent(r["SLA %"]);
+    if(key==='SLAT') return percent(r["SLA Target"]);
+    if(key==='RA') return percent(r["Rider Attainment"]);
+    if(key==='PR') return +r["Projected Rider"]||0;
+    if(key==='AR') return +r["Actual Rider"]||0;
+    if(key==='B') return +r["Breach(>15 min)"]||0;
+    if(key==='DP') return +r["Deep Pain"]||0;
+  });
+
+  if(filter==='All'){
+
+    addChart('📊 Projected Orders Comparison',{
+      type:'line',
+      data:{labels,datasets:[
+        {label:'Malad',data:map('Malad','PO')},
+        {label:'Ghatkopar',data:map('Ghatkopar','PO')}
+      ]}
+    });
+
+    addChart('⏱️ SLA Comparison',{
+      type:'line',
+      data:{labels,datasets:[
+        {label:'Malad',data:map('Malad','SLA')},
+        {label:'Ghatkopar',data:map('Ghatkopar','SLA')}
+      ]}
+    });
+
+    addChart('🚴 Rider Attainment',{
+      type:'line',
+      data:{labels,datasets:[
+        {label:'Malad',data:map('Malad','RA')},
+        {label:'Ghatkopar',data:map('Ghatkopar','RA')}
+      ]}
+    });
+
+    addChart('⚠️ Breach',{
+      type:'bar',
+      data:{labels,datasets:[
+        {label:'Malad',data:map('Malad','B')},
+        {label:'Ghatkopar',data:map('Ghatkopar','B')}
+      ]}
+    });
+
+    addChart('🔍 Deep Pain',{
+      type:'bar',
+      data:{labels,datasets:[
+        {label:'Malad',data:map('Malad','DP')},
+        {label:'Ghatkopar',data:map('Ghatkopar','DP')}
+      ]}
+    });
+
+  } else {
+
+    addChart('📦 Orders',{
+      type:'line',
+      data:{labels,datasets:[
+        {label:'Projected',data:map(filter,'PO')},
+        {label:'Actual',data:map(filter,'AO')}
+      ]}
+    });
+
+    addChart('🎯 SLA',{
+      type:'line',
+      data:{labels,datasets:[
+        {label:'SLA %',data:map(filter,'SLA')},
+        {label:'Target',data:map(filter,'SLAT')}
+      ]}
+    });
+
+    addChart('🚴 Riders',{
+      type:'line',
+      data:{labels,datasets:[
+        {label:'Projected',data:map(filter,'PR')},
+        {label:'Actual',data:map(filter,'AR')}
+      ]}
+    });
+
+    addChart('⚠️ Breach',{
+      type:'bar',
+      data:{labels,datasets:[
+        {label:'Breach Orders',data:map(filter,'B')}
+      ]}
+    });
+
+    addChart('🔍 Deep Pain',{
+      type:'bar',
+      data:{labels,datasets:[
+        {label:'Deep Pain',data:map(filter,'DP')}
+      ]}
+    });
+
+  }
+}
+
+</script>
+</body>
+</html>

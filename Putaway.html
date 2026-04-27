@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Zippee: Pending Putlist Report</title>
+
+<meta charset="UTF-8"/>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+<style>
+body{
+  margin:0;
+  font-family: Calibri, Arial;
+  background:url('Zippee.png') no-repeat center center/cover;
+  min-height:100vh;
+  padding:20px;
+
+  display:flex;
+  justify-content:center;
+  align-items:flex-start;
+}
+
+/* soft blur overlay */
+body::before{
+  content:"";
+  position:fixed;
+  inset:0;
+  background:rgba(255,255,255,0.25);
+  backdrop-filter:blur(6px);
+  z-index:-1;
+}
+
+/* === REPORT BOX === */
+#reportBox{
+  width:1050px;
+  margin-top:40px;
+  background:rgba(255,255,255,0.18);
+  padding:20px;
+  border-radius:16px;
+  box-shadow:0 8px 30px rgba(0,0,0,0.25);
+  backdrop-filter:blur(10px);
+  position:relative;
+  overflow:hidden;
+}
+
+/* 🚫 watermark removed: deleted #reportBox::before */
+
+h2{
+  text-align:center;
+  background:rgba(0,48,94,0.9);
+  color:white;
+  padding:10px;
+  margin-top:0;
+  border-radius:8px;
+}
+
+table{
+  width:100%;
+  border-collapse:collapse;
+  font-size:15px;
+  background:white;
+  border-radius:10px;
+  overflow:hidden;
+}
+
+th,td{
+  border:1px solid #777;
+  padding:6px;
+  text-align:center;
+}
+
+th{ background:#e6e6e6; }
+
+.totalRow{
+  background:#f2f2f2;
+  font-weight:bold;
+}
+
+.grandTotal{
+  background:#dcdcdc;
+  font-weight:bold;
+  font-size:16px;
+}
+
+button{
+  padding:8px 12px;
+  border:none;
+  background:#007bff;
+  color:white;
+  border-radius:6px;
+  cursor:pointer;
+  margin-bottom:15px;
+}
+
+/* footer note style */
+.footer-note{
+  margin-top:12px;
+  font-weight:700;
+  text-align:right;
+  color:#00305E;
+  font-size:14px;
+}
+</style>
+</head>
+
+<body>
+
+<div>
+<h3 style="color:#00305E; font-weight:900;">Upload Putlist Excel File(s)</h3>
+
+<input type="file" id="fileInput" accept=".xlsx,.xls" multiple>
+
+<br><br>
+
+<p id="sasaLoading" style="display:none; font-weight:bold; color:#003366;">
+  SASA is loading your analytics…
+</p>
+
+<button onclick="downloadImage()">Download Report as Image</button>
+
+<div id="reportBox"></div>
+</div>
+
+<script>
+
+const hubToCityMap = {
+  "prg":"Prayagraj","prayagraj":"Prayagraj",
+  "sur":"Surat","surat":"Surat",
+  "mrd":"Moradabad",
+  "sil":"Siliguri","siliguri":"Siliguri",
+  "ahd":"Prayagraj","vdr":"Vadodara",
+  "nasik":"Nasik","blr":"Bengaluru","chn":"Chennai"
+};
+
+function convertHubToCity(hubValue){
+    if(!hubValue) return "Unknown";
+    hubValue=String(hubValue).toLowerCase();
+    if(hubToCityMap[hubValue]) return hubToCityMap[hubValue];
+    const prefix=hubValue.split("_")[0];
+    if(hubToCityMap[prefix]) return hubToCityMap[prefix];
+    return hubValue;
+}
+
+function normalizeStatus(s){
+    if(!s) return "";
+    s=String(s).toLowerCase().trim();
+    if(s.includes("progress")) return "in-progress";
+    if(s.includes("created")) return "created";
+    return s;
+}
+
+document.getElementById("fileInput").addEventListener("change", async function(e){
+
+    const loader=document.getElementById("sasaLoading");
+    loader.style.display="block";
+
+    try{
+        let files=e.target.files;
+        let allData=[];
+
+        for(let file of files){
+            let result=await file.arrayBuffer();
+            let workbook=XLSX.read(result,{type:"array"});
+            let firstSheet=workbook.Sheets[workbook.SheetNames[0]];
+            let json=XLSX.utils.sheet_to_json(firstSheet);
+            allData=allData.concat(json);
+        }
+
+        generateReport(allData);
+
+    }catch(err){
+        loader.innerText="❌ Error reading file";
+        console.error(err);
+    }finally{
+        setTimeout(()=>loader.style.display="none",300);
+    }
+});
+
+function generateReport(data){
+
+    let warehouseKey=Object.keys(data[0]).find(k=>k.toLowerCase().includes("warehouse")||k.toLowerCase().includes("hub"));
+    let dateKey=Object.keys(data[0]).find(k=>k.toLowerCase().includes("date")||k.toLowerCase().includes("created"));
+    let pendingKey=Object.keys(data[0]).find(k=>k.toLowerCase().includes("pending")||k.toLowerCase().includes("remain"));
+    let statusKey=Object.keys(data[0]).find(k=>k.toLowerCase().includes("status"));
+
+    let idKey="id";
+    let today=new Date().toLocaleDateString("en-GB");
+
+    let filtered=data.filter(r=>{
+        const s=normalizeStatus(r[statusKey]);
+        let d=new Date(r[dateKey]);
+        let recDateStr=d.toLocaleDateString("en-GB");
+        return ((s==="created"||s==="in-progress") && recDateStr!==today);
+    });
+
+    let grouped={};
+
+    filtered.forEach(r=>{
+        let city=convertHubToCity(r[warehouseKey]);
+        let date=new Date(r[dateKey]).toLocaleDateString("en-GB");
+        let status=normalizeStatus(r[statusKey]);
+        let qty=Number(r[pendingKey]??0);
+        if(!qty) return;
+        let id=r[idKey]??"";
+
+        if(!grouped[city]) grouped[city]={};
+        if(!grouped[city][date]) grouped[city][date]=[];
+
+        grouped[city][date].push({id,status,qty});
+    });
+
+    let html=`
+    <h2>Zippee: Pending Putlist Report</h2>
+
+    <table>
+      <tr>
+        <th>City</th>
+        <th>Date</th>
+        <th>Order ID</th>
+        <th>Status</th>
+        <th>Qty_Pending</th>
+      </tr>
+    `;
+
+    let grandTotal=0;
+
+    Object.keys(grouped).forEach(city=>{
+        let cityTotal=0;
+
+        Object.keys(grouped[city]).forEach(date=>{
+            grouped[city][date].forEach(r=>{
+                cityTotal+=r.qty;
+                grandTotal+=r.qty;
+
+                html+=`
+                <tr>
+                  <td>${city}</td>
+                  <td>${date}</td>
+                  <td>${r.id}</td>
+                  <td>${r.status}</td>
+                  <td>${r.qty}</td>
+                </tr>`;
+            });
+        });
+
+        html+=`
+        <tr class="totalRow">
+          <td colspan="4">${city} Total</td>
+          <td>${cityTotal}</td>
+        </tr>`;
+    });
+
+    html+=`
+    <tr class="grandTotal">
+      <td colspan="4">Grand Total</td>
+      <td>${grandTotal}</td>
+    </tr>
+    </table>
+
+    <div class="footer-note">
+      Powered by SASA Automation|Harshit Saini - Data Analyst,Zippee
+    </div>
+    `;
+
+    document.getElementById("reportBox").innerHTML=html;
+}
+
+function downloadImage(){
+    html2canvas(document.getElementById("reportBox")).then(canvas=>{
+        let link=document.createElement("a");
+        link.download="Putlist_Pendancy_Report.png";
+        link.href=canvas.toDataURL();
+        link.click();
+    });
+}
+</script>
+
+<script>
+// ============ ANTI-INSPECT + NO DEVTOOLS ============
+
+// Detect DevTools by window resize gap
+setInterval(function () {
+  const threshold = 160;
+  if (
+    window.outerWidth - window.innerWidth > threshold ||
+    window.outerHeight - window.innerHeight > threshold
+  ) {
+    document.body.innerHTML =
+      "<h2 style='text-align:center;margin-top:40px;'>Dev Tools are not allowed 🚫</h2>";
+  }
+}, 500);
+
+// Disable right-click everywhere
+document.addEventListener("contextmenu", function(e){
+  e.preventDefault();
+});
+
+// Block common inspect keys
+document.addEventListener("keydown", function(e){
+
+  // F12
+  if (e.keyCode === 123) e.preventDefault();
+
+  // Ctrl + Shift + I / J / C
+  if (e.ctrlKey && e.shiftKey &&
+     ['I','J','C','i','j','c'].includes(e.key)) {
+      e.preventDefault();
+  }
+
+  // Ctrl + U (View Source)
+  if (e.ctrlKey && ['U','u'].includes(e.key)) {
+      e.preventDefault();
+  }
+
+  // Block any Ctrl+Shift combination
+  if (e.ctrlKey && e.shiftKey) e.preventDefault();
+});
+</script>
+
+  
+</body>
+</html>
+
+

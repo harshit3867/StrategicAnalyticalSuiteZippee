@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Zippee – Partner Report</title>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+<style>
+
+:root{
+--primary-900:#003f8c;
+--glass-bg:rgba(255,255,255,0.16);
+--card-shadow:0 8px 30px rgba(0,0,0,0.25);
+}
+
+html,body{
+margin:0;
+padding:0;
+font-family:"Segoe UI",Arial
+}
+
+body{
+background:url('Zippee.png') center/cover fixed no-repeat;
+}
+
+body::before{
+content:"";
+position:fixed;
+inset:0;
+background:rgba(255,255,255,.24);
+backdrop-filter:blur(6px);
+z-index:-1;
+}
+
+.header{
+background:linear-gradient(90deg,rgba(0,63,140,.85),rgba(0,89,179,.85));
+color:white;
+padding:18px 36px;
+display:flex;
+justify-content:space-between;
+align-items:center
+}
+
+.logo{height:48px}
+
+.card{
+background:var(--glass-bg);
+backdrop-filter:blur(10px) saturate(120%);
+margin:30px auto;
+max-width:1300px;
+padding:30px;
+border-radius:18px;
+box-shadow:var(--card-shadow);
+}
+
+.title{
+font-size:22px;
+font-weight:700;
+color:var(--primary-900)
+}
+
+.controls{
+display:flex;
+gap:8px;
+flex-wrap:wrap;
+margin-top:10px
+}
+
+textarea{
+width:100%;
+height:140px;
+border-radius:10px;
+border:none;
+padding:10px;
+font-family:consolas;
+margin-top:10px;
+}
+
+.button{
+background:linear-gradient(135deg,#0A66C2,#0078FF);
+border:none;
+border-radius:10px;
+padding:10px 16px;
+color:white;
+cursor:pointer;
+font-weight:700
+}
+
+.whatsapp-button{
+background:linear-gradient(135deg,#28C76F,#20A65A)
+}
+
+table{
+border-collapse:collapse;
+background:white;
+border-radius:12px;
+box-shadow:0 8px 20px rgba(0,0,0,.12);
+margin:auto;
+}
+
+th,td{
+border:1px solid #ddd;
+padding:6px 10px;
+font-size:13px;
+white-space:nowrap
+}
+
+.green-row td{
+background:#00b050;
+font-weight:700
+}
+
+.watermark{
+position:absolute;
+inset:0;
+display:flex;
+justify-content:center;
+align-items:center;
+pointer-events:none
+}
+
+.watermark span{
+font-size:44px;
+font-weight:900;
+color:rgba(0,0,0,0.07);
+transform:rotate(-25deg)
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="header">
+<h1>Zippee – Partner Report</h1>
+<img class="logo" src="https://i.imgur.com/7yUVE8U.png">
+</div>
+
+<div class="card">
+
+<div class="title">Paste Pivot Tables</div>
+
+<b>Pivot 1 (Status Pivot)</b>
+<textarea id="pivot1"></textarea>
+
+<b>Pivot 2 (Avg Time Pivot)</b>
+<textarea id="pivot2"></textarea>
+
+<div class="controls">
+<button class="button" onclick="generateReport()">Generate Report</button>
+<button class="button" onclick="downloadImage()">Download as Image</button>
+</div>
+
+<div id="reportContainer" style="display:none;margin-top:20px">
+
+<div id="captureBox" style="position:relative;display:inline-block;width:fit-content;margin:auto;">
+
+<div style="text-align:center;margin-bottom:15px;width:100%;">
+
+<div style="font-size:18px;font-weight:800">
+Report: [Partner <> Zippee] Report
+</div>
+
+<div style="font-size:13px">
+Date: <span id="autoDate"></span> &nbsp;&nbsp; Time: <span id="autoTime"></span>
+</div>
+
+</div>
+
+<div class="watermark">
+<span>Harshit Saini – Zippee</span>
+</div>
+
+<table id="finalReportTable"></table>
+
+<div style="
+display:flex;
+justify-content:center;
+align-items:center;
+margin:12px 0;
+font-size:12px;
+font-weight:700;
+text-align:center;
+">
+Powered by SASA Automation | Harshit Saini – Data Analyst, Zippee
+</div>
+
+</div>
+
+</div>
+
+</div>
+
+<script>
+
+function parseTSV(text){
+return text.trim().split("\n").map(r=>r.split("\t"))
+}
+
+function generateReport(){
+
+const p1=document.getElementById("pivot1").value
+const p2=document.getElementById("pivot2").value
+
+if(!p1||!p2){
+alert("Paste both pivots")
+return
+}
+
+const pivot1=parseTSV(p1)
+const pivot2=parseTSV(p2)
+
+const stores={}
+let currentStore=null
+
+pivot1.forEach(r=>{
+
+let label=r[0]
+
+if(!label||label==="Grand Total") return
+
+if(!["delivered","Shipped","Shipped & Cancelled","isRTOInitiated"].includes(label)){
+
+currentStore=label
+
+stores[currentStore]={
+total:Number(r[6])||0,
+delivered:0,
+breach15:Number(r[5])||0,
+breach1530:Number(r[1])||0,
+breach3060:Number(r[2])||0,
+breach60:Number(r[3])||0,
+nonBreach:Number(r[4])||0,
+rto:0,
+shipped:0,
+cancelled:0,
+avgTime:0
+}
+
+return
+}
+
+if(label==="delivered") stores[currentStore].delivered=Number(r[6])||0
+if(label==="isRTOInitiated") stores[currentStore].rto=Number(r[6])||0
+if(label==="Shipped") stores[currentStore].shipped=Number(r[6])||0
+if(label==="Shipped & Cancelled") stores[currentStore].cancelled=Number(r[6])||0
+
+})
+
+pivot2.forEach(r=>{
+if(stores[r[0]]) stores[r[0]].avgTime=r[1]
+})
+
+const names = Object.keys(stores).filter(n =>
+!["Count of Status","Row Labels"].includes(n)
+)
+
+let html=""
+
+html+=`<tr><th>S. No.</th><th>Key Parameters</th>`
+
+names.forEach(n=>html+=`<th>${n}</th>`)
+
+html+=`</tr>`
+
+function row(sn,label,fn,cls=""){
+
+html+=`<tr class="${cls}">
+<td>${sn}</td>
+<td>${label}</td>`
+
+names.forEach(n=>html+=`<td>${fn(stores[n])}</td>`)
+
+html+=`</tr>`
+
+}
+
+row(1,"Total Order",d=>d.total)
+
+row(2,"Delivered Order",d=>d.delivered)
+
+row("","Delivery %",d=>((d.delivered/d.total)*100).toFixed(2)+"%","green-row")
+
+row(3,"Breach",d=>d.breach15+d.breach1530+d.breach3060+d.breach60)
+
+row("","Breach %",
+d=>{
+let b=d.breach15+d.breach1530+d.breach3060+d.breach60
+return ((b/d.total)*100).toFixed(2)+"%"
+})
+
+row("3.1","15 min",d=>d.breach15)
+row("3.2","15-30 Min",d=>d.breach1530)
+row("3.3","30-60 Min",d=>d.breach3060)
+row("3.4","Above 60 Min",d=>d.breach60)
+
+row(4,"Non Breach",d=>d.nonBreach)
+
+row("4.1","Non Breach %",
+d=>((d.nonBreach/d.total)*100).toFixed(2)+"%")
+
+row("4.2","Avg Delivery Time",d=>d.avgTime)
+
+row(5,"Return to Origin (RTO)",d=>d.rto)
+
+row("","Return to Origin %",
+d=>((d.rto/d.total)*100).toFixed(2)+"%")
+
+row(6,"Shipped",d=>d.shipped)
+
+row(7,"Shipped & Cancelled",d=>d.cancelled)
+
+document.getElementById("finalReportTable").innerHTML=html
+
+document.getElementById("reportContainer").style.display="block"
+
+const now = new Date();
+
+document.getElementById("autoDate").innerText =
+now.toLocaleDateString('en-GB',{day:"2-digit",month:"short",year:"numeric"});
+
+let h = now.getHours();
+let m = now.getMinutes().toString().padStart(2,"0");
+let ampm = h >= 12 ? "PM" : "AM";
+
+h = h % 12 || 12;
+
+document.getElementById("autoTime").innerText = `${h}:${m} ${ampm}`;
+
+}
+
+function downloadImage(){
+
+const element = document.getElementById("captureBox");
+
+html2canvas(element,{
+backgroundColor:"#fff",
+scale:3,
+width: element.scrollWidth,
+height: element.scrollHeight
+}).then(canvas=>{
+
+const a=document.createElement("a")
+a.href=canvas.toDataURL("image/png")
+a.download="Zippee_Report.png"
+a.click()
+
+})
+
+}
+
+</script>
+
+</body>
+</html>

@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Hyue Order Status</title>
+
+<!-- Libraries -->
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+
+<style>
+:root{
+    --primary:#003f8c;
+}
+body{
+    margin:0;
+    font-family:"Segoe UI",Arial;
+    background:url('Zippee.png') center/cover no-repeat fixed;
+    position:relative;
+}
+.header{
+    background:linear-gradient(90deg,#003f8c,#0059b3);
+    color:white;
+    padding:18px 36px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+}
+td:first-child{
+    font-weight:700;
+}
+.card{
+    background:rgba(255,255,255,0.85);
+    backdrop-filter:blur(6px);
+    margin:30px auto;
+    max-width:1300px;
+    padding:30px;
+    border-radius:14px;
+    box-shadow:0 10px 30px rgba(0,0,0,.12);
+}
+body::before{
+    content:"";
+    position:fixed;
+    inset:0;
+    background:rgba(255,255,255,0.75); /* adjust brightness */
+    backdrop-filter:blur(4px);
+    z-index:-1;
+}
+
+.title{
+    font-size:22px;
+    font-weight:700;
+    color:var(--primary);
+}
+.controls{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    margin-top:14px;
+}
+.button{
+    background:#0A66C2;
+    border:none;
+    border-radius:8px;
+    padding:10px 16px;
+    color:white;
+    cursor:pointer;
+    font-weight:700;
+}
+.button:hover{
+    background:#004182;
+}
+#captureBox{
+    display:inline-block;
+}
+table{
+    border-collapse:collapse;
+    margin-top:20px;
+    background:white;
+}
+th,td{
+    border:1px solid #ddd;
+    padding:7px 12px;
+    font-size:13px;
+    text-align:center;
+}
+th{
+    background:#eef2f7;
+}
+.report-head{
+    text-align:center;
+}
+.report-title{
+    font-size:18px;
+    font-weight:800;
+}
+.report-footer{
+    text-align:center;
+    margin-top:10px;
+    font-size:12px;
+    font-weight:700;
+}
+</style>
+</head>
+
+<body>
+
+<div class="header">
+    <h2>Hyue – Report</h2>
+</div>
+
+<div class="card">
+
+<div class="title">Upload CSV / Excel</div>
+
+<div class="controls">
+<input type="file" id="fileInput">
+<button class="button" onclick="generateReport()">Generate Report</button>
+<button class="button" onclick="downloadImage()">Download Image</button>
+</div>
+
+<div id="captureBox">
+
+<div class="report-head">
+<div class="report-title" id="reportTitle"></div>
+<div id="reportMeta"></div>
+</div>
+
+<table id="pivotTable"></table>
+
+<div class="report-footer">
+Powered by SASA Automation | Harshit Saini – Data Analyst
+</div>
+
+</div>
+</div>
+
+<script>
+const ALLOWED_STATUSES = [
+    "Assigned",
+    "Confirmed",
+    "Manifest Scanned",
+    "Printed"
+];
+
+let rawData = [];
+let ALL_STATUSES = [];
+let fileLoaded = false;
+
+// FILE LOAD
+document.getElementById("fileInput").addEventListener("change", function(e){
+
+    const file = e.target.files[0];
+    if(!file) return;
+
+    const name = file.name.toLowerCase();
+
+    // CSV
+    if(name.endsWith(".csv")){
+
+        Papa.parse(file,{
+            header:true,
+            skipEmptyLines:true,
+            complete:function(res){
+                rawData = res.data;
+                fileLoaded = true;
+                document.getElementById("statusMsg").innerText =
+"✅ File Loaded | Rows: " + rawData.length;
+            }
+        });
+    }
+
+    // EXCEL
+    else{
+
+        const reader = new FileReader();
+
+        reader.onload = function(evt){
+
+            const wb = XLSX.read(evt.target.result,{
+                type:'binary',
+                cellDates:true
+            });
+
+            const sheet = wb.Sheets[wb.SheetNames[0]];
+
+            rawData = XLSX.utils.sheet_to_json(sheet,{
+                raw:false
+            });
+
+            fileLoaded = true;
+
+            alert("✅ File Loaded | Rows: " + rawData.length);
+        };
+
+        reader.readAsBinaryString(file);
+    }
+
+});
+
+
+// GENERATE REPORT
+function generateReport(){
+
+    if(!fileLoaded){
+        alert("Upload file first!");
+        return;
+    }
+
+    const pivot = {};
+    const statusSet = new Set();
+
+rawData.forEach(r=>{
+
+    const client = String(r["Client Location"] || "").trim();
+    const status = String(r["Order Status"] || "").trim();
+    const dateRawFull = String(r["Order Date"] || "");
+
+    // 🔥 FILTER STATUS HERE
+    if(!ALLOWED_STATUSES.includes(status)) return;
+
+    if(!dateRawFull) return;
+
+    const dateObj = new Date(dateRawFull);
+    if(isNaN(dateObj)) return;
+
+    const dateSort =
+dateObj.getFullYear() + "-" +
+String(dateObj.getMonth()+1).padStart(2,'0') + "-" +
+String(dateObj.getDate()).padStart(2,'0');
+
+    const [y,m,d] = dateSort.split("-");
+    const dateDisplay = `${d}-${m}-${y}`;
+
+    const key = client + "||" + dateSort;
+
+    if(!pivot[key]){
+        pivot[key]={
+            client,
+            dateSort,
+            dateDisplay,
+            counts:{}
+        };
+    }
+
+    pivot[key].counts[status] = (pivot[key].counts[status] || 0) + 1;
+
+});
+
+    ALL_STATUSES = ALLOWED_STATUSES;
+
+    const rows = Object.values(pivot)
+        .sort((a,b)=>new Date(b.dateSort)-new Date(a.dateSort));
+
+    render(rows);
+
+    const now = new Date();
+
+    document.getElementById("reportTitle").textContent =
+        "Hyue Order Status – " +
+        now.toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"});
+
+    document.getElementById("reportMeta").textContent =
+        "Generated on " + now.toLocaleString();
+}
+
+
+// TABLE
+function render(rows){
+
+    const t = document.getElementById("pivotTable");
+
+    let header =
+        "<tr><th>Client</th><th>Date</th>" +
+        ALL_STATUSES.map(s=>`<th>${s}</th>`).join("") +
+        "<th>Total</th></tr>";
+
+    const grand = Object.fromEntries(ALL_STATUSES.map(s=>[s,0]));
+    let grandTotal = 0;
+
+    let html = "";
+
+    // 🔥 GROUP rows by client
+    const grouped = {};
+
+    rows.forEach(r=>{
+        if(!grouped[r.client]){
+            grouped[r.client] = [];
+        }
+        grouped[r.client].push(r);
+    });
+
+    // 🔥 Build table
+    Object.keys(grouped).forEach(client=>{
+
+        const clientRows = grouped[client];
+        const rowspan = clientRows.length;
+
+        clientRows.forEach((r,index)=>{
+
+            let rowTotal = 0;
+
+            const cells = ALL_STATUSES.map(s=>{
+                const v = r.counts[s] || 0;
+                rowTotal += v;
+                grand[s] += v;
+                return `<td>${v}</td>`;
+            }).join("");
+
+            grandTotal += rowTotal;
+
+            html += "<tr>";
+
+            // ✅ Only print client ONCE with rowspan
+            if(index === 0){
+                html += `<td rowspan="${rowspan}" 
+                          style="font-weight:700; text-align:left;">
+                          ${client}
+                         </td>`;
+            }
+
+            html += `
+                <td>${r.dateDisplay}</td>
+                ${cells}
+                <td><b>${rowTotal}</b></td>
+            </tr>`;
+        });
+    });
+
+    let totalRow = `
+    <tr style="background:#f0f0f0;font-weight:800">
+        <td colspan="2">TOTAL</td>
+        ${ALL_STATUSES.map(s=>`<td>${grand[s]}</td>`).join("")}
+        <td>${grandTotal}</td>
+    </tr>`;
+
+    t.innerHTML = header + html + totalRow;
+}
+
+
+
+// DOWNLOAD IMAGE
+function downloadImage(){
+
+html2canvas(document.getElementById("captureBox"),{scale:2})
+.then(canvas=>{
+    const a=document.createElement("a");
+    a.href=canvas.toDataURL("image/png");
+    a.download="Hyue_Report.png";
+    a.click();
+});
+
+}
+
+</script>
+</body>
+</html>

@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DCPO Tool – Coming Soon</title>
+
+<style>
+body{
+    margin:0;
+    font-family:"Segoe UI",sans-serif;
+    background:url('Zippee.png') no-repeat center/cover;
+    min-height:100vh;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    color:#00305E;
+}
+
+/* Frosted glass card */
+.card{
+    background:rgba(255,255,255,0.25);
+    backdrop-filter:blur(8px);
+    padding:30px 40px;
+    border-radius:18px;
+    text-align:center;
+    box-shadow:0 8px 25px rgba(0,0,0,.25);
+}
+
+/* SASA image */
+.sasa-img{
+    height:140px;
+    margin-bottom:10px;
+    animation:glow 3s ease-in-out infinite;
+}
+
+@keyframes glow{
+    0%,100%{filter:drop-shadow(0 0 6px rgba(0,120,255,.5))}
+    50%{filter:drop-shadow(0 0 18px rgba(0,120,255,.9))}
+}
+
+/* button */
+.back-btn{
+    margin-top:15px;
+    padding:8px 16px;
+    border-radius:12px;
+    border:none;
+    cursor:pointer;
+    font-weight:700;
+    background:#00305E;
+    color:white;
+}
+</style>
+</head>
+
+<body>
+
+<div class="card">
+    <img src="SASA.png" class="sasa-img"><br>
+
+    <h2>📝 DCPO Tool</h2>
+    <h3>🚧 Coming Soon 🚧</h3>
+
+    <p>
+        SASA is working on bringing the <b>DCPO Automation Tool</b> for you.<br>
+        Stay tuned!
+    </p>
+
+    <button class="back-btn" onclick="history.back()">⬅ Go Back</button>
+</div>
+
+</body>
+</html>
