@@ -160,6 +160,42 @@ function processData(data){
   let latestMap = {};
 
   data.forEach(row=>{
+    let store = (row["Darkstore"]||"").trim();
+if(store !== "zippee_krishna_herbal_jodhpurwh") return;
+let creationRaw = (row["Creation Date"] || "").trim();
+
+// Clean Excel format like ="30/04/2026 10:54 AM"
+creationRaw = creationRaw.replace(/^="|"$|/g, "");
+
+// Convert to Date
+let parts = creationRaw.split(/[\s/:]/); 
+// [dd, mm, yyyy, hh, min, AM/PM]
+
+if(parts.length >= 6){
+  let day = parseInt(parts[0]);
+  let month = parseInt(parts[1]) - 1;
+  let year = parseInt(parts[2]);
+  let hour = parseInt(parts[3]);
+  let minute = parseInt(parts[4]);
+  let ampm = parts[5];
+
+  if(ampm === "PM" && hour !== 12) hour += 12;
+  if(ampm === "AM" && hour === 12) hour = 0;
+
+  let creationDate = new Date(year, month, day, hour, minute);
+
+  let now = new Date();
+
+  let isToday =
+    creationDate.getDate() === now.getDate() &&
+    creationDate.getMonth() === now.getMonth() &&
+    creationDate.getFullYear() === now.getFullYear();
+
+  let cutoff = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 11, 0, 0);
+
+  // ❌ REMOVE if today and after 11 AM
+  if(isToday && creationDate > cutoff) return;
+}
     let awb = (row["AWB Number"]||"").trim();
     let attempts = parseInt(row["No. of Attempts"])||0;
 
