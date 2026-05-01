@@ -235,6 +235,7 @@ if(parts.length >= 6){
 }
     let awb = (row["AWB Number"]||"").trim();
     let attempts = parseInt(row["No. of Attempts"])||0;
+    if(attempts > 3) return;
 
     if(!awb) return;
 
@@ -475,6 +476,7 @@ function downloadCSV(){
 
     let awb = (row["AWB Number"]||"").trim();
     let attempts = parseInt(row["No. of Attempts"])||0;
+    if(attempts > 3) return;
 
     if(!awb) return;
 
