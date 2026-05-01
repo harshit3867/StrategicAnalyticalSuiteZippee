@@ -187,6 +187,16 @@ function processData(data){
 
   data.forEach(row=>{
     let store = (row["Darkstore"]||"").trim();
+    let brand = (row["Brand Name"] || "").trim().toLowerCase();
+
+if(brand === "testing_fabbox" || brand === "supertails") return;
+let trip = (row["Trip ID"] || "").toString().trim();
+
+// Default → remove rows WITH trip
+let tripToggle = document.getElementById("tripToggle");
+let includeTrips = tripToggle && tripToggle.checked;
+
+if(!includeTrips && trip !== "") return;
 const allowedStores = [
   "zippee_andheri_sdd",
   "zippee_kalyannagar_sdd",
@@ -271,6 +281,14 @@ if(parts.length >= 6){
 function createFilter(){
   let html = "<b>Status Filter:</b><br>";
 
+html += `
+<br><b>Trip Filter:</b><br>
+<label>
+  <input type="checkbox" id="tripToggle" onchange="updateTable()">
+  Include Trip Orders
+</label><br><br>
+`;
+
   statusesList.forEach(s=>{
     html += `<label>
       <input type="checkbox" value="${s}" ${s==="READY"?"checked":""}
@@ -288,7 +306,7 @@ function updateTable(){
     selected.push(cb.value);
   });
 
-  renderTable(selected);
+  processData(originalData);
 }
 
 function renderTable(statuses){
@@ -435,6 +453,15 @@ function downloadCSV(){
   originalData.forEach(row=>{
 
     let store = (row["Darkstore"]||"").trim();
+    let brand = (row["Brand Name"] || "").trim().toLowerCase();
+
+if(brand === "testing_fabbox" || brand === "supertails") return;
+let trip = (row["Trip ID"] || "").toString().trim();
+
+let tripToggle = document.getElementById("tripToggle");
+let includeTrips = tripToggle && tripToggle.checked;
+
+if(!includeTrips && trip !== "") return;
 
     const allowedStores = [
       "zippee_andheri_sdd",
