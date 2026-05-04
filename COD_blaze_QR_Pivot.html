@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Pivot Report</title>
+
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+
+<style>
+:root{
+    --primary-900:#003f8c;
+    --glass-bg:rgba(255,255,255,0.16);
+    --card-shadow:0 8px 30px rgba(0,0,0,0.25);
+}
+body{
+    margin:0;
+    font-family:"Segoe UI",Arial;
+    background:linear-gradient(135deg,#eef2ff,#f8fbff);
+}
+
+.header{
+    background:linear-gradient(90deg,#003f8c,#0059b3);
+    color:white;
+    padding:18px 36px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+}
+
+.card{
+    background:var(--glass-bg);
+    backdrop-filter:blur(10px);
+    margin:30px auto;
+    max-width:1400px;
+    padding:25px;
+    border-radius:18px;
+    box-shadow:var(--card-shadow);
+}
+
+.title{
+    font-size:22px;
+    font-weight:700;
+    color:#003f8c;
+}
+
+.controls{
+    margin-top:10px;
+}
+
+.button{
+    background:#0078FF;
+    color:white;
+    border:none;
+    padding:10px 16px;
+    border-radius:8px;
+    cursor:pointer;
+    font-weight:700;
+}
+
+.container{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(350px,1fr));
+    gap:20px;
+    margin-top:20px;
+}
+
+.table-card{
+    background:white;
+    padding:10px;
+    border-radius:12px;
+    box-shadow:0 4px 10px rgba(0,0,0,0.1);
+}
+
+table{
+    width:100%;
+    border-collapse:collapse;
+}
+
+th,td{
+    border:1px solid #ddd;
+    padding:6px;
+    text-align:right;
+    font-size:13px;
+}
+
+th:first-child, td:first-child{
+    text-align:left;
+}
+
+th{
+    background:#003f8c;
+    color:white;
+}
+
+.total{
+    font-weight:bold;
+    background:#eef3ff;
+}
+</style>
+</head>
+
+<body>
+
+<div class="header">
+    <h2>📊 Blaze QR Pivot</h2>
+</div>
+
+<div class="card">
+    <div class="title">Upload Excel</div>
+
+    <div class="controls">
+        <input type="file" id="upload">
+        <button class="button" onclick="processFile()">Generate Pivot</button>
+        <button class="button" onclick="copyTables()">Copy All Tables</button>
+    </div>
+
+    <div class="container" id="output"></div>
+</div>
+
+<script>
+
+const locations = [
+  "JPNAGAR_Myntra",
+  "Yelankha Myntra",
+  "Sarjapur_Myntra",
+  "Kalyan Nagar Myntra1",
+  "Thyagraj Nagar Myntra 2",
+  "Brookfield Myntra",
+  "Gachibowli Myntra",
+  "Attapur Myntra",
+  "Begur Myntra1",
+  "Basaweshwara Nagar Myntra1",
+  "Manikonda Myntra",
+  "Nizampet Myntra"
+];
+
+function processFile(){
+    const file = document.getElementById('upload').files[0];
+    if(!file) return;
+
+    const reader = new FileReader();
+
+    reader.onload = function(e){
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data,{type:'array'});
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const json = XLSX.utils.sheet_to_json(sheet);
+
+        generatePivots(json);
+    };
+
+    reader.readAsArrayBuffer(file);
+}
+
+function generatePivots(data){
+    const output = document.getElementById("output");
+    output.innerHTML = "";
+
+    locations.forEach(loc => {
+
+        const filtered = data.filter(row =>
+            row["SUB MERCHANT/MERCHANT NAME"] &&
+            row["SUB MERCHANT/MERCHANT NAME"].trim() === loc
+        );
+
+        if(filtered.length === 0) return;
+
+        const pivot = {};
+
+        filtered.forEach(row => {
+            const date = row["DATE"];
+            const amount = parseFloat(row["AMOUNT"]) || 0;
+
+            if(!date) return;
+
+            if(!pivot[date]) pivot[date] = 0;
+            pivot[date] += amount;
+        });
+
+        let grandTotal = 0;
+
+        let html = `
+        <div class="table-card">
+        <h3>${loc}</h3>
+        <table>
+        <tr>
+            <th>Date</th>
+            <th>Sum of Amount</th>
+        </tr>
+        `;
+
+        Object.keys(pivot).sort().forEach(date=>{
+            grandTotal += pivot[date];
+
+            html += `
+            <tr>
+                <td>${date}</td>
+                <td>${pivot[date].toFixed(2)}</td>
+            </tr>`;
+        });
+
+        html += `
+        <tr class="total">
+            <td>Grand Total</td>
+            <td>${grandTotal.toFixed(2)}</td>
+        </tr>
+        </table></div>
+        `;
+
+        output.innerHTML += html;
+    });
+}
+
+</script>
+<script>
+function copyTables() {
+    const tables = document.querySelectorAll(".table-card table");
+    let finalText = "";
+
+    tables.forEach((table) => {
+
+        // 🔹 Get merchant name (h3)
+        const title = table.parentElement.querySelector("h3").innerText;
+
+        // Add merchant name as header
+        finalText += title + "\n";
+
+        const rows = table.querySelectorAll("tr");
+
+        rows.forEach(row => {
+            const cols = row.querySelectorAll("td, th");
+            let rowText = [];
+
+            cols.forEach(col => {
+                rowText.push(col.innerText.trim());
+            });
+
+            finalText += rowText.join("\t") + "\n";
+        });
+
+        // spacing between tables
+        finalText += "\n\n";
+    });
+
+    navigator.clipboard.writeText(finalText)
+        .then(() => alert("Copied with Merchant Names ✅"))
+        .catch(() => alert("Copy failed ❌"));
+}</script>
+</body>
+</html>
