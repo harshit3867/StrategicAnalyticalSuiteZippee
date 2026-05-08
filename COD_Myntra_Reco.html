@@ -1,0 +1,867 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+
+<title>COD Reconciliation Dashboard</title>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<style>
+
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family: Arial, sans-serif;
+}
+
+body{
+    background:#f3f4f6;
+    padding:20px;
+}
+
+.container{
+    max-width:1900px;
+    margin:auto;
+}
+
+.main-card{
+    background:white;
+    border-radius:18px;
+    padding:25px;
+    box-shadow:0 4px 14px rgba(0,0,0,0.08);
+    margin-bottom:25px;
+}
+
+h1{
+    font-size:30px;
+    margin-bottom:10px;
+    color:#111827;
+}
+
+.subtitle{
+    color:#6b7280;
+    margin-bottom:25px;
+}
+
+.upload-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr 1fr;
+    gap:20px;
+}
+
+.upload-box{
+    border:2px dashed #cbd5e1;
+    border-radius:14px;
+    padding:20px;
+    background:#fafafa;
+}
+
+.upload-box h3{
+    margin-bottom:10px;
+    color:#111827;
+}
+
+.upload-box p{
+    font-size:14px;
+    color:#6b7280;
+    line-height:1.6;
+    margin-bottom:15px;
+}
+
+input[type="file"]{
+    width:100%;
+}
+
+button{
+    margin-top:25px;
+    background:#16a34a;
+    color:white;
+    border:none;
+    padding:14px 24px;
+    border-radius:10px;
+    cursor:pointer;
+    font-size:15px;
+    font-weight:bold;
+}
+
+button:hover{
+    background:#15803d;
+}
+
+.pivot-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr 1fr;
+    gap:20px;
+    align-items:start;
+}
+
+.card{
+    background:white;
+    border-radius:18px;
+    padding:20px;
+    box-shadow:0 4px 14px rgba(0,0,0,0.08);
+}
+
+.section-title{
+    font-size:22px;
+    margin-bottom:15px;
+    color:#111827;
+}
+
+.summary{
+    background:#ecfeff;
+    padding:14px;
+    border-radius:10px;
+    font-weight:bold;
+    margin-bottom:15px;
+    line-height:1.8;
+}
+
+.table-wrapper{
+    overflow:auto;
+    max-height:800px;
+}
+
+table{
+    width:100%;
+    border-collapse:collapse;
+}
+
+thead{
+    background:#0f172a;
+    color:white;
+    position:sticky;
+    top:0;
+}
+
+th, td{
+    padding:12px;
+    border:1px solid #e5e7eb;
+    text-align:left;
+    font-size:14px;
+}
+
+tbody tr:nth-child(even){
+    background:#f8fafc;
+}
+
+tbody tr:hover{
+    background:#f1f5f9;
+}
+
+.grand-total{
+    background:#dcfce7 !important;
+    font-weight:bold;
+}
+
+.mismatch{
+    background:#fee2e2 !important;
+    color:#991b1b;
+    font-weight:bold;
+}
+
+@media(max-width:1400px){
+
+    .pivot-grid{
+        grid-template-columns:1fr;
+    }
+
+    .upload-grid{
+        grid-template-columns:1fr;
+    }
+
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <div class="main-card">
+
+        <h1>COD Reconciliation Dashboard</h1>
+
+        <div class="subtitle">
+            Upload all files and generate reconciliation automatically.
+        </div>
+
+        <div class="upload-grid">
+
+            <div class="upload-box">
+
+                <h3>1st Upload → Order Level Worker COD Report</h3>
+
+                <p>
+                    Order Number vs COD Amount
+                </p>
+
+                <input type="file" id="file1" accept=".csv,.xlsx,.xls"/>
+
+            </div>
+
+            <div class="upload-box">
+
+                <h3>2nd Upload → MasterData</h3>
+
+                <p>
+                    Delivered Orders Only
+                    <br>
+                    Cash Collected > 0
+                </p>
+
+                <input type="file" id="file2" accept=".csv,.xlsx,.xls"/>
+
+            </div>
+
+            <div class="upload-box">
+
+                <h3>3rd Upload → Reconciliation Sheet</h3>
+
+                <p>
+                    myntra Sheet
+                    <br>
+                    Cash + Loginext QR + Static QR
+                </p>
+
+                <input type="file" id="file3" accept=".csv,.xlsx,.xls"/>
+
+            </div>
+
+        </div>
+
+        <button onclick="generateAllPivots()">
+            Generate All Pivots
+        </button>
+
+    </div>
+
+    <!-- TOP 3 PIVOTS -->
+
+    <div class="pivot-grid">
+
+        <!-- PIVOT 1 -->
+
+        <div class="card">
+
+            <h2 class="section-title">
+                Pivot 1 → COD Amount
+            </h2>
+
+            <div id="summary1"></div>
+
+            <div class="table-wrapper">
+
+                <table id="pivotTable1">
+                    <thead></thead>
+                    <tbody></tbody>
+                </table>
+
+            </div>
+
+        </div>
+
+        <!-- PIVOT 2 -->
+
+        <div class="card">
+
+            <h2 class="section-title">
+                Pivot 2 → Cash Collected
+            </h2>
+
+            <div id="summary2"></div>
+
+            <div class="table-wrapper">
+
+                <table id="pivotTable2">
+                    <thead></thead>
+                    <tbody></tbody>
+                </table>
+
+            </div>
+
+        </div>
+
+        <!-- PIVOT 3 -->
+
+        <div class="card">
+
+            <h2 class="section-title">
+                Pivot 3 → Reconciliation
+            </h2>
+
+            <div id="summary3"></div>
+
+            <div class="table-wrapper">
+
+                <table id="pivotTable3">
+                    <thead></thead>
+                    <tbody></tbody>
+                </table>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- TABLE 4 -->
+
+    <div class="card" style="margin-top:25px;">
+
+        <h2 class="section-title">
+            Reconciliation Exception Report
+        </h2>
+
+        <div id="summary4"></div>
+
+        <div class="table-wrapper">
+
+            <table id="pivotTable4">
+
+                <thead></thead>
+
+                <tbody></tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+</div>
+
+<script>
+
+let pivot1Data = {};
+let pivot2Data = {};
+let pivot3Data = {};
+
+async function generateAllPivots(){
+
+    await processFirstFile();
+
+    await processSecondFile();
+
+    await processThirdFile();
+
+    generateReconciliation();
+}
+
+function readExcel(file,sheetName=null){
+
+    return new Promise((resolve,reject)=>{
+
+        const reader = new FileReader();
+
+        reader.onload = function(e){
+
+            const data = new Uint8Array(e.target.result);
+
+            const workbook = XLSX.read(data,{type:'array'});
+
+            let worksheet;
+
+            if(sheetName){
+                worksheet = workbook.Sheets[sheetName];
+            }else{
+                worksheet = workbook.Sheets[workbook.SheetNames[0]];
+            }
+
+            const jsonData = XLSX.utils.sheet_to_json(
+                worksheet,
+                {defval:""}
+            );
+
+            resolve(jsonData);
+        };
+
+        reader.onerror = reject;
+
+        reader.readAsArrayBuffer(file);
+    });
+}
+
+async function processFirstFile(){
+
+    const file =
+        document.getElementById("file1").files[0];
+
+    if(!file) return;
+
+    const data = await readExcel(file);
+
+    const pivot = {};
+
+    data.forEach(row=>{
+
+        const order =
+            row["Order number"] ||
+            row["Order Number"] ||
+            "";
+
+        const amount =
+            parseFloat(row["COD Amount"] || 0);
+
+        const settlementMode =
+    row["Settlement Mode"] || "";
+
+if(
+    order
+    &&
+    settlementMode === "Cash_Collected_Razorpay"
+){
+
+    if(!pivot[order]){
+        pivot[order] = 0;
+    }
+
+    pivot[order] += amount;
+}
+    });
+
+    pivot1Data = pivot;
+
+    renderPivot(
+        "pivotTable1",
+        "summary1",
+        pivot,
+        "Sum of COD Amount"
+    );
+}
+
+async function processSecondFile(){
+
+    const file =
+        document.getElementById("file2").files[0];
+
+    if(!file) return;
+
+    const data = await readExcel(file);
+
+    const pivot = {};
+
+    data.forEach(row=>{
+
+        const status =
+            String(
+                row["Order Status"] || ""
+            ).toLowerCase();
+
+        const order =
+            row["Order Number"] || "";
+
+        const amount =
+            parseFloat(
+                row["Cash Collected"] || 0
+            );
+
+        if(
+            status === "delivered"
+            &&
+            amount > 0
+        ){
+
+            if(!pivot[order]){
+                pivot[order] = 0;
+            }
+
+            pivot[order] += amount;
+        }
+
+    });
+
+    pivot2Data = pivot;
+
+    renderPivot(
+        "pivotTable2",
+        "summary2",
+        pivot,
+        "Sum of Cash Collected"
+    );
+}
+
+async function processThirdFile(){
+
+    const file =
+        document.getElementById("file3").files[0];
+
+    if(!file) return;
+
+    const data = await readExcel(file,"myntra");
+
+    const pivot = {};
+
+    data.forEach(row=>{
+
+        const order =
+            row["Order ID"] || "";
+
+        const cash =
+            parseFloat(row["Cash"] || 0);
+
+        const loginext =
+            parseFloat(row["Loginext QR"] || 0);
+
+        const staticQR =
+            parseFloat(row["Static QR"] || 0);
+
+        const total =
+            cash + loginext + staticQR;
+
+        if(order){
+
+            if(!pivot[order]){
+                pivot[order] = 0;
+            }
+
+            pivot[order] += total;
+        }
+
+    });
+
+    pivot3Data = pivot;
+
+    renderPivot(
+        "pivotTable3",
+        "summary3",
+        pivot,
+        "Sum of Total"
+    );
+}
+
+function renderPivot(
+    tableId,
+    summaryId,
+    pivot,
+    valueTitle
+){
+
+    const thead =
+        document.querySelector(`#${tableId} thead`);
+
+    const tbody =
+        document.querySelector(`#${tableId} tbody`);
+
+    thead.innerHTML = `
+        <tr>
+            <th>Order Number</th>
+            <th>${valueTitle}</th>
+        </tr>
+    `;
+
+    tbody.innerHTML = "";
+
+    let grandTotal = 0;
+    let count = 0;
+
+    Object.entries(pivot).forEach(([order,amount])=>{
+
+        grandTotal += amount;
+
+        count++;
+
+        const tr = document.createElement("tr");
+
+        tr.innerHTML = `
+            <td>${order}</td>
+            <td>${amount.toFixed(2)}</td>
+        `;
+
+        tbody.appendChild(tr);
+
+    });
+
+    const totalRow = document.createElement("tr");
+
+    totalRow.classList.add("grand-total");
+
+    totalRow.innerHTML = `
+        <td>Grand Total</td>
+        <td>${grandTotal.toFixed(2)}</td>
+    `;
+
+    tbody.appendChild(totalRow);
+
+    document.getElementById(summaryId).innerHTML = `
+        <div class="summary">
+            Total Orders:
+            ${count.toLocaleString()}
+            <br>
+            Grand Total:
+            ₹${grandTotal.toLocaleString()}
+        </div>
+    `;
+}
+
+function generateReconciliation(){
+
+    const thead =
+        document.querySelector("#pivotTable4 thead");
+
+    const tbody =
+        document.querySelector("#pivotTable4 tbody");
+
+    thead.innerHTML = `
+        <tr>
+            <th>Missing Order ID</th>
+            <th>Amount</th>
+        </tr>
+    `;
+
+    tbody.innerHTML = "";
+
+    // ====================================================
+    // MERGE PIVOT1 + PIVOT3
+    // REMOVE DUPLICATES ONLY BY ORDER ID
+    // ====================================================
+
+    const mergedOrders = {};
+
+    // FIRST ADD PIVOT1
+
+    Object.entries(pivot1Data).forEach(([order,amount])=>{
+
+        mergedOrders[order] = amount;
+
+    });
+
+    // THEN ADD PIVOT3
+    // ONLY IF ORDER ID NOT ALREADY PRESENT
+
+    Object.entries(pivot3Data).forEach(([order,amount])=>{
+
+        if(!mergedOrders[order]){
+
+            mergedOrders[order] = amount;
+        }
+
+    });
+
+    let missingCount = 0;
+
+    let missingAmount = 0;
+
+    // ====================================================
+    // CHECK ONLY ONE WAY:
+    // (PIVOT1 + PIVOT3)  →  PIVOT2
+    // ====================================================
+
+    Object.entries(mergedOrders).forEach(([order,amount])=>{
+
+        // IF ORDER NOT PRESENT IN PIVOT2
+
+        if(!pivot2Data[order]){
+
+            missingCount++;
+
+            missingAmount += amount;
+
+            const tr =
+                document.createElement("tr");
+
+            tr.classList.add("mismatch");
+
+            tr.innerHTML = `
+                <td>${order}</td>
+                <td>${amount.toFixed(2)}</td>
+            `;
+
+            tbody.appendChild(tr);
+        }
+
+    });
+
+    document.getElementById("summary4").innerHTML = `
+        <div class="summary">
+
+            Total Missing Orders:
+            ${missingCount.toLocaleString()}
+
+            <br>
+
+            Total Missing Amount:
+            ₹${missingAmount.toLocaleString()}
+
+        </div>
+    `;
+}
+
+</script>
+<!-- ================= SCREENSHOT + DEVTOOLS + COPY BLOCKER ================= -->
+
+<script>
+/* =========================================================
+   ZIPPEE SECURITY LAYER
+========================================================= */
+
+/* ---------- TEMP BLUR OVERLAY ---------- */
+function temporarilyBlur() {
+    const overlay = document.createElement("div");
+
+    overlay.style.position = "fixed";
+    overlay.style.inset = "0";
+    overlay.style.background = "rgba(255,255,255,0.25)";
+    overlay.style.backdropFilter = "blur(20px)";
+    overlay.style.zIndex = "999999";
+    overlay.style.pointerEvents = "none";
+
+    document.body.appendChild(overlay);
+
+    setTimeout(() => {
+        overlay.remove();
+    }, 1500);
+}
+
+/* ---------- SCREENSHOT SHORTCUT DETECTION ---------- */
+document.addEventListener("keydown", function(e){
+
+    /* Windows Snipping Tool */
+    if (e.shiftKey && e.metaKey) {
+        temporarilyBlur();
+    }
+
+    /* Shift + S */
+    if (e.shiftKey && e.key.toLowerCase() === "s") {
+        temporarilyBlur();
+    }
+
+    /* Mac Screenshot */
+    if (e.metaKey && e.shiftKey &&
+        (e.key === "3" || e.key === "4")) {
+
+        e.preventDefault();
+        temporarilyBlur();
+        alert("Screenshot shortcut blocked 🚫");
+    }
+});
+
+/* ---------- PRINT SCREEN DETECTION ---------- */
+document.addEventListener("keyup", function(e){
+    if (e.key === "PrintScreen") {
+
+        temporarilyBlur();
+
+        navigator.clipboard.writeText(
+            "Screenshots are disabled on this page."
+        );
+
+        alert("Screenshot blocked 🚫");
+    }
+});
+
+/* ---------- RIGHT CLICK BLOCK ---------- */
+document.addEventListener("contextmenu", function(e){
+    e.preventDefault();
+});
+
+/* ---------- TEXT SELECTION BLOCK ---------- */
+document.addEventListener("selectstart", function(e){
+    e.preventDefault();
+});
+
+/* ---------- COPY BLOCK ---------- */
+document.addEventListener("copy", function(e){
+    e.preventDefault();
+    alert("Copying disabled 🚫");
+});
+
+/* ---------- DRAG BLOCK ---------- */
+document.addEventListener("dragstart", function(e){
+    e.preventDefault();
+});
+
+/* ---------- DEVTOOLS KEY BLOCK ---------- */
+document.addEventListener("keydown", function(e){
+
+    /* F12 */
+    if (e.keyCode === 123) {
+        e.preventDefault();
+        return false;
+    }
+
+    /* Ctrl+Shift+I/J/C */
+    if (
+        e.ctrlKey &&
+        e.shiftKey &&
+        ['I','J','C','i','j','c'].includes(e.key)
+    ) {
+        e.preventDefault();
+        return false;
+    }
+
+    /* Ctrl+U */
+    if (e.ctrlKey && ['u','U'].includes(e.key)) {
+        e.preventDefault();
+        return false;
+    }
+
+    /* Ctrl+S */
+    if (e.ctrlKey && ['s','S'].includes(e.key)) {
+        e.preventDefault();
+        return false;
+    }
+
+    /* Ctrl+P */
+    if (e.ctrlKey && ['p','P'].includes(e.key)) {
+        e.preventDefault();
+        return false;
+    }
+});
+
+/* ---------- DEVTOOLS DETECTOR ---------- */
+setInterval(function(){
+
+    const threshold = 160;
+
+    if (
+        window.outerWidth - window.innerWidth > threshold ||
+        window.outerHeight - window.innerHeight > threshold
+    ) {
+
+        document.body.innerHTML = `
+            <div style="
+                height:100vh;
+                display:flex;
+                justify-content:center;
+                align-items:center;
+                font-size:32px;
+                font-weight:800;
+                font-family:Arial;
+                background:white;
+                color:red;
+            ">
+                DevTools Detected 🚫
+            </div>
+        `;
+    }
+
+}, 1000);
+
+/* ---------- MOBILE SCREEN RECORDING DETECTOR ---------- */
+document.addEventListener("visibilitychange", function(){
+
+    if (document.hidden) {
+        temporarilyBlur();
+    }
+});
+
+/* ---------- CONSOLE WARNING ---------- */
+console.clear();
+
+console.log(
+    "%cSTOP!",
+    "color:red;font-size:50px;font-weight:bold;"
+);
+
+console.log(
+    "%cUnauthorized access is prohibited.",
+    "font-size:18px;"
+);
+</script>
+</body>
+</html>
