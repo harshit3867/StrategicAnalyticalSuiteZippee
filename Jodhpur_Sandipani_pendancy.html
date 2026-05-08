@@ -161,11 +161,14 @@ function processData(data){
 
   data.forEach(row=>{
     let store = (row["Darkstore"]||"").trim();
-if(store !== "zippee_krishna_herbal_jodhpurwh") return;
+if(
+  store !== "zippee_krishna_herbal_jodhpurwh" &&
+  store !== "zippee_krishna_herbal_indorewh"
+) return;
 let creationRaw = (row["Creation Date"] || "").trim();
 
 // Clean Excel format like ="30/04/2026 10:54 AM"
-creationRaw = creationRaw.replace(/^="|"$|/g, "");
+creationRaw = creationRaw.replace(/^="|"$/g, "");
 
 // Convert to Date
 let parts = creationRaw.split(/[\s/:]/); 
@@ -197,7 +200,10 @@ if(parts.length >= 6){
   if(isToday && creationDate > cutoff) return;
 }
     let awb = (row["AWB Number"]||"").trim();
-    let attempts = parseInt(row["No. of Attempts"])||0;
+    let attempts = parseInt(row["No. of Attempts"]) || 0;
+
+// Remove rows where attempts > 3
+if(attempts > 3) return;
 
     if(!awb) return;
 
@@ -258,89 +264,125 @@ function renderTable(statuses){
   let grouped = {};
 
   for(let key in globalPivot){
-    let [store,attempt]=key.split("|");
 
-    if(!grouped[store]) grouped[store]=[];
-    grouped[store].push({attempt,data:globalPivot[key]});
+    let [store,attempt] = key.split("|");
+
+    if(!grouped[store]) grouped[store] = {};
+
+    grouped[store][attempt] = globalPivot[key];
   }
 
-  let html = "";
+  let html = `
+
+  <div class="downloadArea">
+
+  <div class="table-header-bar">
+    Zippee <> Krishna Herbal Pendancy Report
+  </div>
+
+  <table>
+
+    <tr>
+      <th>Store Name</th>
+      <th>No. of Attempts</th>
+      ${statuses.map(s=>`<th>${s}</th>`).join("")}
+      <th>Total</th>
+    </tr>
+  `;
+
+  let grandTotals = {};
+  statuses.forEach(s => grandTotals[s] = 0);
+
+  let overallGrand = 0;
 
   for(let store in grouped){
 
-    let gTotal = {};
-    statuses.forEach(s=>gTotal[s]=0);
-    let grand = 0;
+    let formattedStore = store
+      .replace("zippee_", "")
+      .replace("wh", "")
+      .replaceAll("_", " ")
+      .split(" ")
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" ");
 
-    html += `
-    <div id="downloadArea">
-    <div class="table-header-bar">
-      Zippee <> Krishna Herbal Pendancy Report
-    </div>
+    let attemptsArr = Object.keys(grouped[store])
+      .sort((a,b)=>Number(a)-Number(b));
 
-    <table>
-      <tr>
-        <th>No. of Attempts</th>
-        ${statuses.map(s=>`<th>${s}</th>`).join("")}
-        <th>Total</th>
-      </tr>
-    `;
+    attemptsArr.forEach((attempt,index)=>{
 
-    grouped[store].sort((a,b)=>a.attempt-b.attempt);
+      let rowData = grouped[store][attempt];
+      let hasData = false;
 
-    grouped[store].forEach(r=>{
+statuses.forEach(s=>{
+  if((rowData[s]?.size || 0) > 0){
+    hasData = true;
+  }
+});
 
-      let hasData=false;
-      statuses.forEach(s=>{
-        if((r.data[s]?.size||0)>0) hasData=true;
-      });
-
-      if(!hasData) return;
+if(!hasData) return;
 
       let rowTotal = 0;
 
-      html += `<tr>
-        <td><b>${r.attempt} Attempts</b></td>`;
+      html += `<tr>`;
+
+      // Show store name only once
+      if(index === 0){
+        html += `
+        <td rowspan="${attemptsArr.length}">
+          <b>${formattedStore}</b>
+        </td>`;
+      }
+
+      html += `<td><b>${attempt} Attempts</b></td>`;
 
       statuses.forEach(s=>{
-        let val = r.data[s] ? r.data[s].size : 0;
+
+        let val = rowData[s] ? rowData[s].size : 0;
+
         rowTotal += val;
-        gTotal[s]+=val;
+        grandTotals[s] += val;
 
         html += `<td>${val}</td>`;
       });
 
-      grand += rowTotal;
+      overallGrand += rowTotal;
 
       html += `<td>${rowTotal}</td></tr>`;
     });
-
-    html += `<tr class="total">
-      <td><b>Total</b></td>`;
-
-    statuses.forEach(s=>{
-      html += `<td>${gTotal[s]}</td>`;
-    });
-
-    html += `<td>${grand}</td></tr></table>
-
-    <div class="watermark">
-      Powered by SASA Automation | Zippee
-    </div>
-
-</div>
-`;
   }
+
+  // Grand Total Row
+  html += `<tr class="total">
+
+    <td colspan="2"><b>Grand Total</b></td>`;
+
+  statuses.forEach(s=>{
+    html += `<td>${grandTotals[s]}</td>`;
+  });
+
+  html += `<td>${overallGrand}</td></tr>`;
+
+  html += `</table>
+
+  <div class="watermark">
+    Powered by SASA Automation | Zippee
+  </div>
+
+  </div>`;
 
   document.getElementById("tableContainer").innerHTML = html;
 }
 function downloadImage(){
-  let area = document.getElementById("downloadArea");
+
+  let area = document.querySelector(".downloadArea");
 
   html2canvas(area).then(canvas=>{
+
     let link = document.createElement("a");
+
     link.download = "report.png";
     link.href = canvas.toDataURL();
+
     link.click();
   });
 }
