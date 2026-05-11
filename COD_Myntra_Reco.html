@@ -432,9 +432,17 @@ tbody tr:hover{
 
         <div class="card">
 
-            <h2 class="section-title">
-                Pivot 1 → COD Amount
-            </h2>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;gap:10px;">
+
+    <h2 class="section-title" style="margin-bottom:0;">
+        Pivot 1 → COD Amount
+    </h2>
+
+    <button onclick="copyTable('pivotTable1')" style="margin-top:0;">
+        Copy Table
+    </button>
+
+</div>
 
             <div id="summary1"></div>
 
@@ -453,10 +461,17 @@ tbody tr:hover{
 
         <div class="card">
 
-            <h2 class="section-title">
-                Pivot 2 → Cash Collected
-            </h2>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;gap:10px;">
 
+    <h2 class="section-title" style="margin-bottom:0;">
+        Pivot 2 → Cash Collected
+    </h2>
+
+    <button onclick="copyTable('pivotTable2')" style="margin-top:0;">
+        Copy Table
+    </button>
+
+</div>
             <div id="summary2"></div>
 
             <div class="table-wrapper">
@@ -474,9 +489,17 @@ tbody tr:hover{
 
         <div class="card">
 
-            <h2 class="section-title">
-                Pivot 3 → Reconciliation
-            </h2>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;gap:10px;">
+
+    <h2 class="section-title" style="margin-bottom:0;">
+        Pivot 3 → Reconciliation
+    </h2>
+
+    <button onclick="copyTable('pivotTable3')" style="margin-top:0;">
+        Copy Table
+    </button>
+
+</div>
 
             <div id="summary3"></div>
 
@@ -778,6 +801,35 @@ function renderPivot(
             ₹${grandTotal.toLocaleString()}
         </div>
     `;
+}
+async function copyTable(tableId){
+
+    const table = document.getElementById(tableId);
+
+    let text = "";
+
+    for(let row of table.rows){
+
+        let rowData = [];
+
+        for(let cell of row.cells){
+
+            rowData.push(cell.innerText);
+        }
+
+        text += rowData.join("\t") + "\n";
+    }
+
+    try{
+
+        await navigator.clipboard.writeText(text);
+
+        alert("Table copied successfully!");
+
+    }catch(err){
+
+        alert("Copy failed!");
+    }
 }
 function generateReconciliation(){
 
