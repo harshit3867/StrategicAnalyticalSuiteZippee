@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+
+<title>Zippee – Traya EOD Dashboard</title>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<style>
+
+:root{
+    --primary-900:#003f8c;
+    --glass-bg:rgba(255,255,255,0.16);
+    --card-shadow:0 8px 30px rgba(0,0,0,0.25);
+}
+
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:"Segoe UI", Arial, sans-serif;
+}
+
+body{
+    background:url('https://images.unsplash.com/photo-1557683316-973673baf926?q=80&w=1920&auto=format&fit=crop') center/cover fixed no-repeat;
+    min-height:100vh;
+    padding:30px;
+}
+
+body::before{
+    content:"";
+    position:fixed;
+    inset:0;
+    background:rgba(255,255,255,.22);
+    backdrop-filter:blur(7px);
+    z-index:-1;
+}
+
+.container{
+    max-width:1500px;
+    margin:auto;
+}
+
+.header{
+    background:linear-gradient(90deg,rgba(0,63,140,.88),rgba(0,89,179,.88));
+    color:white;
+    padding:20px 35px;
+    border-radius:18px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    box-shadow:var(--card-shadow);
+    margin-bottom:28px;
+}
+
+.header h1{
+    font-size:30px;
+    font-weight:800;
+}
+
+.logo{
+    height:50px;
+}
+
+.main-card{
+    background:var(--glass-bg);
+    backdrop-filter:blur(10px) saturate(120%);
+    border-radius:22px;
+    padding:30px;
+    box-shadow:var(--card-shadow);
+}
+
+.upload-section{
+    margin-bottom:30px;
+}
+
+.upload-title{
+    font-size:22px;
+    font-weight:700;
+    color:var(--primary-900);
+    margin-bottom:16px;
+}
+
+input[type=file]{
+    width:100%;
+    padding:16px;
+    border-radius:14px;
+    border:2px dashed #5b7cff;
+    background:rgba(255,255,255,0.55);
+    font-size:15px;
+    cursor:pointer;
+}
+
+.cards{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(230px,1fr));
+    gap:22px;
+    margin-bottom:35px;
+}
+
+.card{
+    background:rgba(255,255,255,0.82);
+    backdrop-filter:blur(8px);
+    border-radius:20px;
+    padding:24px;
+    box-shadow:0 8px 20px rgba(0,0,0,0.12);
+    transition:0.3s;
+}
+
+.card:hover{
+    transform:translateY(-6px);
+}
+
+.card-title{
+    font-size:15px;
+    color:#666;
+    margin-bottom:12px;
+    font-weight:600;
+}
+
+.card-value{
+    font-size:42px;
+    font-weight:800;
+}
+
+.success{
+    color:#00a651;
+}
+
+.danger{
+    color:#e53935;
+}
+
+.info{
+    color:#1565c0;
+}
+
+.warning{
+    color:#ff9800;
+}
+
+.table-box{
+    overflow:auto;
+    margin-top:20px;
+}
+
+table{
+    width:100%;
+    border-collapse:collapse;
+    background:white;
+    border-radius:16px;
+    overflow:hidden;
+    box-shadow:0 8px 20px rgba(0,0,0,.12);
+}
+
+th{
+    background:#003f8c;
+    color:white;
+    padding:14px;
+    text-align:left;
+    font-size:14px;
+}
+
+td{
+    padding:13px;
+    border-bottom:1px solid #e5e7eb;
+    font-size:14px;
+}
+
+tr:hover td{
+    background:#f8fbff;
+}
+
+.formula{
+    margin-top:24px;
+    background:rgba(255,255,255,0.72);
+    padding:20px;
+    border-radius:16px;
+    line-height:1.9;
+    box-shadow:0 6px 18px rgba(0,0,0,0.08);
+}
+
+.formula b{
+    color:#003f8c;
+}
+
+.eod-table{
+    margin-top:40px;
+    width:520px;
+}
+
+.eod-title{
+    background:#355c8a !important;
+    color:white;
+    text-align:center;
+    font-size:22px;
+    font-weight:800;
+}
+
+.yellow{
+    background:#fff200;
+    font-weight:700;
+}
+
+.orange{
+    background:#f4a460;
+    font-weight:700;
+}
+
+.gray{
+    background:#f2f2f2;
+    font-weight:700;
+}
+
+.footer{
+    text-align:center;
+    margin-top:28px;
+    color:#ffffff;
+    font-weight:700;
+    font-size:13px;
+}
+
+@media(max-width:768px){
+
+    .header{
+        flex-direction:column;
+        gap:14px;
+        text-align:center;
+    }
+
+    .header h1{
+        font-size:24px;
+    }
+
+    .card-value{
+        font-size:34px;
+    }
+
+    .eod-table{
+        width:100%;
+    }
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <!-- HEADER -->
+
+    <div class="header">
+        <h1>Zippee – Traya EOD Dashboard</h1>
+
+        <img class="logo"
+        src="SASA.png"  >
+    </div>
+
+    <!-- MAIN CARD -->
+
+    <div class="main-card">
+
+        <!-- FILE UPLOAD -->
+
+        <div class="upload-section">
+
+            <div class="upload-title">
+                Upload Shipment CSV / Excel File
+            </div>
+
+            <input type="file"
+                   id="fileInput"
+                   accept=".xlsx,.xls,.csv">
+
+        </div>
+
+        <!-- KPI CARDS -->
+
+        <div class="cards">
+
+            <div class="card">
+                <div class="card-title">Total Orders</div>
+                <div class="card-value" id="totalOrders">0</div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">Not_D0_Dispatched</div>
+                <div class="card-value danger" id="readyOrders">0</div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">D0_Dispatched</div>
+                <div class="card-value info" id="d0Orders">0</div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">Cancelled Orders</div>
+                <div class="card-value warning" id="cancelledOrders">0</div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">FASR</div>
+                <div class="card-value success" id="fasr">0%</div>
+            </div>
+
+        </div>
+
+        <!-- SUMMARY TABLE -->
+
+        <div class="table-box">
+
+            <table>
+
+                <thead>
+                    <tr>
+                        <th>Metric</th>
+                        <th>Value</th>
+                        <th>Logic</th>
+                    </tr>
+                </thead>
+
+                <tbody id="summaryTable">
+                </tbody>
+
+            </table>
+
+        </div>
+
+        <!-- FORMULA -->
+
+        <div class="formula">
+
+            <b>Metrics Logic:</b><br><br>
+
+            <b>Total Orders</b> = Count of all rows/orders<br>
+
+            <b>Not_D0_Dispatched Orders</b> = Current Status = READY<br>
+
+            <b>D0_Dispatched Orders</b> = Total Orders - READY Orders<br>
+
+            <b>Cancelled Orders</b> = Current Status = CANCELLED<br>
+
+            <b>FASR</b> = (DELIVERED Orders having Attempt = 0 / Total Orders) × 100
+
+        </div>
+
+        <!-- FINAL EOD TABLE -->
+
+        <div class="table-box">
+
+            <table class="eod-table">
+
+                <tr>
+                    <th colspan="2" class="eod-title">
+                        ZIPPEE ⇄ TRAYA EOD Report
+                    </th>
+                </tr>
+
+                <tr>
+                    <td class="yellow">Darkstore</td>
+                    <td class="gray" id="darkstoreName">-</td>
+                </tr>
+
+                <tr>
+                    <td class="yellow">Processed</td>
+                    <td id="processedValue">0</td>
+                </tr>
+
+                <tr>
+                    <td class="yellow">D0_Dispatched %</td>
+                    <td id="dispatchPercent">0%</td>
+                </tr>
+
+                <tr>
+                    <td class="yellow">D0_Dispatched</td>
+                    <td id="dispatchValue">0</td>
+                </tr>
+
+                <tr>
+                    <td class="yellow">FASR%</td>
+                    <td id="fasrValue">0%</td>
+                </tr>
+
+                <tr>
+                    <td class="yellow">Cancelled</td>
+                    <td id="cancelledValue">0</td>
+                </tr>
+
+                <tr>
+                    <td class="orange">Cancelled%</td>
+                    <td id="cancelledPercent">0%</td>
+                </tr>
+
+            </table>
+
+        </div>
+
+    </div>
+
+    <!-- FOOTER -->
+
+    <div class="footer">
+        Powered by SASA Automation | Harshit Saini – Data Analyst, Zippee
+    </div>
+
+</div>
+
+<script>
+
+document.getElementById('fileInput')
+.addEventListener('change', handleFile);
+
+function handleFile(e){
+
+    const file = e.target.files[0];
+
+    const reader = new FileReader();
+
+    reader.onload = function(event){
+
+        const data = new Uint8Array(event.target.result);
+
+        const workbook = XLSX.read(data, {
+            type:'array'
+        });
+
+        const sheetName = workbook.SheetNames[0];
+
+        const sheet = workbook.Sheets[sheetName];
+
+        const json = XLSX.utils.sheet_to_json(sheet);
+
+        processData(json);
+    };
+
+    reader.readAsArrayBuffer(file);
+}
+
+function processData(data){
+
+    let totalOrders = data.length;
+
+    let readyOrders = 0;
+
+    let cancelledOrders = 0;
+
+    let d0DispatchedOrders = 0;
+
+    let fasrDelivered = 0;
+
+    data.forEach(row => {
+
+        const status = String(
+            row["Current Status"] || ""
+        ).trim().toUpperCase();
+
+        const attempts = String(
+            row["No. of Attempts"] || 
+            row["No. of Attemp"] || 
+            row["No Of Attempts"] || 
+            row["Attempt"] || 
+            "0"
+        ).trim();
+
+        if(status === "READY"){
+            readyOrders++;
+        }
+
+        if(status === "CANCELLED"){
+            cancelledOrders++;
+        }
+
+        if(status === "DELIVERED" && attempts === "0"){
+            fasrDelivered++;
+        }
+
+    });
+
+    d0DispatchedOrders =
+        totalOrders - readyOrders;
+
+    let fasr =
+        ((fasrDelivered / totalOrders) * 100)
+        .toFixed(0);
+
+    let dispatchPercent =
+        ((d0DispatchedOrders / totalOrders) * 100)
+        .toFixed(0);
+
+    let cancelledPercent =
+        ((cancelledOrders / totalOrders) * 100)
+        .toFixed(0);
+
+    let darkstore =
+        data[0]["Darkstore"] ||
+        data[0]["Dark Store"] ||
+        data[0]["darkstore"] ||
+        "Unknown";
+
+    // KPI CARDS
+
+    document.getElementById('totalOrders')
+    .innerText = totalOrders;
+
+    document.getElementById('readyOrders')
+    .innerText = readyOrders;
+
+    document.getElementById('d0Orders')
+    .innerText = d0DispatchedOrders;
+
+    document.getElementById('cancelledOrders')
+    .innerText = cancelledOrders;
+
+    document.getElementById('fasr')
+    .innerText = fasr + "%";
+
+    // SUMMARY TABLE
+
+    const table =
+        document.getElementById('summaryTable');
+
+    table.innerHTML = `
+
+        <tr>
+            <td>Total Orders</td>
+            <td>${totalOrders}</td>
+            <td>Count of all rows/orders</td>
+        </tr>
+
+        <tr>
+            <td>Not_D0_Dispatched Orders</td>
+            <td class="danger">${readyOrders}</td>
+            <td>Current Status = READY</td>
+        </tr>
+
+        <tr>
+            <td>D0_Dispatched Orders</td>
+            <td class="info">${d0DispatchedOrders}</td>
+            <td>Total Orders - READY Orders</td>
+        </tr>
+
+        <tr>
+            <td>Cancelled Orders</td>
+            <td class="warning">${cancelledOrders}</td>
+            <td>Current Status = CANCELLED</td>
+        </tr>
+
+        <tr>
+            <td>Delivered Orders with 0 Attempt</td>
+            <td class="success">${fasrDelivered}</td>
+            <td>DELIVERED + Attempt = 0</td>
+        </tr>
+
+        <tr>
+            <td>FASR</td>
+            <td class="success">${fasr}%</td>
+            <td>(Delivered with 0 Attempt / Total Orders) × 100</td>
+        </tr>
+
+    `;
+
+    // FINAL EOD TABLE
+
+    document.getElementById("darkstoreName")
+    .innerText = darkstore;
+
+    document.getElementById("processedValue")
+    .innerText = totalOrders;
+
+    document.getElementById("dispatchPercent")
+    .innerText = dispatchPercent + "%";
+
+    document.getElementById("dispatchValue")
+    .innerText = d0DispatchedOrders;
+
+    document.getElementById("fasrValue")
+    .innerText = fasr + "%";
+
+    document.getElementById("cancelledValue")
+    .innerText = cancelledOrders;
+
+    document.getElementById("cancelledPercent")
+    .innerText = cancelledPercent + "%";
+}
+
+</script>
+
+</body>
+</html>
