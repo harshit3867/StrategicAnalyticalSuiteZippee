@@ -839,6 +839,46 @@ function generateReconciliation(){
     const tbody =
         document.querySelector("#pivotTable4 tbody");
 
+    thead.innerHTML = "";
+
+    tbody.innerHTML = "";
+
+    // =========================================
+    // MERGE PIVOT1 + PIVOT3
+    // =========================================
+
+    const mergedOrders = {};
+
+    // ADD PIVOT1
+
+    Object.entries(pivot1Data).forEach(([order,amount])=>{
+
+        if(!mergedOrders[order]){
+
+            mergedOrders[order] = 0;
+        }
+
+        mergedOrders[order] += amount;
+
+    });
+
+    // ADD PIVOT3
+
+    Object.entries(pivot3Data).forEach(([order,amount])=>{
+
+        if(!mergedOrders[order]){
+
+            mergedOrders[order] = 0;
+        }
+
+        mergedOrders[order] += amount;
+
+    });
+
+    // =========================================
+    // CREATE HEADER
+    // =========================================
+
     thead.innerHTML = `
         <tr>
             <th>Missing Order ID</th>
@@ -846,49 +886,19 @@ function generateReconciliation(){
         </tr>
     `;
 
-    tbody.innerHTML = "";
-
-    // ====================================================
-    // MERGE PIVOT1 + PIVOT3
-    // REMOVE DUPLICATES ONLY BY ORDER ID
-    // ====================================================
-
-    const mergedOrders = {};
-
-    // FIRST ADD PIVOT1
-
-    Object.entries(pivot1Data).forEach(([order,amount])=>{
-
-        mergedOrders[order] = amount;
-
-    });
-
-    // THEN ADD PIVOT3
-    // ONLY IF ORDER ID NOT ALREADY PRESENT
-
-    Object.entries(pivot3Data).forEach(([order,amount])=>{
-
-        if(!mergedOrders[order]){
-
-            mergedOrders[order] = amount;
-        }
-
-    });
-
     let missingCount = 0;
 
     let missingAmount = 0;
 
-    // ====================================================
-    // CHECK ONLY ONE WAY:
-    // (PIVOT1 + PIVOT3)  →  PIVOT2
-    // ====================================================
+    // =========================================
+    // CHECK PIVOT2 IN MERGED TABLE
+    // =========================================
 
-    Object.entries(mergedOrders).forEach(([order,amount])=>{
+    Object.entries(pivot2Data).forEach(([order,amount])=>{
 
-        // IF ORDER NOT PRESENT IN PIVOT2
+        // IF ORDER NOT FOUND IN MERGED TABLE
 
-        if(!pivot2Data[order]){
+        if(!mergedOrders[order]){
 
             missingCount++;
 
@@ -909,6 +919,26 @@ function generateReconciliation(){
 
     });
 
+    // =========================================
+    // GRAND TOTAL ROW
+    // =========================================
+
+    const totalRow =
+        document.createElement("tr");
+
+    totalRow.classList.add("grand-total");
+
+    totalRow.innerHTML = `
+        <td>Grand Total</td>
+        <td>${missingAmount.toFixed(2)}</td>
+    `;
+
+    tbody.appendChild(totalRow);
+
+    // =========================================
+    // SUMMARY
+    // =========================================
+
     document.getElementById("summary4").innerHTML = `
         <div class="summary">
 
@@ -923,7 +953,6 @@ function generateReconciliation(){
         </div>
     `;
 }
-
 </script>
 
 </body>
