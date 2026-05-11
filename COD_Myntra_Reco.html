@@ -409,7 +409,7 @@ tbody tr:hover{
                 <p>
                     myntra Sheet
                     <br>
-                    Cash + Loginext QR + Static QR
+                    Cash + Loginext QR + Static QR + Third Party
                 </p>
 
                 <input type="file" id="file3" accept=".csv,.xlsx,.xls"/>
@@ -594,11 +594,7 @@ async function processFirstFile(){
         const settlementMode =
     row["Settlement Mode"] || "";
 
-if(
-    order
-    &&
-    settlementMode === "Cash_Collected_Razorpay"
-){
+{
 
     if(!pivot[order]){
         pivot[order] = 0;
@@ -694,8 +690,11 @@ async function processThirdFile(){
         const staticQR =
             parseFloat(row["Static QR"] || 0);
 
+        const thirdParty =
+            parseFloat(row["Third Party"] || 0);
+
         const total =
-            cash + loginext + staticQR;
+            cash + loginext + staticQR + thirdParty;
 
         if(order){
 
@@ -717,7 +716,6 @@ async function processThirdFile(){
         "Sum of Total"
     );
 }
-
 function renderPivot(
     tableId,
     summaryId,
@@ -781,7 +779,6 @@ function renderPivot(
         </div>
     `;
 }
-
 function generateReconciliation(){
 
     const thead =
@@ -876,176 +873,6 @@ function generateReconciliation(){
 }
 
 </script>
-<!-- ================= SCREENSHOT + DEVTOOLS + COPY BLOCKER ================= -->
 
-<script>
-/* =========================================================
-   ZIPPEE SECURITY LAYER
-========================================================= */
-
-/* ---------- TEMP BLUR OVERLAY ---------- */
-function temporarilyBlur() {
-    const overlay = document.createElement("div");
-
-    overlay.style.position = "fixed";
-    overlay.style.inset = "0";
-    overlay.style.background = "rgba(255,255,255,0.25)";
-    overlay.style.backdropFilter = "blur(20px)";
-    overlay.style.zIndex = "999999";
-    overlay.style.pointerEvents = "none";
-
-    document.body.appendChild(overlay);
-
-    setTimeout(() => {
-        overlay.remove();
-    }, 1500);
-}
-
-/* ---------- SCREENSHOT SHORTCUT DETECTION ---------- */
-document.addEventListener("keydown", function(e){
-
-    /* Windows Snipping Tool */
-    if (e.shiftKey && e.metaKey) {
-        temporarilyBlur();
-    }
-
-    /* Shift + S */
-    if (e.shiftKey && e.key.toLowerCase() === "s") {
-        temporarilyBlur();
-    }
-
-    /* Mac Screenshot */
-    if (e.metaKey && e.shiftKey &&
-        (e.key === "3" || e.key === "4")) {
-
-        e.preventDefault();
-        temporarilyBlur();
-        alert("Screenshot shortcut blocked 🚫");
-    }
-});
-
-/* ---------- PRINT SCREEN DETECTION ---------- */
-document.addEventListener("keyup", function(e){
-    if (e.key === "PrintScreen") {
-
-        temporarilyBlur();
-
-        navigator.clipboard.writeText(
-            "Screenshots are disabled on this page."
-        );
-
-        alert("Screenshot blocked 🚫");
-    }
-});
-
-/* ---------- RIGHT CLICK BLOCK ---------- */
-document.addEventListener("contextmenu", function(e){
-    e.preventDefault();
-});
-
-/* ---------- TEXT SELECTION BLOCK ---------- */
-document.addEventListener("selectstart", function(e){
-    e.preventDefault();
-});
-
-/* ---------- COPY BLOCK ---------- */
-document.addEventListener("copy", function(e){
-    e.preventDefault();
-    alert("Copying disabled 🚫");
-});
-
-/* ---------- DRAG BLOCK ---------- */
-document.addEventListener("dragstart", function(e){
-    e.preventDefault();
-});
-
-/* ---------- DEVTOOLS KEY BLOCK ---------- */
-document.addEventListener("keydown", function(e){
-
-    /* F12 */
-    if (e.keyCode === 123) {
-        e.preventDefault();
-        return false;
-    }
-
-    /* Ctrl+Shift+I/J/C */
-    if (
-        e.ctrlKey &&
-        e.shiftKey &&
-        ['I','J','C','i','j','c'].includes(e.key)
-    ) {
-        e.preventDefault();
-        return false;
-    }
-
-    /* Ctrl+U */
-    if (e.ctrlKey && ['u','U'].includes(e.key)) {
-        e.preventDefault();
-        return false;
-    }
-
-    /* Ctrl+S */
-    if (e.ctrlKey && ['s','S'].includes(e.key)) {
-        e.preventDefault();
-        return false;
-    }
-
-    /* Ctrl+P */
-    if (e.ctrlKey && ['p','P'].includes(e.key)) {
-        e.preventDefault();
-        return false;
-    }
-});
-
-/* ---------- DEVTOOLS DETECTOR ---------- */
-setInterval(function(){
-
-    const threshold = 160;
-
-    if (
-        window.outerWidth - window.innerWidth > threshold ||
-        window.outerHeight - window.innerHeight > threshold
-    ) {
-
-        document.body.innerHTML = `
-            <div style="
-                height:100vh;
-                display:flex;
-                justify-content:center;
-                align-items:center;
-                font-size:32px;
-                font-weight:800;
-                font-family:Arial;
-                background:white;
-                color:red;
-            ">
-                DevTools Detected 🚫
-            </div>
-        `;
-    }
-
-}, 1000);
-
-/* ---------- MOBILE SCREEN RECORDING DETECTOR ---------- */
-document.addEventListener("visibilitychange", function(){
-
-    if (document.hidden) {
-        temporarilyBlur();
-    }
-});
-
-/* ---------- CONSOLE WARNING ---------- */
-console.clear();
-
-console.log(
-    "%cSTOP!",
-    "color:red;font-size:50px;font-weight:bold;"
-);
-
-console.log(
-    "%cUnauthorized access is prohibited.",
-    "font-size:18px;"
-);
-</script>
 </body>
 </html>
