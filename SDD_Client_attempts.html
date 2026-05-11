@@ -160,6 +160,8 @@ let statusesList = ["DELIVERED","DELIVERY_ATTEMPTED","PICKUP_COMPLETED","READY"]
 // 👇 ADD HERE
 const storeNameMap = {
   "zippee_andheri_sdd": "Mumbai | Andheri",
+  "zippee_horamavu_sdd" : "Bangalore | Horamavu",
+  "zippee_okhla_sdd" : "Delhi | Okhla",
   "zippee_kalyannagar_sdd": "Bangalore | Kalyannagar",
   "zippee_koramangala_sdd": "Bangalore | Koramangala",
   "zippee_koregaonpark_sdd": "Pune | Koregaon Park",
@@ -199,6 +201,8 @@ let includeTrips = tripToggle && tripToggle.checked;
 if(!includeTrips && trip !== "") return;
 const allowedStores = [
   "zippee_andheri_sdd",
+  "zippee_horamavu_sdd",
+  "zippee_okhla_sdd",
   "zippee_kalyannagar_sdd",
   "zippee_koramangala_sdd",
   "zippee_koregaonpark_sdd",
@@ -465,6 +469,8 @@ if(!includeTrips && trip !== "") return;
 
     const allowedStores = [
       "zippee_andheri_sdd",
+      "zippee_horamavu_sdd",
+      "zippee_okhla_sdd",
       "zippee_kalyannagar_sdd",
       "zippee_koramangala_sdd",
       "zippee_koregaonpark_sdd",
