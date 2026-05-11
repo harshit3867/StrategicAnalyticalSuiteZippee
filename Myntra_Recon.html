@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>3 Box Text Processor</title>
+
+  <style>
+    *{
+      margin:0;
+      padding:0;
+      box-sizing:border-box;
+      font-family: Arial, sans-serif;
+    }
+
+    body{
+      background:#f4f6f9;
+      padding:30px;
+    }
+
+    .container{
+      max-width:1400px;
+      margin:auto;
+    }
+
+    h1{
+      text-align:center;
+      margin-bottom:25px;
+      color:#222;
+    }
+
+    .boxes{
+      display:grid;
+      grid-template-columns:1fr 1fr 1fr;
+      gap:20px;
+    }
+
+    .card{
+      background:#fff;
+      padding:20px;
+      border-radius:14px;
+      box-shadow:0 4px 12px rgba(0,0,0,0.08);
+    }
+
+    .card h2{
+      margin-bottom:12px;
+      font-size:20px;
+      color:#333;
+    }
+
+    textarea{
+      width:100%;
+      height:280px;
+      padding:12px;
+      border:1px solid #ccc;
+      border-radius:10px;
+      resize:none;
+      font-size:14px;
+      outline:none;
+    }
+
+    button{
+      margin-top:15px;
+      width:100%;
+      padding:12px;
+      border:none;
+      border-radius:10px;
+      background:#2563eb;
+      color:white;
+      font-size:16px;
+      cursor:pointer;
+      font-weight:bold;
+    }
+
+    button:hover{
+      background:#1d4ed8;
+    }
+
+    .output{
+      margin-top:30px;
+      background:#fff;
+      padding:20px;
+      border-radius:14px;
+      box-shadow:0 4px 12px rgba(0,0,0,0.08);
+    }
+
+    .output h2{
+      margin-bottom:15px;
+    }
+
+    table{
+      width:100%;
+      border-collapse:collapse;
+      margin-top:15px;
+    }
+
+    th, td{
+      border:1px solid #ddd;
+      padding:10px;
+      text-align:left;
+      font-size:14px;
+    }
+
+    th{
+      background:#2563eb;
+      color:white;
+    }
+
+    tr:nth-child(even){
+      background:#f8fafc;
+    }
+
+    .summary{
+      display:flex;
+      gap:20px;
+      margin-top:20px;
+      flex-wrap:wrap;
+    }
+
+    .summary-box{
+      flex:1;
+      min-width:220px;
+      background:#eef4ff;
+      padding:15px;
+      border-radius:12px;
+      font-size:18px;
+      font-weight:bold;
+      color:#1e3a8a;
+    }
+
+    @media(max-width:1000px){
+      .boxes{
+        grid-template-columns:1fr;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="container">
+
+  <h1>3 Box Text Analyzer</h1>
+
+  <div class="boxes">
+
+    <div class="card">
+      <h2>1st Upload → Order Level Worker COD Report</h2>
+      <textarea id="box1" placeholder="Paste Box 1 Text Here"></textarea>
+    </div>
+
+    <div class="card">
+      <h2>2nd Upload → MasterData</h2>
+      <textarea id="box2" placeholder="Paste Box 2 Text Here"></textarea>
+    </div>
+
+    <div class="card">
+      <h2>3rd Upload → Reconciliation Sheet</h2>
+      <textarea id="box3" placeholder="Paste Box 3 Text Here"></textarea>
+    </div>
+
+  </div>
+
+  <button onclick="processData()">Generate Output</button>
+
+  <div class="output">
+
+    <h2>Output</h2>
+
+    <div class="summary">
+      <div class="summary-box">
+        Box 1 Lines: <span id="count1">0</span>
+      </div>
+
+      <div class="summary-box">
+        Box 2 Lines: <span id="count2">0</span>
+      </div>
+
+      <div class="summary-box">
+        Box 3 Lines: <span id="count3">0</span>
+      </div>
+    </div>
+
+    <table id="resultTable">
+      <thead>
+        <tr>
+          <th>Box</th>
+          <th>Preview Data</th>
+        </tr>
+      </thead>
+
+      <tbody>
+      </tbody>
+    </table>
+
+  </div>
+
+</div>
+
+<script>
+
+function processData(){
+
+  const box1 = document.getElementById("box1").value.trim();
+  const box2 = document.getElementById("box2").value.trim();
+  const box3 = document.getElementById("box3").value.trim();
+
+  // CLEAN FUNCTION
+  function cleanLines(text){
+
+    if(!text) return [];
+
+    let lines = text
+      .split("\n")
+      .map(line => line.trim())
+      .filter(line => line !== "");
+
+    // Remove first row
+    if(lines.length > 0){
+      lines.shift();
+    }
+
+    // Remove Grand Total
+    lines = lines.filter(line =>
+      !line.toLowerCase().includes("grand total")
+    );
+
+    return lines;
+  }
+
+  const lines1 = cleanLines(box1);
+  const lines2 = cleanLines(box2);
+  const lines3 = cleanLines(box3);
+
+  // COUNTS
+  document.getElementById("count1").innerText = lines1.length;
+  document.getElementById("count2").innerText = lines2.length;
+  document.getElementById("count3").innerText = lines3.length;
+
+  // GET ORDER IDS ONLY
+  function extractOrderIds(lines){
+
+  return lines.map(line => {
+
+    const parts = line
+      .trim()
+      .split(/\s+/);
+
+    return parts[0]
+      .trim()
+      .replace(/\r/g, "")
+      .replace(/\t/g, "");
+
+  });
+
+}
+
+  const table1Orders = extractOrderIds(lines1);
+  const table2Orders = extractOrderIds(lines2);
+  const table3Orders = extractOrderIds(lines3);
+
+  // COMBINE TABLE 1 + TABLE 3
+  // WITHOUT REMOVING DUPLICATES
+  const combinedOrders = [...table1Orders, ...table3Orders];
+
+  // CHECK WHICH ORDERS ARE NOT AVAILABLE IN TABLE 2
+  // CREATE SET OF MERGED TABLE 1 + 3
+
+const combinedSet = new Set(
+  combinedOrders.map(x => x.trim())
+);
+
+// CHECK TABLE 2 INSIDE MERGED TABLE
+
+const missingOrders = table2Orders.filter(order =>
+  !combinedSet.has(order.trim())
+);
+  // OUTPUT TABLE
+  const tbody = document.querySelector("#resultTable tbody");
+
+  tbody.innerHTML = "";
+
+  // SHOW SUMMARY ROWS
+  addRow("Combined Orders", combinedOrders.length);
+  addRow("Missing In Table 2", missingOrders.length);
+
+  // IF NOTHING IS MISSING
+
+  if(missingOrders.length === 0){
+
+    const tr = document.createElement("tr");
+
+    tr.innerHTML = `
+
+      <td colspan="2"
+          style="
+            background:#dcfce7;
+            color:#166534;
+            font-weight:900;
+            text-align:center;
+            padding:18px;
+            font-size:16px;
+          ">
+
+          ✅ No Missing Orders Found
+
+      </td>
+
+    `;
+
+    tbody.appendChild(tr);
+
+  }
+
+  // DISPLAY MISSING ORDERS
+
+  else{
+
+    missingOrders.forEach(order => {
+
+      const tr = document.createElement("tr");
+
+      tr.style.background = "#ffdddd";
+
+      const td1 = document.createElement("td");
+      td1.innerText = "Missing";
+
+      const td2 = document.createElement("td");
+      td2.innerText = order;
+
+      tr.appendChild(td1);
+      tr.appendChild(td2);
+
+      tbody.appendChild(tr);
+
+    });
+
+  }
+
+}
+
+function addRow(title, value){
+
+  const tbody = document.querySelector("#resultTable tbody");
+
+  const tr = document.createElement("tr");
+
+  const td1 = document.createElement("td");
+  td1.innerText = title;
+
+  const td2 = document.createElement("td");
+  td2.innerText = value;
+
+  tr.appendChild(td1);
+  tr.appendChild(td2);
+
+  tbody.appendChild(tr);
+
+}
+
+</script>
+
+</body>
+</html>
