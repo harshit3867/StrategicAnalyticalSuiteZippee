@@ -695,33 +695,59 @@ async function processThirdFile(){
 
     if(!file) return;
 
-    const data = await readExcel(file,"myntra");
+    const data = await readExcel(file);
 
     const pivot = {};
 
     data.forEach(row=>{
 
+        // COLUMN C → ORDER ID
+
         const order =
-            row["Order ID"] || "";
+            String(
+                Object.values(row)[2] || ""
+            ).trim();
+
+        // COLUMN F → CASH
 
         const cash =
-            parseFloat(row["Cash"] || 0);
+            parseFloat(
+                Object.values(row)[5] || 0
+            ) || 0;
+
+        // COLUMN G → LOGINEXT QR
 
         const loginext =
-            parseFloat(row["Loginext QR"] || 0);
+            parseFloat(
+                Object.values(row)[6] || 0
+            ) || 0;
+
+        // COLUMN H → STATIC QR
 
         const staticQR =
-            parseFloat(row["Static QR"] || 0);
+            parseFloat(
+                Object.values(row)[7] || 0
+            ) || 0;
+
+        // COLUMN I → THIRD PARTY
 
         const thirdParty =
-            parseFloat(row["Third Party"] || 0);
+            parseFloat(
+                Object.values(row)[8] || 0
+            ) || 0;
+
+        // TOTAL OF F+G+H+I
 
         const total =
-            cash + loginext + staticQR + thirdParty;
+            cash +
+            loginext +
+            staticQR +
+            thirdParty;
 
         if(order){
 
             if(!pivot[order]){
+
                 pivot[order] = 0;
             }
 
@@ -736,7 +762,7 @@ async function processThirdFile(){
         "pivotTable3",
         "summary3",
         pivot,
-        "Sum of Total"
+        "Sum of F+G+H+I"
     );
 }
 function renderPivot(
