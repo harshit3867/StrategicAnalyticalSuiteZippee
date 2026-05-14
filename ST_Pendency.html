@@ -1,0 +1,1492 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+
+<title>Zippee ⇄ Supertails Pendency Dashboard</title>
+
+<!-- XLSX -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<!-- JSZIP -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+<style>
+
+:root{
+    --primary:#003f8c;
+    --primary2:#0059b3;
+    --glass-bg:rgba(255,255,255,0.18);
+    --card-shadow:0 8px 30px rgba(0,0,0,0.22);
+}
+
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:"Segoe UI",Arial,sans-serif;
+}
+
+body{
+    background:url('https://images.unsplash.com/photo-1557683316-973673baf926?q=80&w=1920&auto=format&fit=crop') center/cover fixed no-repeat;
+    min-height:100vh;
+    padding:30px;
+}
+
+body::before{
+    content:"";
+    position:fixed;
+    inset:0;
+    background:rgba(255,255,255,.22);
+    backdrop-filter:blur(7px);
+    z-index:-1;
+}
+
+.container{
+    max-width:1700px;
+    margin:auto;
+}
+
+.header{
+    background:linear-gradient(90deg,rgba(0,63,140,.92),rgba(0,89,179,.92));
+    color:white;
+    padding:24px 35px;
+    border-radius:22px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:28px;
+    box-shadow:var(--card-shadow);
+}
+
+.header h1{
+    font-size:32px;
+    font-weight:800;
+}
+
+.main-card{
+    background:var(--glass-bg);
+    backdrop-filter:blur(10px) saturate(130%);
+    border-radius:24px;
+    padding:30px;
+    box-shadow:var(--card-shadow);
+}
+
+.upload-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(320px,1fr));
+    gap:22px;
+    margin-bottom:35px;
+}
+
+.upload-card{
+    background:rgba(255,255,255,0.78);
+    padding:24px;
+    border-radius:22px;
+    box-shadow:0 8px 20px rgba(0,0,0,0.10);
+}
+
+.upload-title{
+    font-size:20px;
+    font-weight:700;
+    color:var(--primary);
+    margin-bottom:18px;
+}
+
+input[type=file]{
+    width:100%;
+    padding:15px;
+    border-radius:14px;
+    border:2px dashed #5b7cff;
+    background:rgba(255,255,255,0.65);
+    cursor:pointer;
+}
+
+button{
+    width:100%;
+    margin-top:16px;
+    padding:14px;
+    border:none;
+    border-radius:14px;
+    background:linear-gradient(90deg,var(--primary),var(--primary2));
+    color:white;
+    font-size:15px;
+    font-weight:700;
+    cursor:pointer;
+    transition:.3s;
+}
+
+button:hover{
+    transform:translateY(-3px);
+}
+
+.cards{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+    gap:22px;
+    margin-bottom:35px;
+}
+
+.card{
+    background:rgba(255,255,255,0.82);
+    border-radius:22px;
+    padding:24px;
+    box-shadow:0 8px 20px rgba(0,0,0,.12);
+    transition:.3s;
+}
+
+.card:hover{
+    transform:translateY(-6px);
+}
+
+.card-title{
+    font-size:15px;
+    color:#666;
+    margin-bottom:12px;
+    font-weight:600;
+}
+
+.card-value{
+    font-size:42px;
+    font-weight:800;
+}
+
+.success{color:#00a651;}
+.danger{color:#e53935;}
+.info{color:#1565c0;}
+.warning{color:#ff9800;}
+
+.section-title{
+    font-size:24px;
+    font-weight:800;
+    color:var(--primary);
+    margin:35px 0 16px;
+}
+
+.table-box{
+    overflow:auto;
+    margin-bottom:35px;
+}
+
+table{
+    width:auto;
+    min-width:auto;
+    border-collapse:collapse;
+    background:white;
+    border-radius:18px;
+    overflow:hidden;
+    box-shadow:0 8px 20px rgba(0,0,0,.12);
+    margin:auto;
+}
+
+th{
+    background:#003f8c;
+    color:white;
+    padding:14px;
+    text-align:center;
+    font-size:14px;
+    font-weight:800;
+    text-transform:uppercase;
+    position:sticky;
+    top:0;
+}
+
+td{
+    padding:12px;
+    border-bottom:1px solid #e5e7eb;
+    text-align:center;
+    font-size:14px;
+}
+#finalOutput table th,
+#finalOutput table td{
+    padding:10px 14px;
+    white-space:nowrap;
+}
+
+#finalOutput table th:nth-child(1),
+#finalOutput table td:nth-child(1){
+    min-width:70px;
+}
+
+#finalOutput table th:nth-child(2),
+#finalOutput table td:nth-child(2){
+    min-width:180px;
+}
+tr:hover td{
+    background:#f7fbff;
+}
+
+.row-header{
+    font-weight:700;
+    background:#f3f4f6;
+}
+
+.footer{
+    text-align:center;
+    margin-top:30px;
+    color:white;
+    font-size:13px;
+    font-weight:700;
+}
+
+input[type=number]{
+    width:70px;
+    padding:6px;
+    border-radius:8px;
+    border:1px solid #ccc;
+    text-align:center;
+    appearance:textfield;
+    -moz-appearance:textfield;
+}
+
+input[type=number]::-webkit-outer-spin-button,
+input[type=number]::-webkit-inner-spin-button{
+    -webkit-appearance:none;
+    margin:0;
+}
+
+@media(max-width:768px){
+
+    .header{
+        flex-direction:column;
+        text-align:center;
+        gap:12px;
+    }
+
+    .header h1{
+        font-size:24px;
+    }
+
+    .card-value{
+        font-size:34px;
+    }
+
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <!-- HEADER -->
+
+    <div class="header">
+        <h1>Zippee ⇄ Supertails Pendency Dashboard</h1>
+    </div>
+
+    <!-- MAIN -->
+
+    <div class="main-card">
+
+        <!-- UPLOAD SECTION -->
+
+        <div class="upload-grid">
+
+            <div class="upload-card">
+
+                <div class="upload-title">
+                    Upload Blaze Data
+                </div>
+
+                <input type="file"
+                       id="shipmentFile"
+                       accept=".csv,.xlsx,.xls">
+
+                <button onclick="generateShipmentPivot()">
+                    Generate Shipment Pivot
+                </button>
+
+            </div>
+
+            <div class="upload-card">
+
+                <div class="upload-title">
+                    Upload Pidge Data
+                </div>
+
+                <input type="file"
+                       id="fulfillmentFile"
+                       accept=".csv,.xlsx,.xls">
+
+                <button onclick="generateFulfillmentPivot()">
+                    Generate Fulfillment Pivot
+                </button>
+
+            </div>
+
+            <div class="upload-card">
+
+                <div class="upload-title">
+                    Upload Loginext ZIP
+                </div>
+
+                <input type="file"
+                       id="zipFile"
+                       accept=".zip">
+
+                <button onclick="generateZipPivot()">
+                    Generate ZIP Pivot
+                </button>
+
+            </div>
+
+        </div>
+
+        <!-- KPI CARDS -->
+
+        <div class="cards">
+
+            <div class="card">
+                <div class="card-title">Total Orders</div>
+                <div class="card-value info" id="kpiTotal">0</div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">Pending Orders</div>
+                <div class="card-value danger" id="kpiPending">0</div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">Pendency %</div>
+                <div class="card-value warning" id="kpiPendency">0%</div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">Picked Up</div>
+                <div class="card-value info" id="kpiPickedup">0</div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">Attempted Delivery</div>
+                <div class="card-value success" id="kpiAttempted">0</div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">Cancelled</div>
+                <div class="card-value danger" id="kpiCancelled">0</div>
+            </div>
+
+        </div>
+
+        <!-- SHIPMENT -->
+
+        <div class="section-title">
+            Shipment Pivot
+        </div>
+
+        <div class="table-box">
+            <div id="shipmentOutput"></div>
+        </div>
+
+        <!-- FULFILLMENT -->
+
+        <div class="section-title">
+            Fulfillment Pivot
+        </div>
+
+        <div class="table-box">
+            <div id="fulfillmentOutput"></div>
+        </div>
+
+        <!-- ZIP -->
+
+        <div class="section-title">
+            Loginext ZIP Pivot
+        </div>
+
+        <div class="table-box">
+            <div id="zipOutput"></div>
+        </div>
+
+        <!-- FINAL -->
+
+        <div class="section-title">
+            Final Consolidated Pendency Report
+        </div>
+
+        <div class="table-box">
+            <div style="text-align:center; margin-bottom:18px;">
+    
+    <button
+        onclick="downloadFinalTable()"
+        style="
+        width:auto;
+        padding:12px 24px;
+        border-radius:12px;
+        font-size:15px;
+        ">
+        Download Table as PNG
+    </button>
+
+</div>
+            <div id="finalOutput"></div>
+        </div>
+
+    </div>
+
+    <div class="footer">
+        Powered by SASA Automation | Harshit Saini – Data Analyst, Zippee
+    </div>
+
+</div>
+
+<script>
+
+// ======================================================
+// GLOBAL METRICS
+// ======================================================
+
+const finalMetrics = {
+    Hyderabad:{},
+    Kolkata:{},
+    "Indra Nagar":{},
+    "Kalyan Nagar":{},
+    Varthur:{},
+    Pune:{},
+    Chennai:{}
+};
+
+function resetStore(store){
+
+    finalMetrics[store] = {};
+
+}
+
+function addMetric(store,status,value=1){
+
+    if(!finalMetrics[store]){
+        finalMetrics[store] = {};
+    }
+
+    if(!finalMetrics[store][status]){
+        finalMetrics[store][status] = 0;
+    }
+
+    finalMetrics[store][status] += value;
+}
+
+function getMetric(store,status){
+
+    return finalMetrics?.[store]?.[status] || 0;
+}
+
+function cleanValue(value){
+
+    if(value === undefined || value === null){
+        return "";
+    }
+
+    return String(value).trim().toUpperCase();
+}
+
+// ======================================================
+// KPI
+// ======================================================
+
+function updateKPIs(){
+
+    const stores = Object.keys(finalMetrics);
+
+    let total = 0;
+    let pending = 0;
+    let pickedup = 0;
+    let attempted = 0;
+    let cancelled = 0;
+
+    stores.forEach(store=>{
+
+        total +=
+            getMetric(store,"ATTEMPTED DELIVERY") +
+            getMetric(store,"NOT DISPATCHED") +
+            getMetric(store,"0 ATTEMPT") +
+            getMetric(store,"PICKEDUP") +
+            getMetric(store,"INTRANSIT") +
+            getMetric(store,"CANCELLED");
+
+        pending += getMetric(store,"0 ATTEMPT");
+
+        pickedup += getMetric(store,"PICKEDUP");
+
+        attempted += getMetric(store,"ATTEMPTED DELIVERY");
+
+        cancelled += getMetric(store,"CANCELLED");
+
+    });
+
+    const pendency =
+        total === 0
+        ? "0%"
+        : ((pending/total)*100).toFixed(2)+"%";
+
+    document.getElementById("kpiTotal").innerText = total;
+
+    document.getElementById("kpiPending").innerText = pending;
+
+    document.getElementById("kpiPendency").innerText = pendency;
+
+    document.getElementById("kpiPickedup").innerText = pickedup;
+
+    document.getElementById("kpiAttempted").innerText = attempted;
+
+    document.getElementById("kpiCancelled").innerText = cancelled;
+}
+
+// ======================================================
+// SHIPMENT PIVOT
+// ======================================================
+
+function generateShipmentPivot(){
+
+    const fileInput =
+        document.getElementById("shipmentFile");
+
+    if(!fileInput.files.length){
+        alert("Upload shipment file");
+        return;
+    }
+
+    resetStore("Pune");
+    resetStore("Chennai");
+
+    const file = fileInput.files[0];
+
+    const reader = new FileReader();
+
+    reader.onload = function(event){
+
+        const data =
+            new Uint8Array(event.target.result);
+
+        const workbook =
+            XLSX.read(data,{type:"array"});
+
+        const firstSheet =
+            workbook.Sheets[
+                workbook.SheetNames[0]
+            ];
+
+        const excelData =
+            XLSX.utils.sheet_to_json(firstSheet,{
+                header:1
+            });
+
+        const pivot = {};
+
+        const statusesSet = new Set();
+
+        for(let i=1;i<excelData.length;i++){
+
+            const row = excelData[i];
+
+            const darkstore = cleanValue(row[0]);
+
+            const awb = cleanValue(row[1]);
+
+            const status = cleanValue(row[4]);
+
+            const attempts = cleanValue(row[20]);
+
+            if(status === "CANCELLED" ||
+               status === "DELIVERED"){
+                continue;
+            }
+
+            if(!darkstore || !awb || !status){
+                continue;
+            }
+
+            let finalStatus = "";
+
+            if(
+                status === "PICKUP_COMPLETED" ||
+                status === "PICKUP_PENDING" ||
+                status === "PICKUP_IN_PROCESS"
+            ){
+                finalStatus = "PICKEDUP";
+            }
+            else if(status === "DELIVERY_ATTEMPTED"){
+                finalStatus = "ATTEMPTED DELIVERY";
+            }
+            else if(status === "READY"){
+
+                finalStatus = "NOT DISPATCHED";
+
+                if(attempts === "0"){
+
+                    if(!pivot[darkstore]){
+                        pivot[darkstore] = {};
+                    }
+
+                    if(!pivot[darkstore]["0 ATTEMPT"]){
+                        pivot[darkstore]["0 ATTEMPT"] = 0;
+                    }
+
+                    pivot[darkstore]["0 ATTEMPT"]++;
+
+                    statusesSet.add("0 ATTEMPT");
+                }
+
+            }
+            else if(status === "RTO"){
+                finalStatus = "RTO";
+            }
+            else{
+                continue;
+            }
+
+            statusesSet.add(finalStatus);
+
+            if(!pivot[darkstore]){
+                pivot[darkstore] = {};
+            }
+
+            if(!pivot[darkstore][finalStatus]){
+                pivot[darkstore][finalStatus] = 0;
+            }
+
+            pivot[darkstore][finalStatus]++;
+        }
+
+        const statuses =
+            Array.from(statusesSet).sort();
+
+        const stores =
+            Object.keys(pivot);
+
+        let html = `<table>`;
+
+        html += `<tr><th>Status</th>`;
+
+        stores.forEach(store=>{
+            html += `<th>${store}</th>`;
+        });
+
+        html += `<th>Grand Total</th></tr>`;
+
+        statuses.forEach(status=>{
+
+            let rowTotal = 0;
+
+            html += `<tr>`;
+
+            html += `
+            <td class="row-header">
+            ${status}
+            </td>
+            `;
+
+            stores.forEach(store=>{
+
+                const count =
+                    pivot[store][status] || 0;
+
+                rowTotal += count;
+
+                html += `
+                <td>
+                ${count === 0 ? "" : count}
+                </td>
+                `;
+
+                let finalStore = "";
+
+                if(store.includes("KOREGAON")){
+                    finalStore = "Pune";
+                }
+                else if(store.includes("PERIYAMET")){
+                    finalStore = "Chennai";
+                }
+
+                if(finalStore){
+                    addMetric(finalStore,status,count);
+                }
+
+            });
+
+            html += `<td><b>${rowTotal}</b></td>`;
+
+            html += `</tr>`;
+        });
+
+        html += `</table>`;
+
+        document.getElementById("shipmentOutput")
+        .innerHTML = html;
+
+        renderFinalTable();
+        updateKPIs();
+    };
+
+    reader.readAsArrayBuffer(file);
+}
+
+// ======================================================
+// FULFILLMENT
+// ======================================================
+
+function generateFulfillmentPivot(){
+
+    const fileInput =
+        document.getElementById("fulfillmentFile");
+
+    if(!fileInput.files.length){
+        alert("Upload fulfillment file");
+        return;
+    }
+
+    resetStore("Indra Nagar");
+    resetStore("Kalyan Nagar");
+    resetStore("Varthur");
+
+    const file = fileInput.files[0];
+
+    const reader = new FileReader();
+
+    reader.onload = function(e){
+
+        const data =
+            new Uint8Array(e.target.result);
+
+        const workbook =
+            XLSX.read(data,{type:"array"});
+
+        const worksheet =
+            workbook.Sheets[
+                workbook.SheetNames[0]
+            ];
+
+        const jsonData =
+            XLSX.utils.sheet_to_json(worksheet,{
+                header:1,
+                defval:""
+            });
+
+        const REF_COL = 2;
+        const CHANNEL_COL = 3;
+        const STATUS_COL = 22;
+
+        const pivot = {};
+
+        const allStatuses = new Set();
+
+        for(let i=1;i<jsonData.length;i++){
+
+            const row = jsonData[i];
+
+            const reference = row[REF_COL];
+
+            let channel = row[CHANNEL_COL];
+
+            if(channel === "Supertail_Hyperlocal"){
+                channel = "Supertails_KalyanNagar";
+            }
+
+            let status = row[STATUS_COL];
+
+            if(!reference || !channel){
+                continue;
+            }
+
+            status =
+                status
+                ? status.toString().trim().toUpperCase()
+                : "";
+
+            let finalStatus = "";
+
+            if(status === "UNDELIVERED"){
+                finalStatus = "ATTEMPTED DELIVERY";
+            }
+            else if(status === "CREATED"){
+                finalStatus = "NOT DISPATCHED";
+            }
+            else if(
+                status === "PICKED_UP" ||
+                status === "REACHED_DELIVERED" ||
+                status === "REACHED_PICKUP"
+            ){
+                finalStatus = "PICKEDUP";
+            }
+            else if(
+                status === "OUT_FOR_DELIVERY" ||
+                status === "IN_TRANSIT"
+            ){
+                finalStatus = "INTRANSIT";
+            }
+            else if(status === "CANCELLED"){
+                finalStatus = "CANCELLED";
+            }
+            else{
+                continue;
+            }
+
+            allStatuses.add(finalStatus);
+
+            if(!pivot[channel]){
+                pivot[channel] = {};
+            }
+
+            if(!pivot[channel][finalStatus]){
+                pivot[channel][finalStatus] = 0;
+            }
+
+            pivot[channel][finalStatus]++;
+        }
+
+        const statuses =
+            Array.from(allStatuses).sort();
+
+        const channels =
+            Object.keys(pivot);
+
+        let html = `<table>`;
+
+        html += `<tr><th>Status</th>`;
+
+        channels.forEach(channel=>{
+            html += `<th>${channel}</th>`;
+        });
+
+        html += `<th>Grand Total</th></tr>`;
+
+        statuses.forEach(status=>{
+
+            let rowTotal = 0;
+
+            html += `<tr>`;
+
+            html += `
+            <td class="row-header">
+            ${status}
+            </td>
+            `;
+
+            channels.forEach(channel=>{
+
+                const value =
+                    pivot[channel][status] || 0;
+
+                rowTotal += value;
+
+                html += `
+                <td>
+                ${value === 0 ? "" : value}
+                </td>
+                `;
+
+                let store = "";
+
+                if(channel.includes("Indra")){
+                    store = "Indra Nagar";
+                }
+                else if(channel.includes("Kalyan")){
+                    store = "Kalyan Nagar";
+                }
+                else{
+                    store = "Varthur";
+                }
+
+                addMetric(store,status,value);
+
+            });
+
+            html += `<td><b>${rowTotal}</b></td>`;
+
+            html += `</tr>`;
+        });
+
+        html += `</table>`;
+
+        document.getElementById("fulfillmentOutput")
+        .innerHTML = html;
+
+        renderFinalTable();
+        updateKPIs();
+    };
+
+    reader.readAsArrayBuffer(file);
+}
+
+// ======================================================
+// ZIP
+// ======================================================
+
+async function generateZipPivot(){
+
+    const fileInput =
+        document.getElementById("zipFile");
+
+    if(!fileInput.files.length){
+        alert("Upload ZIP file");
+        return;
+    }
+
+    resetStore("Hyderabad");
+    resetStore("Kolkata");
+
+    const file = fileInput.files[0];
+
+    const zip = await JSZip.loadAsync(file);
+
+    let allRows = [];
+
+    for(const filename of Object.keys(zip.files)){
+
+        const zipEntry = zip.files[filename];
+
+        if(
+            filename.endsWith(".xlsx") ||
+            filename.endsWith(".xls") ||
+            filename.endsWith(".csv")
+        ){
+
+            const data =
+                await zipEntry.async("arraybuffer");
+
+            let workbook;
+
+            if(filename.endsWith(".csv")){
+
+                const text =
+                    new TextDecoder().decode(data);
+
+                workbook = XLSX.read(text,{
+                    type:"string"
+                });
+
+            }else{
+
+                workbook = XLSX.read(data,{
+                    type:"array"
+                });
+            }
+
+            workbook.SheetNames.forEach(sheetName=>{
+
+                const worksheet =
+                    workbook.Sheets[sheetName];
+
+                const jsonData =
+                    XLSX.utils.sheet_to_json(worksheet,{
+                        header:1,
+                        raw:false,
+                        defval:"",
+                        blankrows:false
+                    });
+
+                const headers = jsonData[0];
+
+                const awbIndex =
+                    headers.findIndex(
+                        h=>String(h).trim().toLowerCase()
+                        === "awb no"
+                    );
+
+                const darkStoreIndex =
+                    headers.findIndex(
+                        h=>String(h).trim().toLowerCase()
+                        === "order dark store"
+                    );
+
+                const statusIndex =
+                    headers.findIndex(
+                        h=>String(h).trim().toLowerCase()
+                        === "order status"
+                    );
+
+                for(let i=1;i<jsonData.length;i++){
+
+                    const row = jsonData[i];
+
+                    const awb = row[awbIndex] || "";
+
+                    const darkStore =
+                        row[darkStoreIndex] || "";
+
+                    const orderStatus =
+                        row[statusIndex] || "";
+
+                    let finalStatus = "";
+
+                    const status =
+                        String(orderStatus)
+                        .trim()
+                        .toLowerCase();
+
+                    if(
+                        status.includes("undelivered") ||
+                        status.includes("attempt")
+                    ){
+                        finalStatus = "ATTEMPTED DELIVERY";
+                    }
+                    else if(status.includes("cancel")){
+                        finalStatus = "CANCELLED";
+                    }
+                    else if(status.includes("picked") ||
+                            status.includes("pickup")){
+                        finalStatus = "PICKEDUP";
+                    }
+                    else{
+                        finalStatus = "NOT DISPATCHED";
+                    }
+
+                    allRows.push({
+                        awb,
+                        darkStore,
+                        finalStatus
+                    });
+                }
+
+            });
+
+        }
+
+    }
+
+    const pivot = {};
+
+    const stores = new Set();
+
+    allRows.forEach(row=>{
+
+        const store = row.darkStore;
+
+        const status = row.finalStatus;
+
+        stores.add(store);
+
+        if(!pivot[status]){
+            pivot[status] = {};
+        }
+
+        if(!pivot[status][store]){
+            pivot[status][store] = 0;
+        }
+
+        pivot[status][store]++;
+    });
+
+    const tableStores =
+        Array.from(stores).sort();
+
+    const statusOrder = [
+        "ATTEMPTED DELIVERY",
+        "CANCELLED",
+        "NOT DISPATCHED",
+        "PICKEDUP"
+    ];
+
+    let html = `<table>`;
+
+    html += `<tr><th>Status</th>`;
+
+    tableStores.forEach(store=>{
+        html += `<th>${store}</th>`;
+    });
+
+    html += `<th>Grand Total</th></tr>`;
+
+    statusOrder.forEach(status=>{
+
+        let rowTotal = 0;
+
+        html += `<tr>`;
+
+        html += `
+        <td class="row-header">
+        ${status}
+        </td>
+        `;
+
+        tableStores.forEach(store=>{
+
+            const value =
+                pivot[status]?.[store] || 0;
+
+            rowTotal += value;
+
+            html += `
+            <td>
+            ${value === 0 ? "" : value}
+            </td>
+            `;
+
+            let finalStore = "";
+
+            if(store.toLowerCase().includes("hyd")){
+                finalStore = "Hyderabad";
+            }
+            else if(store.toLowerCase().includes("kol")){
+                finalStore = "Kolkata";
+            }
+
+            if(finalStore){
+                addMetric(finalStore,status,value);
+            }
+
+        });
+
+        html += `<td><b>${rowTotal}</b></td>`;
+
+        html += `</tr>`;
+    });
+
+    html += `</table>`;
+
+    document.getElementById("zipOutput")
+    .innerHTML = html;
+
+    renderFinalTable();
+    updateKPIs();
+}
+
+// ======================================================
+// FINAL TABLE
+// ======================================================
+
+function renderFinalTable(){
+
+    const stores = [
+        "Hyderabad",
+        "Kolkata",
+        "Indra Nagar",
+        "Kalyan Nagar",
+        "Varthur",
+        "Pune",
+        "Chennai"
+    ];
+
+    let html = `<table>`;
+
+    const now = new Date();
+
+const formattedDate =
+    now.toLocaleDateString("en-GB");
+
+const formattedTime =
+    now.toLocaleTimeString("en-IN",{
+        hour:"2-digit",
+        minute:"2-digit"
+    });
+
+html += `
+<tr>
+    <th colspan="9"
+    style="
+    background:#b000b5;
+    font-size:24px;
+    line-height:1.6;
+    padding:18px;
+    ">
+    Zippee ⇄ Supertails Pendency Report
+    <br>
+    <span style="
+        font-size:14px;
+        font-weight:600;
+    ">
+        Generated On :
+        ${formattedDate}
+        |
+        ${formattedTime}
+    </span>
+    </th>
+</tr>
+`;
+    html += `
+    <tr>
+        <th>S.No</th>
+        <th>Key Parameters</th>
+        <th>Hyderabad</th>
+        <th>Kolkata</th>
+        <th>Indra Nagar</th>
+        <th>Kalyan Nagar</th>
+        <th>Varthur</th>
+        <th>Pune</th>
+        <th>Chennai</th>
+    </tr>
+    `;
+
+    const rows = [
+
+    ["1","Total Orders","TOTAL_ORDERS"],
+
+    ["2","0 Attempt","0 ATTEMPT"],
+
+    ["3","Pendency %","PENDENCY_PERCENT"],
+
+    ["6","Attempted Delivery","ATTEMPTED DELIVERY"],
+
+    ["7","Not Dispatched","NOT DISPATCHED"],
+
+    ["8","Pickedup","PICKEDUP"],
+
+    ["9","Intransit","INTRANSIT"],
+
+    ["10","Cancelled","CANCELLED"]
+
+];
+
+rows.forEach(r=>{
+
+    html += `<tr>`;
+
+    html += `<td>${r[0]}</td>`;
+
+    html += `
+    <td class="row-header">
+    ${r[1]}
+    </td>
+    `;
+
+    stores.forEach(store=>{
+
+        let value = 0;
+
+        // TOTAL ORDERS
+
+        if(r[2] === "TOTAL_ORDERS"){
+
+            value =
+                getMetric(store,"ATTEMPTED DELIVERY") +
+                getMetric(store,"NOT DISPATCHED") +
+                getMetric(store,"PICKEDUP") +
+                getMetric(store,"INTRANSIT") +
+                getMetric(store,"CANCELLED");
+
+        }
+
+        // PENDENCY %
+
+        else if(r[2] === "PENDENCY_PERCENT"){
+
+            const total =
+                getMetric(store,"ATTEMPTED DELIVERY") +
+                getMetric(store,"NOT DISPATCHED") +
+                getMetric(store,"PICKEDUP") +
+                getMetric(store,"INTRANSIT") +
+                getMetric(store,"CANCELLED");
+
+            const pending =
+                getMetric(store,"0 ATTEMPT");
+
+            value =
+                total === 0
+                ? "0%"
+                : ((pending / total) * 100).toFixed(2) + "%";
+
+        }
+
+        // NORMAL ROWS
+
+        else{
+
+            value = getMetric(store,r[2]);
+
+        }
+
+        html += `
+        <td>
+        <b>${value}</b>
+        </td>
+        `;
+    });
+
+    html += `</tr>`;
+
+    // INSERT AFTER ROW 3
+
+    if(r[0] === "3"){
+
+        // Rider Count
+
+        html += `
+        <tr>
+            <td>4</td>
+            <td class="row-header">
+            Rider Count
+            </td>
+        `;
+
+        stores.forEach(store=>{
+
+            html += `
+            <td>
+                <input
+                    type="number"
+                    id="rider_${store}"
+                    value="${
+                        document.getElementById(`rider_${store}`)?.value || 0
+                    }"
+                    onchange="renderFinalTable()"
+                >
+            </td>
+            `;
+        });
+
+        html += `</tr>`;
+
+        // Avg Order / Rider
+
+        html += `
+        <tr>
+            <td>5</td>
+            <td class="row-header">
+            Avg Order / Rider
+            </td>
+        `;
+
+        stores.forEach(store=>{
+
+            const total =
+    getMetric(store,"ATTEMPTED DELIVERY") +
+    getMetric(store,"NOT DISPATCHED") +
+    getMetric(store,"PICKEDUP") +
+    getMetric(store,"INTRANSIT") +
+    getMetric(store,"CANCELLED");
+            const rider =
+                parseFloat(
+                    document.getElementById(`rider_${store}`)?.value || 0
+                );
+
+            const avg =
+    rider === 0
+    ? 0
+    : Math.ceil(total / rider);
+
+            html += `
+            <td>
+            <b>${avg}</b>
+            </td>
+            `;
+        });
+
+        html += `</tr>`;
+    }
+
+});
+    
+    html += `</table>`;
+
+    document.getElementById("finalOutput")
+    .innerHTML = html;
+    
+}
+
+async function downloadFinalTable(){
+
+    const table =
+        document.querySelector("#finalOutput table");
+
+    if(!table){
+        alert("No table found");
+        return;
+    }
+
+    // replace inputs with text
+    const inputs = table.querySelectorAll("input");
+
+    const original = [];
+
+    inputs.forEach(input=>{
+
+        original.push({
+            parent: input.parentNode,
+            element: input
+        });
+
+        const span =
+            document.createElement("span");
+
+        span.innerText = input.value;
+
+        span.style.fontWeight = "700";
+        span.style.fontSize = "16px";
+        span.style.display = "inline-block";
+        span.style.minWidth = "40px";
+
+        input.parentNode.replaceChild(span,input);
+    });
+
+    // create wrapper
+    const wrapper =
+        document.createElement("div");
+
+    wrapper.style.background = "#ffffff";
+    wrapper.style.padding = "0";
+    wrapper.style.width = "fit-content";
+    wrapper.style.margin = "auto";
+
+    // clone table
+    const tableClone =
+        table.cloneNode(true);
+
+    wrapper.appendChild(tableClone);
+
+    // watermark
+    const watermark =
+        document.createElement("div");
+
+    watermark.innerHTML = `
+        Powered by SASA Automation | Zippee<br>
+        This Report is automated by Tejswee Rauthan | Data Analyst Team | Control Tower 
+    `;
+
+    watermark.style.width = "100%";
+    watermark.style.textAlign = "center";
+    watermark.style.fontWeight = "700";
+    watermark.style.fontSize = "18px";
+    watermark.style.lineHeight = "1.7";
+    watermark.style.padding = "22px 0";
+    watermark.style.color = "#555";
+    watermark.style.background = "#ffffff";
+
+    wrapper.appendChild(watermark);
+
+    document.body.appendChild(wrapper);
+
+    await new Promise(resolve => setTimeout(resolve,300));
+
+    const canvas =
+        await html2canvas(wrapper,{
+            scale:3,
+            useCORS:true,
+            backgroundColor:"#ffffff"
+        });
+
+    wrapper.remove();
+
+    // restore inputs
+    original.forEach(item=>{
+
+        const span =
+            item.parent.querySelector("span");
+
+        if(span){
+            item.parent.replaceChild(
+                item.element,
+                span
+            );
+        }
+
+    });
+
+    const link =
+        document.createElement("a");
+
+    link.download =
+        "Zippee_Supertails_Pendency_Report.png";
+
+    link.href =
+        canvas.toDataURL("image/png");
+
+    link.click();
+}
+
+</script>
+
+</body>
+</html>
