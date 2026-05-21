@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+
+<title>Zippee – Krishna Herbal EOD Dashboard</title>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+
+:root{
+    --primary-900:#003f8c;
+    --glass-bg:rgba(255,255,255,0.16);
+    --card-shadow:0 8px 30px rgba(0,0,0,0.25);
+}
+
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:"Segoe UI", Arial, sans-serif;
+}
+
+body{
+    background:url('https://images.unsplash.com/photo-1557683316-973673baf926?q=80&w=1920&auto=format&fit=crop') center/cover fixed no-repeat;
+    min-height:100vh;
+    padding:30px;
+}
+
+body::before{
+    content:"";
+    position:fixed;
+    inset:0;
+    background:rgba(255,255,255,.22);
+    backdrop-filter:blur(7px);
+    z-index:-1;
+}
+
+.container{
+    max-width:1500px;
+    margin:auto;
+}
+
+.header{
+    background:linear-gradient(90deg,rgba(0,63,140,.88),rgba(0,89,179,.88));
+    color:white;
+    padding:20px 35px;
+    border-radius:18px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    box-shadow:var(--card-shadow);
+    margin-bottom:28px;
+}
+
+.header h1{
+    font-size:30px;
+    font-weight:800;
+}
+
+.logo{
+    height:50px;
+}
+
+.main-card{
+    background:var(--glass-bg);
+    backdrop-filter:blur(10px) saturate(120%);
+    border-radius:22px;
+    padding:30px;
+    box-shadow:var(--card-shadow);
+}
+
+.upload-section{
+    margin-bottom:30px;
+}
+
+.upload-title{
+    font-size:22px;
+    font-weight:700;
+    color:var(--primary-900);
+    margin-bottom:16px;
+}
+
+input[type=file]{
+    width:100%;
+    padding:16px;
+    border-radius:14px;
+    border:2px dashed #5b7cff;
+    background:rgba(255,255,255,0.55);
+    font-size:15px;
+    cursor:pointer;
+}
+
+.cards{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(230px,1fr));
+    gap:22px;
+    margin-bottom:35px;
+}
+
+.card{
+    background:rgba(255,255,255,0.82);
+    backdrop-filter:blur(8px);
+    border-radius:20px;
+    padding:24px;
+    box-shadow:0 8px 20px rgba(0,0,0,0.12);
+    transition:0.3s;
+}
+
+.card:hover{
+    transform:translateY(-6px);
+}
+
+.card-title{
+    font-size:15px;
+    color:#666;
+    margin-bottom:12px;
+    font-weight:600;
+}
+
+.card-value{
+    font-size:42px;
+    font-weight:800;
+}
+
+.success{
+    color:#00a651;
+}
+
+.danger{
+    color:#e53935;
+}
+
+.info{
+    color:#1565c0;
+}
+
+.warning{
+    color:#ff9800;
+}
+
+.table-box{
+    overflow:auto;
+    margin-top:20px;
+}
+
+table{
+    width:100%;
+    border-collapse:collapse;
+    background:white;
+    border-radius:16px;
+    overflow:hidden;
+    box-shadow:0 8px 20px rgba(0,0,0,.12);
+}
+
+th{
+    background:#003f8c;
+    color:white;
+    padding:14px;
+    text-align:center;
+    font-size:14px;
+}
+
+td{
+    padding:13px;
+    border-bottom:1px solid #e5e7eb;
+    font-size:14px;
+    text-align:center;
+}
+
+tr:hover td{
+    background:#f8fbff;
+}
+
+.formula{
+    margin-top:24px;
+    background:rgba(255,255,255,0.72);
+    padding:20px;
+    border-radius:16px;
+    line-height:1.9;
+    box-shadow:0 6px 18px rgba(0,0,0,0.08);
+}
+
+.formula b{
+    color:#003f8c;
+}
+
+.eod-table{
+    margin-top:40px;
+    width:520px;
+}
+
+.eod-title{
+    background:#355c8a !important;
+    color:white;
+    text-align:center;
+    font-size:22px;
+    font-weight:800;
+}
+
+.yellow{
+    background:#fff200;
+    font-weight:700;
+}
+
+.orange{
+    background:#f4a460;
+    font-weight:700;
+}
+
+.gray{
+    background:#f2f2f2;
+    font-weight:700;
+}
+
+.footer{
+    text-align:center;
+    margin-top:28px;
+    color:#ffffff;
+    font-weight:700;
+    font-size:13px;
+}
+
+@media(max-width:768px){
+
+    .header{
+        flex-direction:column;
+        gap:14px;
+        text-align:center;
+    }
+
+    .header h1{
+        font-size:24px;
+    }
+
+    .card-value{
+        font-size:34px;
+    }
+
+    .eod-table{
+        width:100%;
+    }
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <!-- HEADER -->
+
+    <div class="header">
+        <h1>Zippee – Krishna Herbal EOD Dashboard</h1>
+
+        <img class="logo"
+        src="SASA.png"  >
+    </div>
+
+    <!-- MAIN CARD -->
+
+    <div class="main-card">
+
+        <!-- FILE UPLOAD -->
+
+        <div class="upload-section">
+
+            <div class="upload-title">
+                Upload Shipment CSV / Excel File
+            </div>
+            <div style="margin-bottom:15px;">
+
+    <label style="
+        font-weight:700;
+        color:#003f8c;
+        margin-right:10px;
+        font-size:16px;
+    ">
+        Select Report Date:
+    </label>
+
+    <input type="date"
+           id="reportDate"
+           style="
+            padding:10px;
+            border-radius:10px;
+            border:none;
+            font-size:15px;
+           ">
+
+</div>
+
+            <input type="file"
+                   id="fileInput"
+                   accept=".xlsx,.xls,.csv">
+
+        </div>
+
+
+        <!-- SUMMARY TABLE -->
+
+        <div class="table-box">
+
+            <table>
+
+                <thead>
+                    <tr>
+                        <th>Metric</th>
+                        <th>Value</th>
+                        <th>Logic</th>
+                    </tr>
+                </thead>
+
+                <tbody id="summaryTable">
+                </tbody>
+
+            </table>
+
+        </div>
+
+        <!-- FORMULA -->
+
+        <div class="formula">
+
+            <b>Metrics Logic:</b><br><br>
+
+            <b>Total Orders</b> = Count of all rows/orders<br>
+
+            <b>Not_D0_Dispatched Orders</b> = Current Status = READY<br>
+
+            <b>D0_Dispatched Orders</b> = Total Orders - READY Orders<br>
+
+            <b>Cancelled Orders</b> = Current Status = CANCELLED<br>
+
+            <b>FASR</b> = (DELIVERED Orders having Attempt = 0 / Total Orders) × 100
+
+        </div>
+
+        <!-- FINAL EOD TABLE -->
+        <div style="text-align:right; margin-bottom:15px;">
+
+    <button onclick="downloadPNG()"
+        style="
+            background:#003f8c;
+            color:white;
+            border:none;
+            padding:12px 22px;
+            border-radius:10px;
+            font-size:15px;
+            font-weight:700;
+            cursor:pointer;
+        ">
+
+        Download Report PNG
+
+    </button>
+
+</div>
+        <div class="table-box">
+
+            <table class="eod-table" id="reportTable">
+
+                <tr>
+                    <th colspan="2" class="eod-title">
+                        ZIPPEE ⇄ Krishna Herbal EOD Report
+                    </th>
+                </tr>
+
+                <tr>
+                    <td class="yellow">Darkstore</td>
+                    <td class="gray" id="darkstoreName">-</td>
+                </tr>
+
+                <tr>
+                    <td class="yellow">Processed</td>
+                    <td id="processedValue">0</td>
+                </tr>
+
+                <tr>
+                    <td class="yellow">D0_Dispatched %</td>
+                    <td id="dispatchPercent">0%</td>
+                </tr>
+
+                <tr>
+                    <td class="yellow">D0_Dispatched</td>
+                    <td id="dispatchValue">0</td>
+                </tr>
+
+                <tr>
+                    <td class="yellow">FASR%</td>
+                    <td id="fasrValue">0%</td>
+                </tr>
+
+                <tr>
+                    <td class="yellow">Cancelled</td>
+                    <td id="cancelledValue">0</td>
+                </tr>
+
+                <tr>
+                    <td class="orange">Cancelled%</td>
+                    <td id="cancelledPercent">0%</td>
+                </tr>
+
+            </table>
+
+        </div>
+
+    </div>
+
+    <!-- FOOTER -->
+
+    <div class="footer">
+        Powered by SASA Automation | Harshit Saini – Data Analyst, Zippee
+    </div>
+
+</div>
+
+<script>
+
+document.getElementById('fileInput')
+.addEventListener('change', handleFile);
+
+function handleFile(e){
+
+    const file = e.target.files[0];
+
+    const reader = new FileReader();
+
+    reader.onload = function(event){
+
+        const data = new Uint8Array(event.target.result);
+
+        const workbook = XLSX.read(data, {
+            type:'array'
+        });
+
+        const sheetName = workbook.SheetNames[0];
+
+        const sheet = workbook.Sheets[sheetName];
+
+        const json = XLSX.utils.sheet_to_json(sheet);
+
+        processData(json);
+    };
+
+    reader.readAsArrayBuffer(file);
+}
+
+function processData(data){
+
+    let totalOrders = data.length;
+
+    let readyOrders = 0;
+
+    let cancelledOrders = 0;
+
+    let d0DispatchedOrders = 0;
+
+    let fasrDelivered = 0;
+    const allowedDarkstores = [
+    "zippee_okhla_sdd",
+    "zippee_andheri_sdd",
+    "zippee_krishna_herbal_jodhpurwh",
+    "zippee_krishna_herbal_indorewh",
+    "zippee_matunga_valkyriesdd",    
+    "zippee_koregaonpark_sdd"
+];
+    data.forEach(row => {
+
+        const status = String(
+            row["Current Status"] || ""
+        ).trim().toUpperCase();
+
+        const attempts = String(
+            row["No. of Attempts"] || 
+            row["No. of Attemp"] || 
+            row["No Of Attempts"] || 
+            row["Attempt"] || 
+            "0"
+        ).trim();
+
+        if(status === "READY"){
+            readyOrders++;
+        }
+
+        if(status === "CANCELLED"){
+            cancelledOrders++;
+        }
+
+        if(status === "DELIVERED" && attempts === "0"){
+            fasrDelivered++;
+        }
+
+    });
+
+    d0DispatchedOrders =
+        totalOrders - readyOrders;
+
+    let fasr =
+        ((fasrDelivered / totalOrders) * 100)
+        .toFixed(0);
+
+    let dispatchPercent =
+        ((d0DispatchedOrders / totalOrders) * 100)
+        .toFixed(0);
+
+    let cancelledPercent =
+        ((cancelledOrders / totalOrders) * 100)
+        .toFixed(0);
+
+// DARKSTORE WISE EOD TABLE
+
+const darkstoreStats = {};
+
+data.forEach(row => {
+
+    const rawDarkstore =
+        String(
+            row["Darkstore"] ||
+            row["Dark Store"] ||
+            row["darkstore"] ||
+            ""
+        ).trim().toLowerCase();
+
+    if(!allowedDarkstores.includes(rawDarkstore)){
+        return;
+    }
+
+    const darkstore =
+        row["Darkstore"] ||
+        row["Dark Store"] ||
+        row["darkstore"] ||
+        "Unknown";
+
+    const status = String(
+        row["Current Status"] || ""
+    ).trim().toUpperCase();
+
+    const attempts = String(
+        row["No. of Attempts"] ||
+        row["No. of Attemp"] ||
+        row["No Of Attempts"] ||
+        row["Attempt"] ||
+        "0"
+    ).trim();
+
+    if(!darkstoreStats[darkstore]){
+
+        darkstoreStats[darkstore] = {
+            total:0,
+            ready:0,
+            cancelled:0,
+            fasrDelivered:0
+        };
+    }
+
+    darkstoreStats[darkstore].total++;
+
+    if(status === "READY"){
+        darkstoreStats[darkstore].ready++;
+    }
+
+    if(status === "CANCELLED"){
+        darkstoreStats[darkstore].cancelled++;
+    }
+
+    if(status === "DELIVERED" && attempts === "0"){
+        darkstoreStats[darkstore].fasrDelivered++;
+    }
+
+});
+
+const eodTable = document.querySelector(".eod-table");
+
+const selectedDate =
+    document.getElementById("reportDate").value;
+
+const formattedDate =
+    selectedDate
+    ? new Date(selectedDate)
+        .toLocaleDateString('en-GB')
+    : "No Date Selected";
+
+let html = `
+
+<tr>
+    <th colspan="${Object.keys(darkstoreStats).length + 1}"
+        style="
+            font-size:24px;
+            padding:18px;
+            background:#002b5c;
+            color:white;
+            text-align:center;
+        ">
+        Zippee ↔ Krishna Herbal EOD Report | ${formattedDate}
+    </th>
+</tr>
+
+<tr>
+    <th>Metric</th>
+`;
+
+Object.keys(darkstoreStats).forEach(store => {
+
+    const cleanName = store
+    .replace("zippee_", "")
+    .replace("_sdd", "")
+    .replace("valkyriesdd", "")
+    .replace("krishna_herbal_jodhpurwh", "Jodhpur")
+    .replace("krishna_herbal_indorewh", "Indore")
+    .replace(/_+/g, " ")
+
+    const finalName =
+        cleanName.charAt(0).toUpperCase() +
+        cleanName.slice(1);
+
+    html += `<th>${finalName}</th>`;    
+});
+
+html += `</tr>`;
+
+// PROCESSED ROW
+
+html += `<tr><td><b>Processed</b></td>`;
+
+Object.values(darkstoreStats).forEach(stats => {
+    html += `<td>${stats.total}</td>`;
+});
+
+html += `</tr>`;
+
+// D0 DISPATCHED
+
+html += `<tr><td><b>D0_Dispatched</b></td>`;
+
+Object.values(darkstoreStats).forEach(stats => {
+
+    const dispatched =
+        stats.total - stats.ready;
+
+    html += `<td>${dispatched}</td>`;
+});
+
+html += `</tr>`;
+
+// D0 %
+
+html += `<tr><td><b>D0%</b></td>`;
+
+Object.values(darkstoreStats).forEach(stats => {
+
+    const dispatched =
+        stats.total - stats.ready;
+
+    const percent =
+        ((dispatched / stats.total) * 100)
+        .toFixed(0);
+
+    html += `<td>${percent}%</td>`;
+});
+
+html += `</tr>`;
+
+// FASR
+
+html += `<tr><td><b>FASR%</b></td>`;
+
+Object.values(darkstoreStats).forEach(stats => {
+
+    const fasr =
+        ((stats.fasrDelivered / stats.total) * 100)
+        .toFixed(0);
+
+    html += `<td>${fasr}%</td>`;
+});
+
+html += `</tr>`;
+
+// CANCELLED
+
+html += `<tr><td><b>Cancelled</b></td>`;
+
+Object.values(darkstoreStats).forEach(stats => {
+
+    html += `<td>${stats.cancelled}</td>`;
+});
+
+html += `</tr>`;
+html += `
+
+<tr>
+    <td colspan="${Object.keys(darkstoreStats).length + 1}"
+        style="
+            background:#f8fbff;
+            padding:18px;
+            text-align:center;
+            font-size:13px;
+            line-height:1.8;
+            color:#000;
+            font-weight:600;
+        ">
+
+        Powered by SASA Automation | Zippee
+        <br>
+        This Report is Automated by Tejaswee Rauthan | Control Tower
+
+    </td>
+</tr>
+
+`;
+
+eodTable.innerHTML = html;
+eodTable.innerHTML = html;
+}
+
+function downloadPNG(){
+
+    const report =
+        document.getElementById("reportTable");
+
+    html2canvas(report, {
+        scale:2
+    }).then(canvas => {
+
+        const link =
+            document.createElement("a");
+
+        link.download =
+            "Zippee_Krishna Herbal_EOD_Report.png";
+
+        link.href =
+            canvas.toDataURL("image/png");
+
+        link.click();
+    });
+}
+
+</script>
+
+</body>
+</html>
