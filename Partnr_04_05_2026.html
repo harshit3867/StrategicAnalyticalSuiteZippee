@@ -243,24 +243,23 @@ if(trackingNo.startsWith("Z0")) return
 let status=r[5]     // column F
 let orderDate = parseIndianDate(r[6])
 
-let now = new Date()
-
-let yesterdayCutoff = new Date(
-    now.getFullYear(),
-    now.getMonth(),
-    now.getDate() - 1,
-    18, 30, 0
-)
-
-let todayCutoff = new Date(
-    now.getFullYear(),
-    now.getMonth(),
-    now.getDate(),
-    18, 30, 0
-)
-
+// REMOVE today's orders after 18:30
 if(orderDate){
-    if(orderDate < yesterdayCutoff || orderDate > todayCutoff){
+    let now = new Date()
+
+    let isToday =
+        orderDate.getDate() === now.getDate() &&
+        orderDate.getMonth() === now.getMonth() &&
+        orderDate.getFullYear() === now.getFullYear()
+
+    let cutoff = new Date(
+        orderDate.getFullYear(),
+        orderDate.getMonth(),
+        orderDate.getDate(),
+        18,30,0
+    )
+
+    if(isToday && orderDate > cutoff){
         return
     }
 }
@@ -313,22 +312,7 @@ orderDate.getDate(),
 9,30,0
 )
 
-let now = new Date()
-
-let yesterdayCutoff = new Date(
-    now.getFullYear(),
-    now.getMonth(),
-    now.getDate() - 1,
-    18, 30, 0
-)
-
-// Rule 1: Yesterday 6:30 PM onwards → shift
-if(orderDate >= yesterdayCutoff){
-    orderDate = storeOpen
-}
-
-// Rule 2: Today before 9:30 AM → shift
-else if(orderDate < storeOpen){
+if(orderDate < storeOpen){
     orderDate = storeOpen
 }
 
@@ -423,7 +407,7 @@ html+=`<tr>
 names.forEach(n=>html+=`<th>${n}</th>`)
 
 html+=`<th>Total</th></tr>`
-function row(sn,label,fn,cls=""){
+function row(sn,label,fn,cls="",totalFn=null){
 
 html+=`<tr class="${cls}">
 <td>${sn}</td>
@@ -441,12 +425,25 @@ if(!isNaN(num)) values.push(num)
 
 let total=0
 
-if(label.includes("%")){
-total=(values.reduce((a,b)=>a+b,0)/values.length).toFixed(2).replace(/\.00$/,'')+"%"
-}else if(label.includes("Time")){
+// CUSTOM TOTAL FORMULA
+if(totalFn){
+
+total = totalFn()
+
+}
+
+// AVERAGE TIME
+else if(label.includes("Time")){
+
 total=Math.round(values.reduce((a,b)=>a+b,0)/values.length)+" mins"
-}else{
+
+}
+
+// NORMAL SUM
+else{
+
 total=values.reduce((a,b)=>a+b,0)
+
 }
 
 html+=`<td>${total}</td></tr>`
@@ -456,11 +453,34 @@ row(1,"Total Order",d=>d.total)
 
 row(2,"Delivered Order",d=>d.delivered)
 
-row("","Delivery %",d=>((d.delivered/d.total||0)*100).toFixed(2).replace(/\.00$/,'')+"%","green-row")
+row("","Delivery %",
+d=>((d.delivered/d.total||0)*100).toFixed(2).replace(/\.00$/,'')+"%",
+"green-row",
+()=>{
 
+let totalDelivered = names.reduce((a,n)=>a + cities[n].delivered,0)
+
+let totalOrders = names.reduce((a,n)=>a + cities[n].total,0)
+
+return ((totalDelivered/totalOrders)*100).toFixed(2).replace(/\.00$/,'') + "%"
+
+})
 row(3,"Breach",d=>d.breach||0)
 
-row("","Breach %",d=>((d.breach/d.delivered||0)*100).toFixed(0)+"%")
+row("","Breach %",
+d=>((d.breach/d.delivered||0)*100).toFixed(0)+"%",
+"",
+()=>{
+
+let totalBreach = names.reduce((a,n)=>a + cities[n].breach,0)
+
+let totalOrders = names.reduce((a,n)=>a + cities[n].total,0)
+
+let totalDelivered = names.reduce((a,n)=>a + cities[n].delivered,0)
+
+return ((totalBreach/totalDelivered)*100).toFixed(2) + "%"
+
+})
 
 row("3.1","15 min",d=>d.breach15||0)
 row("3.2","15-30 Min",d=>d.breach30||0)
@@ -469,8 +489,20 @@ row("3.4","Above 60 Min",d=>d.breachAbove||0)
 
 row(4,"Non Breach",d=>d.nonbreach||0)
 
-row("4.1","Non Breach %",d=>((d.nonbreach/d.delivered||0)*100).toFixed(0)+"%")
+row("4.1","Non Breach %",
+d=>((d.nonbreach/d.delivered||0)*100).toFixed(0)+"%",
+"",
+()=>{
 
+let totalNB = names.reduce((a,n)=>a + cities[n].nonbreach,0)
+
+let totalOrders = names.reduce((a,n)=>a + cities[n].total,0)
+
+let totalDelivered = names.reduce((a,n)=>a + cities[n].delivered,0)
+
+return ((totalNB/totalDelivered)*100).toFixed(2) + "%"
+
+})
 row("4.2","Avg. Delivery Time",
 d=> d.deliveryCount ? Math.round(d.deliverySum/d.deliveryCount)+" mins" : "0 mins")
 
