@@ -201,18 +201,24 @@ td{
 }
 #finalOutput table th,
 #finalOutput table td{
-    padding:10px 14px;
+    padding:8px 10px;
     white-space:nowrap;
+    font-size:13px;
 }
 
 #finalOutput table th:nth-child(1),
 #finalOutput table td:nth-child(1){
-    min-width:70px;
+    min-width:50px;
 }
 
 #finalOutput table th:nth-child(2),
 #finalOutput table td:nth-child(2){
-    min-width:180px;
+    min-width:140px;
+}
+
+#finalOutput table th:not(:nth-child(1)):not(:nth-child(2)),
+#finalOutput table td:not(:nth-child(1)):not(:nth-child(2)){
+    min-width:90px;
 }
 tr:hover td{
     background:#f7fbff;
@@ -309,8 +315,9 @@ input[type=number]::-webkit-inner-spin-button{
                 </div>
 
                 <input type="file"
-                       id="fulfillmentFile"
-                       accept=".csv,.xlsx,.xls">
+       id="fulfillmentFile"
+       accept=".csv,.xlsx,.xls"
+       multiple>
 
                 <button onclick="generateFulfillmentPivot()">
                     Generate Fulfillment Pivot
@@ -500,15 +507,13 @@ function updateKPIs(){
     stores.forEach(store=>{
 
         total +=
-            getMetric(store,"ATTEMPTED DELIVERY") +
-            getMetric(store,"NOT DISPATCHED") +
-            getMetric(store,"0 ATTEMPT") +
-            getMetric(store,"PICKEDUP") +
-            getMetric(store,"INTRANSIT") +
-            getMetric(store,"CANCELLED");
+    getMetric(store,"ATTEMPTED DELIVERY") +
+    getMetric(store,"NOT DISPATCHED") +
+    getMetric(store,"0 ATTEMPTED") +
+    getMetric(store,"PICKEDUP") +
+    getMetric(store,"INTRANSIT");
 
-        pending += getMetric(store,"0 ATTEMPT");
-
+pending += getMetric(store,"0 ATTEMPTED");
         pickedup += getMetric(store,"PICKEDUP");
 
         attempted += getMetric(store,"ATTEMPTED DELIVERY");
@@ -728,13 +733,13 @@ function generateShipmentPivot(){
 // FULFILLMENT
 // ======================================================
 
-function generateFulfillmentPivot(){
+async function generateFulfillmentPivot(){
 
     const fileInput =
         document.getElementById("fulfillmentFile");
 
     if(!fileInput.files.length){
-        alert("Upload fulfillment file");
+        alert("Upload fulfillment files");
         return;
     }
 
@@ -742,14 +747,16 @@ function generateFulfillmentPivot(){
     resetStore("Kalyan Nagar");
     resetStore("Varthur");
 
-    const file = fileInput.files[0];
+    const pivot = {};
+    const allStatuses = new Set();
 
-    const reader = new FileReader();
+    const REF_COL = 2;
+    const CHANNEL_COL = 3;
+    const STATUS_COL = 22;
 
-    reader.onload = function(e){
+    for(const file of fileInput.files){
 
-        const data =
-            new Uint8Array(e.target.result);
+        const data = await file.arrayBuffer();
 
         const workbook =
             XLSX.read(data,{type:"array"});
@@ -764,14 +771,6 @@ function generateFulfillmentPivot(){
                 header:1,
                 defval:""
             });
-
-        const REF_COL = 2;
-        const CHANNEL_COL = 3;
-        const STATUS_COL = 22;
-
-        const pivot = {};
-
-        const allStatuses = new Set();
 
         for(let i=1;i<jsonData.length;i++){
 
@@ -836,79 +835,77 @@ function generateFulfillmentPivot(){
 
             pivot[channel][finalStatus]++;
         }
+    }
 
-        const statuses =
-            Array.from(allStatuses).sort();
+    const statuses =
+        Array.from(allStatuses).sort();
 
-        const channels =
-            Object.keys(pivot);
+    const channels =
+        Object.keys(pivot);
 
-        let html = `<table>`;
+    let html = `<table>`;
 
-        html += `<tr><th>Status</th>`;
+    html += `<tr><th>Status</th>`;
+
+    channels.forEach(channel=>{
+        html += `<th>${channel}</th>`;
+    });
+
+    html += `<th>Grand Total</th></tr>`;
+
+    statuses.forEach(status=>{
+
+        let rowTotal = 0;
+
+        html += `<tr>`;
+
+        html += `
+        <td class="row-header">
+        ${status}
+        </td>
+        `;
 
         channels.forEach(channel=>{
-            html += `<th>${channel}</th>`;
-        });
 
-        html += `<th>Grand Total</th></tr>`;
+            const value =
+                pivot[channel][status] || 0;
 
-        statuses.forEach(status=>{
-
-            let rowTotal = 0;
-
-            html += `<tr>`;
+            rowTotal += value;
 
             html += `
-            <td class="row-header">
-            ${status}
+            <td>
+            ${value === 0 ? "" : value}
             </td>
             `;
 
-            channels.forEach(channel=>{
+            let store = "";
 
-                const value =
-                    pivot[channel][status] || 0;
+            if(channel.includes("Indra")){
+                store = "Indra Nagar";
+            }
+            else if(channel.includes("Kalyan")){
+                store = "Kalyan Nagar";
+            }
+            else{
+                store = "Varthur";
+            }
 
-                rowTotal += value;
+            addMetric(store,status,value);
 
-                html += `
-                <td>
-                ${value === 0 ? "" : value}
-                </td>
-                `;
-
-                let store = "";
-
-                if(channel.includes("Indra")){
-                    store = "Indra Nagar";
-                }
-                else if(channel.includes("Kalyan")){
-                    store = "Kalyan Nagar";
-                }
-                else{
-                    store = "Varthur";
-                }
-
-                addMetric(store,status,value);
-
-            });
-
-            html += `<td><b>${rowTotal}</b></td>`;
-
-            html += `</tr>`;
         });
 
-        html += `</table>`;
+        html += `<td><b>${rowTotal}</b></td>`;
 
-        document.getElementById("fulfillmentOutput")
-        .innerHTML = html;
+        html += `</tr>`;
+    });
 
-        renderFinalTable();
-        updateKPIs();
-    };
+    html += `</table>`;
 
-    reader.readAsArrayBuffer(file);
+    document.getElementById("fulfillmentOutput")
+    .innerHTML = html;
+
+    renderFinalTable();
+    updateKPIs();
 }
 
 // ======================================================
@@ -997,6 +994,12 @@ async function generateZipPivot(){
                         h=>String(h).trim().toLowerCase()
                         === "order status"
                     );
+                const attemptsIndex =
+    headers.findIndex(
+        h=>String(h).trim().toLowerCase()
+        === "no. of attempts"
+    );
+
 
                 for(let i=1;i<jsonData.length;i++){
 
@@ -1009,6 +1012,8 @@ async function generateZipPivot(){
 
                     const orderStatus =
                         row[statusIndex] || "";
+                        const attempts =
+    String(row[attemptsIndex] || "").trim();
 
                     let finalStatus = "";
 
@@ -1018,21 +1023,42 @@ async function generateZipPivot(){
                         .toLowerCase();
 
                     if(
-                        status.includes("undelivered") ||
-                        status.includes("attempt")
-                    ){
-                        finalStatus = "ATTEMPTED DELIVERY";
-                    }
-                    else if(status.includes("cancel")){
-                        finalStatus = "CANCELLED";
-                    }
-                    else if(status.includes("picked") ||
-                            status.includes("pickup")){
-                        finalStatus = "PICKEDUP";
-                    }
-                    else{
-                        finalStatus = "NOT DISPATCHED";
-                    }
+    status.includes("undelivered") ||
+    status.includes("attempt")
+){
+    finalStatus = "ATTEMPTED DELIVERY";
+}
+else if(status.includes("cancel")){
+    finalStatus = "CANCELLED";
+}
+else if(
+    status.includes("picked") ||
+    status.includes("pickup")
+){
+    finalStatus = "PICKEDUP";
+}
+else if(
+    status.trim().toLowerCase() === "not dispatched"
+){
+
+    finalStatus = "NOT DISPATCHED";
+
+    // 0 ATTEMPT LOGIC
+
+    if(attempts === "0"){
+
+        allRows.push({
+            awb,
+            darkStore,
+            finalStatus:"0 ATTEMPTED"
+        });
+
+    }
+
+}
+else{
+    continue;
+}
 
                     allRows.push({
                         awb,
@@ -1074,12 +1100,12 @@ async function generateZipPivot(){
         Array.from(stores).sort();
 
     const statusOrder = [
-        "ATTEMPTED DELIVERY",
-        "CANCELLED",
-        "NOT DISPATCHED",
-        "PICKEDUP"
-    ];
-
+    "ATTEMPTED DELIVERY",
+    "CANCELLED",
+    "NOT DISPATCHED",
+    "0 ATTEMPTED",
+    "PICKEDUP"
+];
     let html = `<table>`;
 
     html += `<tr><th>Status</th>`;
@@ -1214,13 +1240,15 @@ html += `
 
     ["1","Total Orders","TOTAL_ORDERS"],
 
-    ["2","0 Attempt","0 ATTEMPT"],
+    ["2","Pending Orders","0 ATTEMPTED"],
 
     ["3","Pendency %","PENDENCY_PERCENT"],
 
-    ["6","Attempted Delivery","ATTEMPTED DELIVERY"],
+    ["5","Attempted Delivery","ATTEMPTED DELIVERY"],
 
-    ["7","Not Dispatched","NOT DISPATCHED"],
+    ["6","Not Dispatched","NOT DISPATCHED"],
+
+    ["7","0 Attempted","0 ATTEMPTED"],
 
     ["8","Pickedup","PICKEDUP"],
 
@@ -1254,8 +1282,7 @@ rows.forEach(r=>{
                 getMetric(store,"ATTEMPTED DELIVERY") +
                 getMetric(store,"NOT DISPATCHED") +
                 getMetric(store,"PICKEDUP") +
-                getMetric(store,"INTRANSIT") +
-                getMetric(store,"CANCELLED");
+                getMetric(store,"INTRANSIT");
 
         }
 
@@ -1267,11 +1294,10 @@ rows.forEach(r=>{
                 getMetric(store,"ATTEMPTED DELIVERY") +
                 getMetric(store,"NOT DISPATCHED") +
                 getMetric(store,"PICKEDUP") +
-                getMetric(store,"INTRANSIT") +
-                getMetric(store,"CANCELLED");
-
+                getMetric(store,"INTRANSIT");
+               
             const pending =
-                getMetric(store,"0 ATTEMPT");
+    getMetric(store,"0 ATTEMPTED");
 
             value =
                 total === 0
@@ -1284,10 +1310,9 @@ rows.forEach(r=>{
 
         else{
 
-            value = getMetric(store,r[2]);
+    value = getMetric(store,r[2]);
 
-        }
-
+}
         html += `
         <td>
         <b>${value}</b>
@@ -1319,47 +1344,10 @@ rows.forEach(r=>{
                     type="number"
                     id="rider_${store}"
                     value="${
-                        document.getElementById(`rider_${store}`)?.value || 0
+                        document.getElementById(`rider_${store}`)?.value || ""
                     }"
                     onchange="renderFinalTable()"
                 >
-            </td>
-            `;
-        });
-
-        html += `</tr>`;
-
-        // Avg Order / Rider
-
-        html += `
-        <tr>
-            <td>5</td>
-            <td class="row-header">
-            Avg Order / Rider
-            </td>
-        `;
-
-        stores.forEach(store=>{
-
-            const total =
-    getMetric(store,"ATTEMPTED DELIVERY") +
-    getMetric(store,"NOT DISPATCHED") +
-    getMetric(store,"PICKEDUP") +
-    getMetric(store,"INTRANSIT") +
-    getMetric(store,"CANCELLED");
-            const rider =
-                parseFloat(
-                    document.getElementById(`rider_${store}`)?.value || 0
-                );
-
-            const avg =
-    rider === 0
-    ? 0
-    : Math.ceil(total / rider);
-
-            html += `
-            <td>
-            <b>${avg}</b>
             </td>
             `;
         });
