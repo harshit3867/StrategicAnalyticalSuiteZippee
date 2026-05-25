@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Zippee – Unique Rider Count Report</title>
+
+<!-- XLSX -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<!-- HTML2CANVAS (DOWNLOAD IMAGE) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+<style>
+:root{
+    --primary:#003f8c;
+    --glass:rgba(255,255,255,.16);
+    --shadow:0 8px 30px rgba(0,0,0,.25);
+}
+
+html,body{
+    margin:0;
+    padding:0;
+    font-family:"Segoe UI",Arial;
+}
+
+body{
+    background:url('Zippee.png') center/cover fixed no-repeat;
+}
+body::before{
+    content:"";
+    position:fixed;
+    inset:0;
+    background:rgba(255,255,255,.24);
+    backdrop-filter:blur(6px);
+    z-index:-1;
+}
+
+.header{
+    background:linear-gradient(90deg,rgba(0,63,140,.85),rgba(0,89,179,.85));
+    color:white;
+    padding:18px 36px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+}
+
+.logo{height:48px}
+
+.card{
+    background:var(--glass);
+    backdrop-filter:blur(10px) saturate(120%);
+    margin:30px auto;
+    max-width:1300px;
+    padding:30px;
+    border-radius:18px;
+    box-shadow:var(--shadow);
+}
+
+.title{
+    font-size:22px;
+    font-weight:700;
+    color:var(--primary);
+}
+
+.controls{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    margin-top:12px;
+}
+
+button,input{
+    padding:10px 14px;
+    border-radius:10px;
+    border:1px solid #ccc;
+}
+
+button{
+    background:linear-gradient(135deg,#0A66C2,#0078FF);
+    color:white;
+    border:none;
+    font-weight:700;
+    cursor:pointer;
+}
+
+#reportContainer{
+    margin-top:20px;
+    overflow-x:auto;
+}
+
+#captureBox{
+    position:relative;
+    display:inline-block;
+    padding: 24px;   /* 👈 adds left & right space */
+}
+#summaryCapture{
+    padding:20px 40px 30px 40px;
+    background:#ffffff;
+    border-radius:16px;
+}
+table{
+    margin-left: 12px;
+    margin-right: 12px;
+}
+
+.report-head{
+    text-align:center;
+}
+
+.report-title{
+    font-size:18px;
+    font-weight:800;
+}
+
+.report-meta{
+    font-size:13px;
+}
+
+table{
+    width:100%;
+    border-collapse:collapse;
+    background:white;
+    margin-top:10px;
+    border-radius:12px;
+    box-shadow:0 8px 20px rgba(0,0,0,.12);
+}
+
+th,td{
+    border:1px solid #ddd;
+    padding:8px 12px;
+    text-align:center;
+    font-size:13px;
+}
+
+th{
+    background:#003f8c;
+    color:white;
+}
+
+tfoot td{
+    font-weight:800;
+    background:#e6efff;
+}
+
+.report-footer{
+    text-align:center;
+    margin-top:18px;
+    font-size:15px;
+    font-weight:800;
+    width:100%;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+}
+</style>
+</head>
+
+<body>
+
+<!-- HEADER -->
+<div class="header">
+    <h1>Zippee – Unique Rider Report</h1>
+    <img class="logo" src="https://i.imgur.com/7yUVE8U.png">
+</div>
+
+<!-- CARD -->
+<div class="card">
+    <div class="title">Upload Rider Data</div>
+
+    <div class="controls">
+        <div id="loadingText" style="
+    display:none;
+    margin-top:10px;
+    font-weight:700;
+    color:rgb(0, 0, 0);
+">
+    ⏳ Generating report, please wait...
+</div>
+
+        <input type="file" id="sourceFile" accept=".csv,.xls,.xlsx">
+        <input type="file" id="statusFile" accept=".csv,.xls,.xlsx">
+        <button id="buildReport">Generate Report</button>
+        <button id="downloadReport">Download Report</button>
+        <input type="text" id="finder" placeholder="Search Store">
+    </div>
+
+    <div id="reportContainer">
+        <div id="captureBox">
+           
+            <div id="summaryCapture">
+            <div class="report-head">
+                <div class="report-title">📥 Unique Rider Count</div>
+                <div class="report-meta" id="metaInfo"></div>
+            </div>
+
+            <table id="summaryTable">
+                <thead>
+                    <tr>
+                        <th>S.No</th>
+                        <th>Store</th>
+                        <th>Riders</th>
+<th>Idle Riders</th>
+<th>Active Riders</th>
+                    </tr>
+                </thead>
+                <tbody id="grid"></tbody>
+                <tfoot>
+    <tr>
+        <td colspan="2">Grand Total</td>
+        <td id="sumCell">0</td>
+        <td id="idleSumCell">0</td>
+        <td id="activeSumCell">0</td>
+    </tr>
+</tfoot>
+            </table>
+<div class="report-footer">
+    Powered by SASA Automation | Harshit Saini – Data Analyst, Zippee
+</div>
+
+</div>
+            <!-- RIDER NAME TABLE -->
+
+
+<div style="margin-top:30px;">
+    <div class="report-title">👤 Rider Names</div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>S.No</th>
+                <th>Store</th>
+                <th>Worker Code</th>
+<th>Status</th>
+            </tr>
+        </thead>
+
+        <tbody id="riderGrid"></tbody>
+    </table>
+</div>
+    <!-- ORDER STATUS TABLE -->
+
+<div style="margin-top:30px;">
+
+    <div class="report-title">
+        📦 Rider Order Status
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>S.No</th>
+                <th>Rider Id</th>
+                <th>Order Status</th>
+            </tr>
+        </thead>
+
+        <tbody id="statusGrid"></tbody>
+
+    </table>
+</div>
+
+
+        </div>
+    </div>
+</div>
+
+<script>
+/* ------------------ DATA PIPELINE ------------------ */
+
+let snapshot = [];
+
+const normalize = x => x ? String(x).trim() : "";
+
+const APPROVED_STORES = new Set([
+    "Kalyan Nagar_mnow","Basaveshwar Nagar_mnow","Jakkur_mnow",
+    "Begur_mnow","Thyagaraja Nagar_mnow","Brookfield_mnow",
+    "JP nagar_mnow","Sarjapur Road_mnow",
+    "Manikonda_mnow","Gachibowli_mnow",
+    "Attapur_mnow","Nizampet_mnow","Hulimavu_mnow"
+]);
+
+document.getElementById("buildReport").addEventListener("click", () => {
+    document.getElementById("loadingText").style.display = "block";
+    const file = document.getElementById("sourceFile").files[0];
+    if(!file){
+        alert("Please upload a file");
+        return;
+    }
+
+    const reader = new FileReader();
+
+    reader.onload = ev => {
+
+    // FIRST FILE
+    const workbook = file.name.endsWith(".csv")
+        ? XLSX.read(ev.target.result,{type:"string"})
+        : XLSX.read(new Uint8Array(ev.target.result),{type:"array"});
+
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+
+    const rows = XLSX.utils.sheet_to_json(sheet,{raw:false});
+
+    // SECOND FILE
+    const statusInput =
+        document.getElementById("statusFile").files[0];
+
+    if(!statusInput){
+        alert("Please upload second file");
+        return;
+    }
+
+    const statusReader = new FileReader();
+
+    statusReader.onload = statusEv => {
+
+        const statusWorkbook =
+            statusInput.name.endsWith(".csv")
+            ? XLSX.read(statusEv.target.result,{type:"string"})
+            : XLSX.read(
+                new Uint8Array(statusEv.target.result),
+                {type:"array"}
+            );
+
+        const statusSheet =
+            statusWorkbook.Sheets[
+                statusWorkbook.SheetNames[0]
+            ];
+
+        const statusRows =
+            XLSX.utils.sheet_to_json(statusSheet,{raw:false});
+
+        snapshot = transform(rows, statusRows);
+
+        render(snapshot.summary);
+
+        renderRiderTable(snapshot.riders);
+
+        renderStatusTable(statusRows);
+
+        stampTime();
+
+        document.getElementById("loadingText").style.display = "none";
+    };
+
+    statusInput.name.endsWith(".csv")
+        ? statusReader.readAsText(statusInput)
+        : statusReader.readAsArrayBuffer(statusInput);
+};
+
+    file.name.endsWith(".csv")
+        ? reader.readAsText(file)
+        : reader.readAsArrayBuffer(file);
+});
+
+/* ------------------ TRANSFORMATION ------------------ */
+
+function transform(workerRows, statusRows){
+
+    const ledger = {};
+    const riderLedger = {};
+
+    // =========================
+    // DELIVERED RIDERS SET
+    // =========================
+
+    const deliveredRiders = new Set();
+
+    statusRows.forEach(row=>{
+
+        const riderId =
+            normalize(row["Rider Id"]);
+
+        const orderStatus =
+            normalize(row["Order Status"]).toLowerCase();
+
+        // ONLY DELIVERED
+        if(orderStatus !== "delivered") return;
+
+        deliveredRiders.add(riderId);
+    });
+
+    // =========================
+    // FIRST FILE
+    // =========================
+
+    workerRows.forEach(row=>{
+
+        const hub =
+            normalize(row["Hub Name"]);
+
+        const rider =
+            normalize(row["Worker Code"]);
+
+        if(!hub || !rider ||
+           !APPROVED_STORES.has(hub)) return;
+
+        ledger[hub] ??= new Set();
+
+        ledger[hub].add(rider);
+
+        riderLedger[hub] ??= [];
+
+        riderLedger[hub].push({
+            rider,
+            status: deliveredRiders.has(rider)
+                ? "Available"
+                : "Non Available"
+        });
+    });
+
+    // =========================
+    // SUMMARY
+    // =========================
+
+    const summary = Object.keys(ledger)
+        .sort((a,b)=>a.localeCompare(b))
+        .map(hub=>{
+
+            const uniqueRiders =
+                [...ledger[hub]];
+
+            const idleCount =
+                uniqueRiders.filter(
+                    rider => !deliveredRiders.has(rider)
+                ).length;
+
+           return {
+    hub,
+    total: uniqueRiders.length,
+    idle: idleCount,
+    active: uniqueRiders.length - idleCount
+};
+        });
+
+    // =========================
+    // UNIQUE RIDER TABLE
+    // =========================
+
+    const riders = [];
+
+    Object.keys(ledger)
+        .sort((a,b)=>a.localeCompare(b))
+        .forEach(hub=>{
+
+            [...ledger[hub]]
+                .sort()
+                .forEach(rider=>{
+
+                    riders.push({
+                        hub,
+                        rider,
+                        status: deliveredRiders.has(rider)
+                            ? "Available"
+                            : "Non Available"
+                    });
+
+                });
+
+        });
+
+    return {
+        summary,
+        riders
+    };
+}
+
+/* ------------------ RENDER ------------------ */
+
+function render(data){
+
+    let html = "";
+
+    let sum = 0;
+    let idleSum = 0;
+    let activeSum = 0;
+
+    data.forEach((row,i)=>{
+
+        sum += row.total;
+
+        idleSum += row.idle;
+
+        activeSum += row.active;
+
+        html += `
+        <tr>
+            <td>${i+1}</td>
+            <td>${row.hub}</td>
+            <td>${row.total}</td>
+            <td>${row.idle}</td>
+            <td>${row.active}</td>
+        </tr>`;
+    });
+
+    document.getElementById("grid").innerHTML =
+        html ||
+        `<tr><td colspan="5">No data</td></tr>`;
+
+    document.getElementById("sumCell").innerText =
+        sum;
+
+    document.getElementById("idleSumCell").innerText =
+        idleSum;
+
+    document.getElementById("activeSumCell").innerText =
+        activeSum;
+}
+function renderRiderTable(data){
+
+    let html = "";
+
+    data.forEach((row,i)=>{
+
+        html += `
+        <tr>
+            <td>${i+1}</td>
+            <td>${row.hub}</td>
+            <td>${row.rider}</td>
+        </tr>`;
+    });
+
+    document.getElementById("riderGrid").innerHTML =
+        html || `<tr><td colspan="3">No Data</td></tr>`;
+}
+function renderStatusTable(rows){
+
+    let html = "";
+    let count = 0;
+
+    rows.forEach(row=>{
+
+        const riderId =
+            normalize(row["Rider Id"]);
+
+        const orderStatus =
+            normalize(row["Order Status"]).toLowerCase();
+
+        // ONLY DELIVERED
+        if(orderStatus !== "delivered") return;
+
+        count++;
+
+        html += `
+        <tr>
+            <td>${count}</td>
+            <td>${riderId}</td>
+            <td>${orderStatus}</td>
+        </tr>`;
+    });
+
+    document.getElementById("statusGrid").innerHTML =
+        html || `<tr><td colspan="3">No Delivered Orders</td></tr>`;
+}
+
+/* ------------------ SEARCH ------------------ */
+
+document.getElementById("finder").addEventListener("input", e=>{
+    const q = e.target.value.toLowerCase();
+    render(
+    snapshot.summary.filter(
+        x=>x.hub.toLowerCase().includes(q)
+    )
+);
+
+renderRiderTable(
+    snapshot.riders.filter(
+        x=>x.hub.toLowerCase().includes(q)
+    )
+);
+});
+
+/* ------------------ META ------------------ */
+
+function stampTime(){
+    const d = new Date();
+    document.getElementById("metaInfo").innerText =
+        `Date: ${d.toLocaleDateString("en-GB")} | Time: ${d.toLocaleTimeString()}`;
+}
+
+/* ------------------ DOWNLOAD IMAGE ------------------ */
+/* ------------------ DOWNLOAD IMAGE ------------------ */
+
+document.getElementById("downloadReport")
+.addEventListener("click", async () => {
+
+    const target =
+        document.getElementById("summaryCapture");
+
+    try{
+
+        const canvas = await html2canvas(target,{
+            scale:2,
+            useCORS:true,
+            backgroundColor:"#ffffff"
+        });
+
+        canvas.toBlob(blob=>{
+
+            if(!blob){
+                alert("Failed to generate image");
+                return;
+            }
+
+            const link =
+                document.createElement("a");
+
+            link.download =
+                `Unique_Rider_Report_${
+                    new Date()
+                    .toISOString()
+                    .slice(0,10)
+                }.png`;
+
+            link.href =
+                URL.createObjectURL(blob);
+
+            link.click();
+
+            URL.revokeObjectURL(link.href);
+
+        },"image/png");
+
+    }catch(err){
+
+        console.error(err);
+
+        alert("Image generation failed");
+
+    }
+});
+
+
+</script>
+<script>
+/* ------------- SCREENSHOT / COPY DETERRENCE -------------- */
+
+/* Temporary Blur Overlay */
+/*function temporarilyBlur() {
+    const overlay = document.createElement("div");
+    overlay.style.position = "fixed";
+    overlay.style.inset = "0";
+    overlay.style.backdropFilter = "blur(18px)";
+    overlay.style.background = "rgba(255,255,255,0.25)";
+    overlay.style.zIndex = "999999";
+    overlay.style.pointerEvents = "none";
+    document.body.appendChild(overlay);
+    setTimeout(()=> overlay.remove(), 1400);
+}
+
+/* Windows Snipping Tool (Win + Shift + S fallback detection) */
+document.addEventListener("keydown", function(e){
+    if (e.shiftKey && e.metaKey) {
+        temporarilyBlur();
+    }
+
+    if (e.shiftKey && e.key.toLowerCase() === "s") {
+        temporarilyBlur();
+    }
+});
+
+/* Mac Screenshot */
+document.addEventListener("keydown", function(e){
+    if (e.metaKey && e.shiftKey && (e.key === "3" || e.key === "4")) {
+        e.preventDefault();
+        temporarilyBlur();
+        alert("Mac screenshot shortcut blocked.");
+    }
+});
+
+/* Disable right-click, select, copy */
+document.addEventListener("contextmenu", e => e.preventDefault());
+document.addEventListener("selectstart", e => e.preventDefault());
+document.addEventListener("copy", e => {
+    e.preventDefault();
+    alert("Copying is disabled on this page.");
+});
+
+/* ------------- ANTI-INSPECT / DEVTOOLS -------------- */
+
+/* Detect DevTools */
+setInterval(function () {
+  const threshold = 160;
+  if (
+    window.outerWidth - window.innerWidth > threshold ||
+    window.outerHeight - window.innerHeight > threshold
+  ) {
+    document.body.innerHTML =
+      "<h2 style='text-align:center;margin-top:40px;'>Dev Tools are not allowed 🚫</h2>";
+  }
+}, 500);
+
+/* Block Inspect Keys */
+document.addEventListener("keydown", function(e){
+
+  // F12
+  if (e.keyCode === 123) e.preventDefault();
+
+  // Ctrl + Shift + I / J / C
+  if (e.ctrlKey && e.shiftKey &&
+     ['I','J','C','i','j','c'].includes(e.key)) {
+      e.preventDefault();
+  }
+
+  // Ctrl + U
+  if (e.ctrlKey && ['U','u'].includes(e.key)) {
+      e.preventDefault();
+  }
+
+  // Block any Ctrl + Shift combo
+  if (e.ctrlKey && e.shiftKey) e.preventDefault();
+});
+</script>
+
+</body>
+</html>
