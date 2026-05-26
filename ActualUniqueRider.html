@@ -250,8 +250,8 @@ tfoot td{
         <thead>
             <tr>
                 <th>S.No</th>
-                <th>Rider Id</th>
-                <th>Order Status</th>
+<th>Rider Id</th>
+<th>Delivered Count</th>
             </tr>
         </thead>
 
@@ -270,15 +270,29 @@ tfoot td{
 
 let snapshot = [];
 
-const normalize = x => x ? String(x).trim() : "";
+const normalize = x =>
+    x
+    ? String(x)
+        .trim()
+        .replace(/\s+/g,"")
+        .toUpperCase()
+    : "";
 
 const APPROVED_STORES = new Set([
-    "Kalyan Nagar_mnow","Basaveshwar Nagar_mnow","Jakkur_mnow",
-    "Begur_mnow","Thyagaraja Nagar_mnow","Brookfield_mnow",
-    "JP nagar_mnow","Sarjapur Road_mnow",
-    "Manikonda_mnow","Gachibowli_mnow",
-    "Attapur_mnow","Nizampet_mnow","Hulimavu_mnow"
-]);
+    "KALYANNAGAR_MNOW",
+    "BASAVESHWARNAGAR_MNOW",
+    "JAKKUR_MNOW",
+    "BEGUR_MNOW",
+    "THYAGARAJANAGAR_MNOW",
+    "BROOKFIELD_MNOW",
+    "JPNAGAR_MNOW",
+    "SARJAPURROAD_MNOW",
+    "MANIKONDA_MNOW",
+    "GACHIBOWLI_MNOW",
+    "ATTAPUR_MNOW",
+    "NIZAMPET_MNOW",
+    "HULIMAVU_MNOW"
+]); 
 
 document.getElementById("buildReport").addEventListener("click", () => {
     document.getElementById("loadingText").style.display = "block";
@@ -360,25 +374,29 @@ function transform(workerRows, statusRows){
     const ledger = {};
     const riderLedger = {};
 
-    // =========================
-    // DELIVERED RIDERS SET
-    // =========================
+// =========================
+// DELIVERED RIDER COUNT MAP
+// =========================
 
-    const deliveredRiders = new Set();
+const deliveredCountMap = {};
 
-    statusRows.forEach(row=>{
+statusRows.forEach(row=>{
 
-        const riderId =
-            normalize(row["Rider Id"]);
+    const riderId =
+        normalize(row["Rider Id"]);
 
-        const orderStatus =
-            normalize(row["Order Status"]).toLowerCase();
+    const orderStatus =
+        normalize(row["Order Status"]).toLowerCase();
 
-        // ONLY DELIVERED
-        if(orderStatus !== "delivered") return;
+    // ONLY DELIVERED
+    if(orderStatus !== "delivered") return;
 
-        deliveredRiders.add(riderId);
-    });
+    // SKIP BLANK IDS
+    if(!riderId) return;
+
+    deliveredCountMap[riderId] =
+        (deliveredCountMap[riderId] || 0) + 1;
+});
 
     // =========================
     // FIRST FILE
@@ -386,26 +404,29 @@ function transform(workerRows, statusRows){
 
     workerRows.forEach(row=>{
 
-        const hub =
-            normalize(row["Hub Name"]);
+const rawHub =
+    String(row["Hub Name"] || "").trim();
 
-        const rider =
-            normalize(row["Worker Code"]);
+const hub =
+    normalize(rawHub);
 
-        if(!hub || !rider ||
-           !APPROVED_STORES.has(hub)) return;
+const rider =
+    normalize(row["Worker Code"]);
 
-        ledger[hub] ??= new Set();
+if(!hub || !rider ||
+   !APPROVED_STORES.has(hub)) return;
 
-        ledger[hub].add(rider);
+        ledger[rawHub] ??= new Set();
 
-        riderLedger[hub] ??= [];
+        ledger[rawHub].add(rider);
 
-        riderLedger[hub].push({
+        riderLedger[rawHub] ??= [];
+
+        riderLedger[rawHub].push({
             rider,
-            status: deliveredRiders.has(rider)
-                ? "Available"
-                : "Non Available"
+           status: deliveredCountMap[rider]
+    ? "Available"
+    : "Non Available"
         });
     });
 
@@ -421,10 +442,9 @@ function transform(workerRows, statusRows){
                 [...ledger[hub]];
 
             const idleCount =
-                uniqueRiders.filter(
-                    rider => !deliveredRiders.has(rider)
-                ).length;
-
+    uniqueRiders.filter(
+        rider => !deliveredCountMap[rider]
+    ).length;
            return {
     hub,
     total: uniqueRiders.length,
@@ -450,9 +470,9 @@ function transform(workerRows, statusRows){
                     riders.push({
                         hub,
                         rider,
-                        status: deliveredRiders.has(rider)
-                            ? "Available"
-                            : "Non Available"
+                        status: deliveredCountMap[rider]
+    ? "Available"
+    : "Non Available"
                     });
 
                 });
@@ -513,20 +533,26 @@ function renderRiderTable(data){
     data.forEach((row,i)=>{
 
         html += `
-        <tr>
-            <td>${i+1}</td>
-            <td>${row.hub}</td>
-            <td>${row.rider}</td>
-        </tr>`;
+<tr>
+    <td>${i+1}</td>
+    <td>${row.hub}</td>
+    <td>${row.rider}</td>
+    <td>${row.status}</td>
+</tr>`;
     });
 
     document.getElementById("riderGrid").innerHTML =
-        html || `<tr><td colspan="3">No Data</td></tr>`;
+        html || `<tr><td colspan="4">No Data</td></tr>`;
 }
 function renderStatusTable(rows){
 
     let html = "";
-    let count = 0;
+
+    // =========================
+    // DELIVERED COUNTER
+    // =========================
+
+    const deliveredCountMap = {};
 
     rows.forEach(row=>{
 
@@ -539,18 +565,35 @@ function renderStatusTable(rows){
         // ONLY DELIVERED
         if(orderStatus !== "delivered") return;
 
-        count++;
+        if(!riderId) return;
 
-        html += `
-        <tr>
-            <td>${count}</td>
-            <td>${riderId}</td>
-            <td>${orderStatus}</td>
-        </tr>`;
+deliveredCountMap[riderId] =
+    (deliveredCountMap[riderId] || 0) + 1;
     });
 
+    // =========================
+    // RENDER TABLE
+    // =========================
+
+    let count = 0;
+
+    Object.keys(deliveredCountMap)
+        .sort()
+        .forEach(riderId=>{
+
+            count++;
+
+            html += `
+            <tr>
+                <td>${count}</td>
+                <td>${riderId}</td>
+                <td>${deliveredCountMap[riderId]}</td>
+            </tr>`;
+        });
+
     document.getElementById("statusGrid").innerHTML =
-        html || `<tr><td colspan="3">No Delivered Orders</td></tr>`;
+        html ||
+        `<tr><td colspan="3">No Delivered Orders</td></tr>`;
 }
 
 /* ------------------ SEARCH ------------------ */
