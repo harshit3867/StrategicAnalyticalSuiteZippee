@@ -247,7 +247,7 @@ if(b){
     <td>${s}</td>
     <td>${pl}</td>
 <td>${a}</td>
-<td class="${diff>0?'diff-neg':diff<0?'diff-pos':''}">${diff}</td>
+<td class="${diff > 10 ? 'diff-neg' : 'diff-pos'}">${diff}</td>
 <td>${idle}</td>
     <td>${co}</td>
     <td>${p}</td>
@@ -271,7 +271,7 @@ if(b){
     <td>Total</td>
     <td>${tpl}</td>
 <td>${ta}</td>
-<td class="${(tpl-ta)>0?'diff-neg':(tpl-ta)<0?'diff-pos':''}">
+<td class="${(tpl-ta) > 10 ? 'diff-neg' : 'diff-pos'}">
   ${tpl-ta}
 </td>
 <td>${ti}</td>
