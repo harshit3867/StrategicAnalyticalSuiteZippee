@@ -35,24 +35,37 @@ button{border:none;border-radius:6px;cursor:pointer;font-weight:700}
 .report{
   background:white;
   color:black;
-  padding:12px;
+  padding:10px 14px;
   border-radius:8px;
   margin:20px auto;
-  max-width:20cm;
+  width:max-content;
+  max-width:max-content;
 }
 .report-title{text-align:center;font-size:18px;font-weight:700}
 .report-time{text-align:center;font-size:13px;margin:4px 0 8px}
 
-table{width:100%;border-collapse:collapse}
+table{
+  width:auto;
+  border-collapse:collapse;
+  margin:auto;
+}
 th,td{
-  padding:4px 6px;
-  font-size:13px;
+  padding:4px 5px;
+  font-size:12px;
   border-bottom:1px solid #ddd;
   text-align:center;
   white-space:nowrap;
 }
 th{background:#c55a11;color:white;font-weight:700}
-.total-row td{background:#f2f2f2;font-weight:700}
+th:nth-child(1), td:nth-child(1){width:180px;} /* Darkstore */
+th:nth-child(2), td:nth-child(2){width:70px;}
+th:nth-child(3), td:nth-child(3){width:70px;}
+th:nth-child(4), td:nth-child(4){width:70px;}
+th:nth-child(5), td:nth-child(5){width:100px;}
+th:nth-child(6), td:nth-child(6){width:100px;}
+th:nth-child(7), td:nth-child(7){width:70px;}
+th:nth-child(8), td:nth-child(8){width:60px;}
+th:nth-child(9), td:nth-child(9){width:100px;}.total-row td{background:#f2f2f2;font-weight:700}
 
 .bf-green{background:#dcfce7;color:#166534;font-weight:700}
 .bf-yellow{background:#fef9c3;color:#854d0e;font-weight:700}
@@ -97,12 +110,14 @@ th{background:#c55a11;color:white;font-weight:700}
     <thead>
       <tr>
         <th>Darkstore Name</th>
-        <th>Active Riders</th>
-        <th>Idle Riders</th>
-        <th>Checked Out Riders</th>
-        <th>Pending Orders</th>
+        <th>Planned Rider</th>
+<th>Active Riders</th>
+<th>Idle Riders</th>
+<th>Checked Out Riders</th>
+<th>Pending Orders</th>
+<th>O/I Ratio</th>
 <th>BF</th>
-<th>Unique Riders</th>      </tr>
+<th>Active + Idle Rider</th>      </tr>
     </thead>
     <tbody id="body1"></tbody>
   </table>
@@ -193,7 +208,7 @@ const planTime = timeObj.planTime;
   title2.innerText=`Planned Rider Report – Time: ${displayTime}`;
 
   body1.innerHTML=""; body2.innerHTML="";
-  let ta=0,ti=0,tp=0,tco=0,tbf=0,c=0,pp=0,pa=0,pd=0,tur=0;
+  let ta=0,ti=0,tp=0,tco=0,tbf=0,c=0,pp=0,pa=0,pd=0,tur=0,tpl=0,toi=0;
 
   stores.forEach(s=>{
     const l=document.getElementById(s).value.split("\n").map(x=>x.trim());
@@ -208,12 +223,16 @@ const planTime = timeObj.planTime;
     });
 
     const idle=i[1]||0,p=(i[0]||0)+u;
+const oiRatio = idle > 0 ? (p / idle).toFixed(2) : "0.00";
+const pl=planned[s]?.[planTime]||0;
 const uniqueRiders = a + co;
 ta+=a;
 ti+=idle;
 tp+=p;
 tco+=co;
 tur+=uniqueRiders;
+tpl+=pl;
+toi += idle > 0 ? (p / idle) : 0;
 
 if(b){
   tbf+=b;
@@ -223,14 +242,16 @@ if(b){
     body1.innerHTML += `
   <tr>
     <td>${s}</td>
+    <td>${pl}</td>
     <td>${a}</td>
     <td>${idle}</td>
     <td>${co}</td>
     <td>${p}</td>
-    <td class="${bfCls(b)}">${b.toFixed(2)}</td>
-    <td>${uniqueRiders}</td>
+<td>${oiRatio}</td>
+<td class="${bfCls(b)}">${b.toFixed(2)}</td>
+<td>${uniqueRiders}</td>
   </tr>`;
-    const pl=planned[s]?.[planTime]||0;
+
     const d=a-pl;
     pp+=pl;pa+=a;pd+=d;
 
@@ -244,12 +265,14 @@ if(b){
   body1.innerHTML += `
   <tr class="total-row">
     <td>Total</td>
+    <td>${tpl}</td>
     <td>${ta}</td>
     <td>${ti}</td>
     <td>${tco}</td>
     <td>${tp}</td>
-    <td class="${bfCls(tbf/c)}">${(tbf/c).toFixed(2)}</td>
-    <td>${tur}</td>
+<td>${ti > 0 ? (tp/ti).toFixed(2) : "0.00"}</td>
+<td class="${bfCls(tbf/c)}">${c>0 ? (tbf/c).toFixed(2) : "0.00"}</td>
+<td>${tur}</td>
   </tr>`;
   body2.innerHTML+=`
     <tr class="total-row">
@@ -302,7 +325,7 @@ function downloadBoth(){
 <script>
 /* ------------- SCREENSHOT / COPY DETERRENCE -------------- */
 
-/* Temporary Blur Overlay */
+/* Temporary Blur Overlay 
 function temporarilyBlur() {
     const overlay = document.createElement("div");
     overlay.style.position = "fixed";
@@ -314,7 +337,7 @@ function temporarilyBlur() {
     document.body.appendChild(overlay);
     setTimeout(()=> overlay.remove(), 1400);
 }
-
+*/
 /* Windows Snipping Tool (Win + Shift + S fallback detection) */
 document.addEventListener("keydown", function(e){
     if (e.shiftKey && e.metaKey) {
