@@ -180,7 +180,7 @@ fetch("https://docs.google.com/spreadsheets/d/e/2PACX-1vSZ-18de0srb6yUjkIVdVlZkZ
   });
 });
 /* ===== HELPERS ===== */
-const bfCls=v=>v>2?"bf-red":v>1.7?"bf-yellow":"bf-green";
+const bfCls=v=>v>2.5?"bf-red":v>=2?"bf-yellow":"bf-green";
 
 
 function getCurrentTime() {
@@ -227,7 +227,7 @@ const planTime = timeObj.planTime;
     const idle=i[1]||0,p=(i[0]||0)+u;
 const oiRatio = idle > 0 ? (p / idle).toFixed(2) : "0.00";
 const pl=planned[s]?.[planTime]||0;
-const diff = pl - a;
+const diff = a - pl;
 const uniqueRiders = a + co;
 ta+=a;
 ti+=idle;
@@ -247,7 +247,7 @@ if(b){
     <td>${s}</td>
     <td>${pl}</td>
 <td>${a}</td>
-<td class="${diff > 10 ? 'diff-neg' : 'diff-pos'}">${diff}</td>
+<td class="${diff < -10 ? 'diff-neg' : 'diff-pos'}">${diff}</td>
 <td>${idle}</td>
     <td>${co}</td>
     <td>${p}</td>
@@ -271,8 +271,8 @@ if(b){
     <td>Total</td>
     <td>${tpl}</td>
 <td>${ta}</td>
-<td class="${(tpl-ta) > 10 ? 'diff-neg' : 'diff-pos'}">
-  ${tpl-ta}
+<td class="${(ta-tpl) < -10 ? 'diff-neg' : 'diff-pos'}">
+  ${ta-tpl}
 </td>
 <td>${ti}</td>
     <td>${tco}</td>
