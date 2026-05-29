@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Checked Out Rider Extractor</title>
+
+<style>
+
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:Arial, sans-serif;
+}
+
+body{
+    background:#f4f6f9;
+    padding:30px;
+}
+
+.container{
+    max-width:1200px;
+    margin:auto;
+}
+
+h1{
+    margin-bottom:20px;
+    color:#111827;
+}
+
+textarea{
+    width:100%;
+    height:350px;
+    padding:15px;
+    border-radius:10px;
+    border:1px solid #d1d5db;
+    resize:vertical;
+    font-size:14px;
+    line-height:1.5;
+}
+
+button{
+    margin-top:15px;
+    padding:12px 20px;
+    border:none;
+    border-radius:8px;
+    background:#111827;
+    color:white;
+    cursor:pointer;
+    font-size:15px;
+    font-weight:bold;
+}
+
+button:hover{
+    opacity:0.9;
+}
+
+.output{
+    margin-top:25px;
+    background:white;
+    border-radius:12px;
+    padding:20px;
+    box-shadow:0 2px 8px rgba(0,0,0,0.08);
+}
+
+.output h2{
+    margin-bottom:15px;
+}
+
+.rider{
+    padding:10px;
+    border-bottom:1px solid #e5e7eb;
+    font-size:15px;
+}
+
+.copy-btn{
+    background:#0f9d58;
+    margin-left:10px;
+}
+
+pre{
+    white-space:pre-wrap;
+    word-wrap:break-word;
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <h1>Checked Out Rider Extractor</h1>
+
+    <textarea id="inputData" placeholder="Paste full raw data here..."></textarea>
+
+    <button onclick="extractRiders()">
+        Extract Checked Out Riders
+    </button>
+
+    <button class="copy-btn" onclick="copyOutput()">
+        Copy Output
+    </button>
+
+    <div class="output">
+
+        <h2>Output</h2>
+
+        <pre id="result"></pre>
+
+    </div>
+
+</div>
+
+<script>
+
+function extractRiders(){
+
+    const input = document.getElementById("inputData").value;
+
+    const lines = input.split("\n")
+        .map(line => line.trim())
+        .filter(line => line !== "");
+
+    let result = "";
+    let count = 1;
+
+    for(let i = 0; i < lines.length; i++){
+
+        const currentLine = lines[i];
+        const nextLine = lines[i + 1] || "";
+
+        // Find rider rows with mobile number after name
+
+        if(
+            /^[A-Za-z\s]+0?$/.test(currentLine) &&
+            /^\d{10}$/.test(nextLine)
+        ){
+
+            result += count + ". " + currentLine.replace(/0$/, "") + " - " + nextLine + "\n";
+            count++;
+        }
+    }
+
+    if(result === ""){
+        result = "No checked out riders found.";
+    }
+
+    document.getElementById("result").textContent = result;
+}
+
+function copyOutput(){
+
+    const text = document.getElementById("result").textContent;
+
+    navigator.clipboard.writeText(text);
+
+    alert("Output copied!");
+}
+
+</script>
+
+</body>
+</html>
