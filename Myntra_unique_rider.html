@@ -8,7 +8,7 @@
 <!-- XLSX -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
-<!-- HTML2CANVAS (DOWNLOAD IMAGE) -->
+<!-- HTML2CANVAS -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
 <style>
@@ -27,6 +27,7 @@ html,body{
 body{
     background:url('Zippee.png') center/cover fixed no-repeat;
 }
+
 body::before{
     content:"";
     position:fixed;
@@ -45,7 +46,9 @@ body::before{
     align-items:center;
 }
 
-.logo{height:48px}
+.logo{
+    height:48px;
+}
 
 .card{
     background:var(--glass);
@@ -68,6 +71,7 @@ body::before{
     gap:10px;
     flex-wrap:wrap;
     margin-top:12px;
+    align-items:center;
 }
 
 button,input{
@@ -92,24 +96,7 @@ button{
 #captureBox{
     position:relative;
     display:inline-block;
-    padding: 24px;   /* 👈 adds left & right space */
-}
-table{
-    margin-left: 12px;
-    margin-right: 12px;
-}
-
-.report-head{
-    text-align:center;
-}
-
-.report-title{
-    font-size:18px;
-    font-weight:800;
-}
-
-.report-meta{
-    font-size:13px;
+    padding:24px;
 }
 
 table{
@@ -118,14 +105,15 @@ table{
     background:white;
     margin-top:10px;
     border-radius:12px;
+    overflow:hidden;
     box-shadow:0 8px 20px rgba(0,0,0,.12);
 }
 
 th,td{
     border:1px solid #ddd;
-    padding:8px 12px;
+    padding:10px 12px;
     text-align:center;
-    font-size:13px;
+    font-size:14px;
 }
 
 th{
@@ -138,68 +126,98 @@ tfoot td{
     background:#e6efff;
 }
 
+.report-head{
+    text-align:center;
+}
+
+.report-title{
+    font-size:20px;
+    font-weight:800;
+}
+
+.report-meta{
+    font-size:14px;
+    margin-top:6px;
+}
+
 .report-footer{
     text-align:center;
     margin-top:12px;
     font-size:12px;
     font-weight:700;
 }
+
+#loadingText{
+    display:none;
+    font-weight:700;
+    color:black;
+}
 </style>
 </head>
 
 <body>
 
-<!-- HEADER -->
 <div class="header">
     <h1>Zippee – Unique Rider Report</h1>
     <img class="logo" src="https://i.imgur.com/7yUVE8U.png">
 </div>
 
-<!-- CARD -->
 <div class="card">
+
     <div class="title">Upload Rider Data</div>
 
     <div class="controls">
-        <div id="loadingText" style="
-    display:none;
-    margin-top:10px;
-    font-weight:700;
-    color:rgb(0, 0, 0);
-">
-    ⏳ Generating report, please wait...
-</div>
+
+        <div id="loadingText">
+            ⏳ Generating report, please wait...
+        </div>
 
         <input type="file" id="sourceFile" accept=".csv,.xls,.xlsx">
-        <button id="buildReport">Generate Report</button>
-        <button id="downloadReport">Download Report</button>
+
+        <button id="buildReport">
+            Generate Report
+        </button>
+
+        <button id="downloadReport">
+            Download Report
+        </button>
+
         <input type="text" id="finder" placeholder="Search Store">
+
     </div>
 
     <div id="reportContainer">
+
         <div id="captureBox">
 
             <div class="report-head">
-                <div class="report-title">📥 Unique Rider Count</div>
+                <div class="report-title">
+                    📥 Unique Rider Count
+                </div>
+
                 <div class="report-meta" id="metaInfo"></div>
             </div>
 
             <table>
+
                 <thead>
                     <tr>
                         <th>S.No</th>
                         <th>Store</th>
                         <th>Riders</th>
-<th>Total Hours</th>
                     </tr>
                 </thead>
+
                 <tbody id="grid"></tbody>
+
                 <tfoot>
                     <tr>
-    <td colspan="2">Grand Total</td>
-    <td id="sumCell">0</td>
-    <td id="hoursSumCell">0</td>
-</tr>
+                        <td colspan="2">Grand Total</td>
+                        <td id="sumCell">0</td>
+                        
+                    </tr>
                 </tfoot>
+
             </table>
 
             <div class="report-footer">
@@ -207,45 +225,67 @@ tfoot td{
             </div>
 
         </div>
+
     </div>
+
 </div>
 
 <script>
+
 /* ------------------ DATA PIPELINE ------------------ */
 
 let snapshot = [];
 
 const normalize = x => x ? String(x).trim() : "";
 
+/* ONLY THESE STORES WILL BE INCLUDED */
+
 const APPROVED_STORES = new Set([
-    "Kalyan Nagar_mnow","Basaveshwar Nagar_mnow","Jakkur_mnow",
-    "Begur_mnow","Thyagaraja Nagar_mnow","Brookfield_mnow",
-    "JP nagar_mnow","Sarjapur Road_mnow",
-    "Manikonda_mnow","Gachibowli_mnow",
-    "Attapur_mnow","Nizampet_mnow","Hulimavu_mnow"
+    "Kalyan Nagar_mnow",
+    "Basaveshwar Nagar_mnow",
+    "Jakkur_mnow",
+    "Begur_mnow",
+    "Thyagaraja Nagar_mnow",
+    "Brookfield_mnow",
+    "JP nagar_mnow",
+    "Sarjapur Road_mnow",
+    "Manikonda_mnow",
+    "Gachibowli_mnow",
+    "Attapur_mnow",
+    "Nizampet_mnow",
+    "Hulimavu_mnow"
 ]);
 
-document.getElementById("buildReport").addEventListener("click", () => {
+document.getElementById("buildReport").addEventListener("click", ()=>{
+
     document.getElementById("loadingText").style.display = "block";
+
     const file = document.getElementById("sourceFile").files[0];
+
     if(!file){
         alert("Please upload a file");
+        document.getElementById("loadingText").style.display = "none";
         return;
     }
 
     const reader = new FileReader();
 
     reader.onload = ev => {
+
         const workbook = file.name.endsWith(".csv")
             ? XLSX.read(ev.target.result,{type:"string"})
             : XLSX.read(new Uint8Array(ev.target.result),{type:"array"});
 
         const sheet = workbook.Sheets[workbook.SheetNames[0]];
+
         const rows = XLSX.utils.sheet_to_json(sheet,{raw:false});
 
         snapshot = transform(rows);
+
         render(snapshot);
+
         stampTime();
+
         document.getElementById("loadingText").style.display = "none";
     };
 
@@ -254,7 +294,7 @@ document.getElementById("buildReport").addEventListener("click", () => {
         : reader.readAsArrayBuffer(file);
 });
 
-/* ------------------ TRANSFORMATION ------------------ */
+/* ------------------ TRANSFORM ------------------ */
 
 function transform(rows){
 
@@ -263,172 +303,116 @@ function transform(rows){
     rows.forEach(row=>{
 
         const hub = normalize(row["Hub Name"]);
+
         const rider = normalize(row["Worker Code"]);
-        const activeMinutes = Number(row["Active Minutes"]) || 0;
+
+        
 
         if(!hub || !rider || !APPROVED_STORES.has(hub)) return;
 
-        ledger[hub] ??= {
-            riders:{},
-            totalHours:0
-        };
+        ledger[hub] ??= {};
+        /* Unique rider count */
 
-        // unique rider count
-        ledger[hub].riders[rider] = true;
+        ledger[hub][rider] = true;
 
-        // total hours
-        ledger[hub].totalHours += (activeMinutes / 60);
+        /* Minutes to Hours */
+
+
     });
 
     return Object.keys(ledger)
+
         .sort((a,b)=>a.localeCompare(b))
+
         .map(hub=>({
 
             hub,
 
-            total:Object.keys(ledger[hub].riders).length,
+            total:Object.keys(ledger[hub]).length,
 
-            totalHours:ledger[hub].totalHours
+            
         }));
 }
 
 /* ------------------ RENDER ------------------ */
 
 function render(data){
+
     let html = "";
-let sum = 0;
-let totalHoursSum = 0;
+
+    let sum = 0;
+
+
 
     data.forEach((row,i)=>{
-        sum += row.total;
-totalHoursSum += row.totalHours;
 
-html += `
-<tr>
-    <td>${i+1}</td>
-    <td>${row.hub}</td>
-    <td>${row.total}</td>
-    <td>${Math.round(row.totalHours)}</td>
-</tr>`;
+        sum += row.total;
+
+        
+
+        html += `
+        <tr>
+            <td>${i+1}</td>
+            <td>${row.hub}</td>
+            <td>${row.total}</td>
+            
+        </tr>`;
     });
 
-    document.getElementById("grid").innerHTML = html || 
-        `<tr><td colspan="4">No data</td></tr>`;
+    document.getElementById("grid").innerHTML = html ||
+
+        `<tr><td colspan="3">No data</td></tr>`;
+
     document.getElementById("sumCell").innerText = sum;
 
-document.getElementById("hoursSumCell").innerText =
-    Math.round(totalHoursSum);
+    
 }
 
 /* ------------------ SEARCH ------------------ */
 
-document.getElementById("finder").addEventListener("input", e=>{
+document.getElementById("finder").addEventListener("input",e=>{
+
     const q = e.target.value.toLowerCase();
-    render(snapshot.filter(x=>x.hub.toLowerCase().includes(q)));
+
+    render(
+        snapshot.filter(x =>
+            x.hub.toLowerCase().includes(q)
+        )
+    );
 });
 
 /* ------------------ META ------------------ */
 
 function stampTime(){
+
     const d = new Date();
+
     document.getElementById("metaInfo").innerText =
         `Date: ${d.toLocaleDateString("en-GB")} | Time: ${d.toLocaleTimeString()}`;
 }
 
-/* ------------------ DOWNLOAD IMAGE ------------------ */
+/* ------------------ DOWNLOAD REPORT ------------------ */
 
-document.getElementById("downloadReport").addEventListener("click", () => {
+document.getElementById("downloadReport").addEventListener("click",()=>{
+
     const target = document.getElementById("captureBox");
 
     html2canvas(target,{
         scale:2,
         useCORS:true
     }).then(canvas=>{
+
         const link = document.createElement("a");
-        link.download = `Unique_Rider_Report_${new Date().toISOString().slice(0,10)}.png`;
+
+        link.download =
+            `Unique_Rider_Report_${new Date().toISOString().slice(0,10)}.png`;
+
         link.href = canvas.toDataURL("image/png");
+
         link.click();
     });
 });
-</script>
-<script>
-/* ------------- SCREENSHOT / COPY DETERRENCE -------------- */
 
-/* Temporary Blur Overlay */
-function temporarilyBlur() {
-    const overlay = document.createElement("div");
-    overlay.style.position = "fixed";
-    overlay.style.inset = "0";
-    overlay.style.backdropFilter = "blur(18px)";
-    overlay.style.background = "rgba(255,255,255,0.25)";
-    overlay.style.zIndex = "999999";
-    overlay.style.pointerEvents = "none";
-    document.body.appendChild(overlay);
-    setTimeout(()=> overlay.remove(), 1400);
-}
-
-/* Windows Snipping Tool (Win + Shift + S fallback detection) */
-document.addEventListener("keydown", function(e){
-    if (e.shiftKey && e.metaKey) {
-        temporarilyBlur();
-    }
-
-    if (e.shiftKey && e.key.toLowerCase() === "s") {
-        temporarilyBlur();
-    }
-});
-
-/* Mac Screenshot */
-document.addEventListener("keydown", function(e){
-    if (e.metaKey && e.shiftKey && (e.key === "3" || e.key === "4")) {
-        e.preventDefault();
-        temporarilyBlur();
-        alert("Mac screenshot shortcut blocked.");
-    }
-});
-
-/* Disable right-click, select, copy */
-document.addEventListener("contextmenu", e => e.preventDefault());
-document.addEventListener("selectstart", e => e.preventDefault());
-document.addEventListener("copy", e => {
-    e.preventDefault();
-    alert("Copying is disabled on this page.");
-});
-
-/* ------------- ANTI-INSPECT / DEVTOOLS -------------- */
-
-/* Detect DevTools */
-setInterval(function () {
-  const threshold = 160;
-  if (
-    window.outerWidth - window.innerWidth > threshold ||
-    window.outerHeight - window.innerHeight > threshold
-  ) {
-    document.body.innerHTML =
-      "<h2 style='text-align:center;margin-top:40px;'>Dev Tools are not allowed 🚫</h2>";
-  }
-}, 500);
-
-/* Block Inspect Keys */
-document.addEventListener("keydown", function(e){
-
-  // F12
-  if (e.keyCode === 123) e.preventDefault();
-
-  // Ctrl + Shift + I / J / C
-  if (e.ctrlKey && e.shiftKey &&
-     ['I','J','C','i','j','c'].includes(e.key)) {
-      e.preventDefault();
-  }
-
-  // Ctrl + U
-  if (e.ctrlKey && ['U','u'].includes(e.key)) {
-      e.preventDefault();
-  }
-
-  // Block any Ctrl + Shift combo
-  if (e.ctrlKey && e.shiftKey) e.preventDefault();
-});
 </script>
 
 </body>
