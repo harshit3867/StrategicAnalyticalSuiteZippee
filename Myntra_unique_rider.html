@@ -189,14 +189,16 @@ tfoot td{
                         <th>S.No</th>
                         <th>Store</th>
                         <th>Riders</th>
+<th>Total Hours</th>
                     </tr>
                 </thead>
                 <tbody id="grid"></tbody>
                 <tfoot>
                     <tr>
-                        <td colspan="2">Grand Total</td>
-                        <td id="sumCell">0</td>
-                    </tr>
+    <td colspan="2">Grand Total</td>
+    <td id="sumCell">0</td>
+    <td id="hoursSumCell">0</td>
+</tr>
                 </tfoot>
             </table>
 
@@ -255,22 +257,38 @@ document.getElementById("buildReport").addEventListener("click", () => {
 /* ------------------ TRANSFORMATION ------------------ */
 
 function transform(rows){
+
     const ledger = {};
 
     rows.forEach(row=>{
+
         const hub = normalize(row["Hub Name"]);
         const rider = normalize(row["Worker Code"]);
+        const activeMinutes = Number(row["Active Minutes"]) || 0;
+
         if(!hub || !rider || !APPROVED_STORES.has(hub)) return;
 
-        ledger[hub] ??= {};
-        ledger[hub][rider] = true;
+        ledger[hub] ??= {
+            riders:{},
+            totalHours:0
+        };
+
+        // unique rider count
+        ledger[hub].riders[rider] = true;
+
+        // total hours
+        ledger[hub].totalHours += (activeMinutes / 60);
     });
 
     return Object.keys(ledger)
         .sort((a,b)=>a.localeCompare(b))
         .map(hub=>({
+
             hub,
-            total:Object.keys(ledger[hub]).length
+
+            total:Object.keys(ledger[hub].riders).length,
+
+            totalHours:ledger[hub].totalHours
         }));
 }
 
@@ -278,21 +296,28 @@ function transform(rows){
 
 function render(data){
     let html = "";
-    let sum = 0;
+let sum = 0;
+let totalHoursSum = 0;
 
     data.forEach((row,i)=>{
         sum += row.total;
-        html += `
-        <tr>
-            <td>${i+1}</td>
-            <td>${row.hub}</td>
-            <td>${row.total}</td>
-        </tr>`;
+totalHoursSum += row.totalHours;
+
+html += `
+<tr>
+    <td>${i+1}</td>
+    <td>${row.hub}</td>
+    <td>${row.total}</td>
+    <td>${Math.round(row.totalHours)}</td>
+</tr>`;
     });
 
     document.getElementById("grid").innerHTML = html || 
-        `<tr><td colspan="3">No data</td></tr>`;
+        `<tr><td colspan="4">No data</td></tr>`;
     document.getElementById("sumCell").innerText = sum;
+
+document.getElementById("hoursSumCell").innerText =
+    Math.round(totalHoursSum);
 }
 
 /* ------------------ SEARCH ------------------ */
@@ -408,4 +433,3 @@ document.addEventListener("keydown", function(e){
 
 </body>
 </html>
-
