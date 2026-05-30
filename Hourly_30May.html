@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Zippee – Store Projected Orders</title>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+<style>
+
+/**/
+
+.table-wrapper{
+    width:100%;
+    overflow-x:auto;
+    margin-top:15px;
+}
+
+.clean-table{
+    width:100%;
+    border-collapse:collapse;
+    font-size:13px;
+}
+
+.clean-table th{
+    background:#ff9800;
+    color:#000;
+    padding:8px;
+    white-space:nowrap;
+}
+
+.clean-table td{
+    padding:6px;
+    text-align:center;
+    white-space:nowrap;
+}
+
+.summary-input{
+    width:65px;
+    padding:4px;
+    text-align:center;
+    border:1px solid #ccc;
+    border-radius:5px;
+}
+
+/* ================= GLOBAL ================= */
+body{
+    margin:0;
+    font-family:"Segoe UI", Arial;
+    background:url('Zippee.png') center/cover fixed no-repeat;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+}
+
+body::before{
+    content:"";
+    position:fixed;
+    inset:0;
+    background:rgba(255,255,255,0.25);
+    backdrop-filter:blur(6px);
+    z-index:-1;
+}
+
+/* ================= HEADER ================= */
+.zippee-header{
+    width:100%;
+    background:linear-gradient(90deg,#003f8c,#0059b3);
+    color:white;
+    padding:16px 32px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+}
+
+.zippee-header h1{
+    margin:0;
+    font-size:22px;
+}
+
+/* ================= MAIN CONTAINER ================= */
+.main-container{
+    width:100%;
+    max-width:2000px;
+    padding:20px;
+}
+
+/* ================= SECTION CARD ================= */
+.section-card{
+    background: rgba(255,255,255,0.92);
+    border-radius:14px;
+    padding:18px 20px 22px;
+    margin:26px auto;
+    box-shadow:0 12px 30px rgba(0,0,0,0.12);
+    max-width: 1800px;
+    width: 98%;
+}
+
+.section-title{
+    font-size:18px;
+    font-weight:700;
+    margin-bottom:14px;
+    color:#0b1f3b;
+}
+
+/* ================= CONTROLS ================= */
+.controls{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    justify-content:center;
+    margin-bottom:20px;
+}
+
+.controls button{
+    background:linear-gradient(135deg,#0A66C2,#0078FF);
+    border:none;
+    border-radius:10px;
+    padding:10px 16px;
+    color:white;
+    cursor:pointer;
+    font-weight:700;
+}
+
+/* ================= SEARCH ================= */
+.search-section{
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    gap:10px;
+    flex-wrap:wrap;
+    margin-bottom:20px;
+}
+
+/* ================= TABLE ================= */
+.clean-table{
+    width:100%;
+    border-collapse:separate;
+    border-spacing:0;
+    font-size:14px;
+}
+
+.clean-table thead th{
+    background:#0b4ea2;
+    color:white;
+    padding:10px 12px;
+    font-weight:600;
+}
+
+.clean-table tbody td{
+    padding:9px 12px;
+    border-bottom:1px solid #e3e6ec;
+}
+
+.clean-table tbody tr:hover{
+    background:#f6f9ff;
+}
+
+.clean-table th:first-child,
+.clean-table td:first-child{
+    text-align:left;
+}
+
+.clean-table th:not(:first-child),
+.clean-table td:not(:first-child){
+    text-align:center;
+}
+
+.clean-table .total-row td{
+    background:#b7c9e8;
+    font-weight:700;
+    border-top:2px solid #0b4ea2;
+}
+
+/* ================= FOOTER ================= */
+footer{
+    margin:30px 0 10px;
+    font-size:13px;
+    opacity:0.8;
+    text-align:center;
+}
+.disclaimer{
+    text-align:center;
+    font-size:13px;
+    margin:10px 0 15px;
+    color:#b91c1c;
+    font-weight:600;
+}
+
+</style>
+</head>
+
+<body>
+
+<!-- ================= HEADER ================= -->
+<div class="zippee-header">
+    <h1>Zippee – Store Projected Orders</h1>
+    <i class="fa-solid fa-handshake-angle"></i>
+</div>
+
+<div class="main-container">
+
+    <!-- ================= PROJECTION REPORT ================= -->
+    <div class="section-card">
+        <div class="section-title">📊 Store Projected Orders – Live (G-Sheet)</div>
+        <div id="datetime"></div>
+
+        <div class="search-section">
+            <label>Search before date:</label>
+
+<input type="date" id="searchDate">
+<input type="time" id="searchTime">
+<button id="searchBtn">Search</button>
+        </div>
+<div class="disclaimer">
+    ⚠ Kindly ensure the correct date and time are selected, as you will be held responsible for any inaccurate report.
+</div>
+
+        <table id="reportTable" class="clean-table">
+            <thead>
+                <tr>
+                    <th>Store Name</th>
+                    <th>Projected Orders | <span id="currentDate"></span></th>
+<th>Projected Orders | till <span id="tillHourMain">---</span></th>
+<th>Projected Orders | till <span id="tillHourBuffer">---</span> (15% Buffer)</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
+    <!-- ================= UPLOAD & FINAL TABLE ================= -->
+    <div class="section-card">
+        <div class="section-title">📁 Upload Excel & Generate Final Table</div>
+
+        <div class="controls">
+            <input type="file" id="fileInput">
+            <button id="submitBtn">Submit</button> <button id="finalTableBtn" style="display:none;">
+    Final Table
+  </button>
+        </div>
+
+        <div class="table-wrapper">
+    <div id="output"></div>
+</div>
+
+    </div>
+
+</div>
+
+<footer>
+    © Powered by SASA Automation | Zippee
+</footer>
+
+<!-- ================= SCRIPTS ================= -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+<!-- 🔥 YOUR FINAL JS FILE -->
+<script src="M_30may_2.js"></script>
+<!-- <script src="myntra_blr_hyd_full.js?v=2"></script> -->
+
+</body>
+</html>
+
