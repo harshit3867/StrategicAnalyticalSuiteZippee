@@ -71,8 +71,23 @@ th:nth-child(10), td:nth-child(10){width:100px;} /* Active+Idle */.total-row td{
 .bf-green{background:#dcfce7;color:#166534;font-weight:700}
 .bf-yellow{background:#fef9c3;color:#854d0e;font-weight:700}
 .bf-red{background:#fee2e2;color:#991b1b;font-weight:700}
-.diff-pos{background:#dcfce7;color:#166534;font-weight:700}
-.diff-neg{background:#fee2e2;color:#991b1b;font-weight:700}
+.diff-green{
+  background:#dcfce7;
+  color:#000;
+  font-weight:700;
+}
+
+.diff-yellow{
+  background:#fef9c3;
+  color:#000;
+  font-weight:700;
+}
+
+.diff-orange{
+  background:#fed7aa;
+  color:#000;
+  font-weight:700;
+}
 
 .footer{text-align:center;font-size:11px;margin-top:6px;color:#333}
 .bottom-disclaimer{
@@ -247,7 +262,15 @@ if(b){
     <td>${s}</td>
     <td>${pl}</td>
 <td>${a}</td>
-<td class="${diff < -10 ? 'diff-neg' : 'diff-pos'}">${diff}</td>
+<td class="${
+  diff >= -5
+    ? 'diff-green'
+    : diff >= -10
+    ? 'diff-yellow'
+    : 'diff-orange'
+}">
+  ${diff}
+</td>
 <td>${idle}</td>
     <td>${co}</td>
     <td>${p}</td>
@@ -271,7 +294,13 @@ if(b){
     <td>Total</td>
     <td>${tpl}</td>
 <td>${ta}</td>
-<td class="${(ta-tpl) < -10 ? 'diff-neg' : 'diff-pos'}">
+<td class="${
+  (ta-tpl) >= -5
+    ? 'diff-green'
+    : (ta-tpl) >= -10
+    ? 'diff-yellow'
+    : 'diff-orange'
+}">
   ${ta-tpl}
 </td>
 <td>${ti}</td>
