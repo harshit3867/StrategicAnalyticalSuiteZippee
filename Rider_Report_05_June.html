@@ -256,10 +256,12 @@ const selectedTime =
 const planTime =
   selectedTime || timeObj.planTime;
 
+// Display time
+const reportTime =
+  selectedTime || timeObj.displayTime;
 
-  time1.innerText=`Time: ${planTime}`;
-title2.innerText=`Planned Rider Report – Time: ${planTime}`;
-
+time1.innerText=`Time: ${reportTime}`;
+title2.innerText=`Planned Rider Report – Time: ${reportTime}`;
   body1.innerHTML=""; body2.innerHTML="";
   let ta=0,ti=0,tp=0,tco=0,tbf=0,c=0,pp=0,pa=0,pd=0,tur=0,tpl=0,toi=0;
 
