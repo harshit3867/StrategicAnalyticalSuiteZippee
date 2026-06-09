@@ -284,7 +284,8 @@ shipped:0,
 cancelled:0,
 open:0,
 rto:0,
-picked:0
+picked:0,
+packed:0
 }
 
 }
@@ -296,6 +297,12 @@ status = (status+"")
         .replace(/\n/g,"")
         .trim()
         .toLowerCase()
+
+if(!window.statusCounter)
+    window.statusCounter = {}
+
+window.statusCounter[status] =
+    (window.statusCounter[status] || 0) + 1
 
 if(status === "delivered"){
 
@@ -392,7 +399,13 @@ else if(status === "open"){
 else if(status === "picked"){
     cities[city].picked++
 }
+else if(status === "packed"){
+    cities[city].packed++
+}
+
 })
+
+console.table(window.statusCounter)
 
 const cityOrder = ["Bommasandra","Frazer Town","Yeshwantpur","Badshahpur"]
 
@@ -517,7 +530,7 @@ row(7,"Shipped & Cancelled",d=>d.cancelled||0)
 
 row(8,"Open",d=>d.open||0)
 
-row(9,"Packed",d=>0)
+row(9,"Packed",d=>d.packed||0)
 
 row(10,"Picked",d=>d.picked||0)
 
