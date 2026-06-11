@@ -144,7 +144,7 @@ text-transform:uppercase;
 
 <div class="header">
 <h1>Zippee – Partner Report</h1>
-<img class="logo" src="https://i.imgur.com/7yUVE8U.png">
+<img class="logo" src="SASA.png">
 </div>
 
 <div class="card">
@@ -211,23 +211,38 @@ dataset.push(...rows.slice(1))   // merge rows from all files
 
 function parseIndianDate(str){
 
-if(!str) return null
+    if(!str) return null
 
-let [date,time,ampm] = str.split(" ")
+    // Excel serial date
+    if(typeof str === "number"){
+        return new Date((str - 25569) * 86400000)
+    }
 
-let [day,month,year] = date.includes("-")
-    ? date.split("-")
-    : date.split("/")
+    str = String(str).trim()
 
-let [hour,minute] = time.split(":")
+    let parts = str.split(" ")
 
-hour = parseInt(hour)
+    if(parts.length < 2){
+        return null
+    }
 
-if(ampm === "PM" && hour !== 12) hour += 12
-if(ampm === "AM" && hour === 12) hour = 0
+    let date = parts[0]
+    let time = parts[1]
+    let ampm = parts[2] || ""
 
-return new Date(year, month-1, day, hour, minute)
+    let [day,month,year] =
+        date.includes("-")
+        ? date.split("-")
+        : date.split("/")
 
+    let [hour,minute] = time.split(":")
+
+    hour = parseInt(hour)
+
+    if(ampm.toUpperCase() === "PM" && hour !== 12) hour += 12
+    if(ampm.toUpperCase() === "AM" && hour === 12) hour = 0
+
+    return new Date(year, month-1, day, hour, minute)
 }
 
 function generateReport(){
