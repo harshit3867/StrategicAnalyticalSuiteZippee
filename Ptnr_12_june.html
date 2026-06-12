@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Zippee – Partner Report</title>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+<style>
+
+:root{
+--primary-900:#003f8c;
+--glass-bg:rgba(255,255,255,0.16);
+--card-shadow:0 8px 30px rgba(0,0,0,0.25);
+}
+
+html,body{
+margin:0;
+padding:0;
+font-family:"Segoe UI",Arial
+}
+
+body{
+background:url('Zippee.png') center/cover fixed no-repeat;
+}
+
+body::before{
+content:"";
+position:fixed;
+inset:0;
+background:rgba(255,255,255,.24);
+backdrop-filter:blur(6px);
+z-index:-1;
+}
+
+.header{
+background:linear-gradient(90deg,rgba(0,63,140,.85),rgba(0,89,179,.85));
+color:white;
+padding:18px 36px;
+display:flex;
+justify-content:space-between;
+align-items:center
+}
+th{
+background:#f4f6f8;
+font-weight:700;
+}
+.logo{height:48px}
+
+.card{
+background:var(--glass-bg);
+backdrop-filter:blur(10px) saturate(120%);
+margin:30px auto;
+max-width:1300px;
+padding:30px;
+border-radius:18px;
+box-shadow:var(--card-shadow);
+}
+
+.title{
+font-size:22px;
+font-weight:700;
+color:var(--primary-900)
+}
+
+.controls{
+display:flex;
+gap:8px;
+flex-wrap:wrap;
+margin-top:10px
+}
+
+.button{
+background:linear-gradient(135deg,#0A66C2,#0078FF);
+border:none;
+border-radius:10px;
+padding:10px 16px;
+color:white;
+cursor:pointer;
+font-weight:700
+}
+
+table{
+border-collapse:collapse;
+background:white;
+border-radius:12px;
+box-shadow:0 8px 20px rgba(0,0,0,.12);
+margin:0 auto;
+table-layout:auto;
+width:auto;
+}
+
+th,td{
+border:1px solid #ddd;
+padding:6px 6px;
+font-size:13px;
+text-align:center;
+vertical-align:middle;
+white-space:nowrap;
+}
+td:nth-child(2), th:nth-child(2){
+text-align:left;
+font-weight:700;
+}
+
+.green-row td{
+background:#00b050;
+font-weight:700
+}
+
+.watermark{
+position:absolute;
+inset:0;
+display:flex;
+justify-content:center;
+align-items:center;
+pointer-events:none
+}
+
+.watermark span{
+font-size:44px;
+font-weight:900;
+color:rgba(0,0,0,0.07);
+transform:rotate(-25deg)
+}
+.footer-watermark{
+width:100%;
+display:flex;
+justify-content:center;
+align-items:center;
+margin-top:10px;
+font-size:11px;
+font-weight:700;
+color:#000;
+letter-spacing:1px;
+text-transform:uppercase;
+}
+</style>
+</head>
+
+<body>
+
+<div class="header">
+<h1>Zippee – Partner Report</h1>
+<img class="logo" src="SASA.png">
+</div>
+
+<div class="card">
+
+<div class="title">Upload Dataset</div>
+
+<input type="file" id="fileInput" multiple>
+
+<div class="controls">
+<button class="button" onclick="generateReport()">Generate Report</button>
+<button class="button" onclick="downloadImage()">Download Image</button>
+</div>
+
+<div id="reportContainer" style="display:none;margin-top:20px">
+
+<div id="captureBox" style="position:relative;display:inline-block;width:fit-content;margin:auto;">
+
+<div style="text-align:center;margin-bottom:15px;width:100%;">
+
+<div style="font-size:18px;font-weight:800">
+ZIPPEE <> Partnr Report
+</div>
+
+<div style="font-size:13px">
+Date: <span id="autoDate"></span> &nbsp;&nbsp; Time: <span id="autoTime"></span>
+</div>
+
+</div>
+<table id="finalReportTable"></table>
+<div class="footer-watermark">
+Powered by SASA Automation | Zippee
+</div>
+
+</div>
+
+</div>
+
+</div>
+
+<script>
+
+let dataset=[]
+
+document.getElementById("fileInput").addEventListener("change", async function(e){
+
+dataset=[]
+
+const files = Array.from(e.target.files)
+
+for(const file of files){
+
+const data = await file.arrayBuffer()
+
+const workbook = XLSX.read(data,{type:'array'})
+const sheet = workbook.Sheets[workbook.SheetNames[0]]
+
+const rows = XLSX.utils.sheet_to_json(sheet,{header:1})
+
+dataset.push(...rows.slice(1))   // merge rows from all files
+
+}
+
+})
+
+function parseIndianDate(str){
+
+    if(!str) return null
+
+    // Excel serial date
+    if(typeof str === "number"){
+        return new Date(Math.round((str - 25569) * 86400 * 1000))
+    }
+
+    str = String(str).trim()
+
+    let parts = str.split(" ")
+    console.log("RAW DATE:", str);
+
+    if(parts.length < 2){
+        return null
+    }
+
+    let date = parts[0]
+    let time = parts[1]
+    let ampm = parts[2] || ""
+
+    let [day,month,year] =
+        date.includes("-")
+        ? date.split("-")
+        : date.split("/")
+
+    let [hour,minute] = time.split(":")
+
+    hour = parseInt(hour)
+
+    if(ampm.toUpperCase() === "PM" && hour !== 12) hour += 12
+    if(ampm.toUpperCase() === "AM" && hour === 12) hour = 0
+
+    return new Date(year, month-1, day, hour, minute)
+}
+
+function generateReport(){
+
+let cities={}
+    
+dataset.forEach(r=>{
+
+
+let trackingNo = (r[4] + "").trim()
+
+if(trackingNo.startsWith("Z0")) return
+
+let status=r[5]     // column F
+if(typeof r[6] === "number"){
+
+    const excelTime = r[6] % 1;
+
+    const hour = Math.floor(excelTime * 24);
+
+    if(hour >= 19){
+        console.log("EXCLUDED:", trackingNo, hour);
+        return;
+    }
+}
+let orderDate = parseIndianDate(r[6]);
+
+let city=(r[21]+"").split(" ").slice(2).join(" ")
+
+if(!city) return
+
+if(!cities[city]){
+
+cities[city]={
+total:0,
+delivered:0,
+breach:0,
+nonbreach:0,
+breach15:0,
+breach30:0,
+breach60:0,
+breachAbove:0,
+deliverySum:0,
+deliveryCount:0,
+shipped:0,
+cancelled:0,
+open:0,
+rto:0,
+picked:0,
+packed:0
+}
+
+}
+
+cities[city].total++
+
+status = (status+"")
+        .replace(/\r/g,"")
+        .replace(/\n/g,"")
+        .trim()
+        .toLowerCase()
+
+if(!window.statusCounter)
+    window.statusCounter = {}
+
+window.statusCounter[status] =
+    (window.statusCounter[status] || 0) + 1
+
+if(status === "delivered"){
+
+    cities[city].delivered++
+
+    let orderDate = parseIndianDate(r[6]);
+console.log("CHECK:", trackingNo, r[6], orderDate);
+    
+if(orderDate){
+
+let storeOpen = new Date(
+orderDate.getFullYear(),
+orderDate.getMonth(),
+orderDate.getDate(),
+10,0,0
+)
+
+if(orderDate < storeOpen){
+    orderDate = storeOpen
+}
+
+}
+let pickupDate = parseIndianDate(r[7])
+let deliveryDate = parseIndianDate(r[30])
+
+
+if(typeof r[6] === "number") orderDate = new Date((r[6]-25569)*86400000)
+if(typeof r[7] === "number") pickupDate = new Date((r[7]-25569)*86400000)   // ⭐ MISSING LINE
+if(typeof r[30] === "number") deliveryDate = new Date((r[30]-25569)*86400000)
+
+    let diffMinutes = null
+
+if(orderDate && deliveryDate){
+    diffMinutes = (deliveryDate - orderDate) / 60000
+}
+    // Delivery time logic (Excel formula equivalent)
+if(deliveryDate && pickupDate){
+
+    let deliveryMinutes = Math.round((deliveryDate - pickupDate) / 60000)
+
+    if(deliveryMinutes >= 0){
+        cities[city].deliverySum += deliveryMinutes
+        cities[city].deliveryCount++
+    }
+
+}
+
+    if(!isNaN(diffMinutes)){
+
+        if(diffMinutes <=120){
+
+cities[city].nonbreach++
+
+}else{
+
+cities[city].breach++
+
+if(diffMinutes <=135){
+cities[city].breach15++
+}
+else if(diffMinutes <=150){
+cities[city].breach30++
+}
+else if(diffMinutes <=180){
+cities[city].breach60++
+}
+else{
+cities[city].breachAbove++
+}
+
+}
+    }
+
+}
+
+if(status === "delivered"){
+    // already counted above
+}
+
+else if(status === "shipped"){
+    cities[city].shipped++
+}
+
+else if(status === "shipped & cancelled"){
+    cities[city].cancelled++
+}
+
+else if(status === "isrtoinitiated"){
+    cities[city].rto++
+}
+
+else if(status === "open"){
+    cities[city].open++
+}
+else if(status === "picked"){
+    cities[city].picked++
+}
+else if(status === "packed"){
+    cities[city].packed++
+}
+
+})
+
+console.table(window.statusCounter)
+
+const cityOrder = ["Bommasandra","Frazer Town","Yeshwantpur","Badshahpur"]
+
+const names = cityOrder.filter(c => cities[c])
+
+let html=""
+
+html+=`<tr>
+<th>S. No.</th>
+<th>Key Parameters (7)</th>`
+
+names.forEach(n=>html+=`<th>${n}</th>`)
+
+html+=`<th>Total</th></tr>`
+function row(sn,label,fn,cls="",totalFn=null){
+
+html+=`<tr class="${cls}">
+<td>${sn}</td>
+<td>${label}</td>`
+
+let values=[]
+
+names.forEach(n=>{
+let v=fn(cities[n])||0
+html+=`<td>${v}</td>`
+
+let num=parseFloat(v)
+if(!isNaN(num)) values.push(num)
+})
+
+let total=0
+
+// CUSTOM TOTAL FORMULA
+if(totalFn){
+
+total = totalFn()
+
+}
+
+// AVERAGE TIME
+else if(label.includes("Time")){
+
+total=Math.round(values.reduce((a,b)=>a+b,0)/values.length)+" mins"
+
+}
+
+// NORMAL SUM
+else{
+
+total=values.reduce((a,b)=>a+b,0)
+
+}
+
+html+=`<td>${total}</td></tr>`
+}
+
+row(1,"Total Order",d=>d.total)
+
+row(2,"Delivered Order",d=>d.delivered)
+
+row("","Delivery %",
+d=>((d.delivered/d.total||0)*100).toFixed(2).replace(/\.00$/,'')+"%",
+"green-row",
+()=>{
+
+let totalDelivered = names.reduce((a,n)=>a + cities[n].delivered,0)
+
+let totalOrders = names.reduce((a,n)=>a + cities[n].total,0)
+
+return ((totalDelivered/totalOrders)*100).toFixed(2).replace(/\.00$/,'') + "%"
+
+})
+row(3,"Breach",d=>d.breach||0)
+
+row("","Breach %",
+d=>((d.breach/d.delivered||0)*100).toFixed(0)+"%",
+"",
+()=>{
+
+let totalBreach = names.reduce((a,n)=>a + cities[n].breach,0)
+
+let totalOrders = names.reduce((a,n)=>a + cities[n].total,0)
+
+let totalDelivered = names.reduce((a,n)=>a + cities[n].delivered,0)
+
+return ((totalBreach/totalDelivered)*100).toFixed(2) + "%"
+
+})
+
+row("3.1","15 min",d=>d.breach15||0)
+row("3.2","15-30 Min",d=>d.breach30||0)
+row("3.3","30-60Min",d=>d.breach60||0)
+row("3.4","Above 60 Min",d=>d.breachAbove||0)
+
+row(4,"Non Breach",d=>d.nonbreach||0)
+
+row("4.1","Non Breach %",
+d=>((d.nonbreach/d.delivered||0)*100).toFixed(0)+"%",
+"",
+()=>{
+
+let totalNB = names.reduce((a,n)=>a + cities[n].nonbreach,0)
+
+let totalOrders = names.reduce((a,n)=>a + cities[n].total,0)
+
+let totalDelivered = names.reduce((a,n)=>a + cities[n].delivered,0)
+
+return ((totalNB/totalDelivered)*100).toFixed(2) + "%"
+
+})
+row("4.2","Avg. Delivery Time",
+d=> d.deliveryCount ? Math.round(d.deliverySum/d.deliveryCount)+" mins" : "0 mins")
+
+row(5,"Return to Origin (RTO)",d=>d.rto||0)
+
+row("","Return to Orgin %",
+d=>((d.rto/d.total||0)*100).toFixed(0)+"%")
+
+row(6,"Shipped",d=>d.shipped||0)
+
+row(7,"Shipped & Cancelled",d=>d.cancelled||0)
+
+row(8,"Open",d=>d.open||0)
+
+row(9,"Packed",d=>d.packed||0)
+
+row(10,"Picked",d=>d.picked||0)
+
+document.getElementById("finalReportTable").innerHTML=html
+
+document.getElementById("reportContainer").style.display="block"
+
+const now = new Date()
+
+document.getElementById("autoDate").innerText =
+now.toLocaleDateString('en-GB',{day:"2-digit",month:"short",year:"numeric"})
+
+let h = now.getHours()
+let m = now.getMinutes().toString().padStart(2,"0")
+let ampm = h >= 12 ? "PM" : "AM"
+
+h = h % 12 || 12
+
+document.getElementById("autoTime").innerText = `${h}:${m} ${ampm}`
+
+}
+
+function downloadImage(){
+
+const element = document.getElementById("captureBox")
+
+html2canvas(element,{scale:3}).then(canvas=>{
+
+const a=document.createElement("a")
+a.href=canvas.toDataURL("image/png")
+a.download="Zippee_Report.png"
+a.click()
+
+})
+
+}
+
+</script>
+
+</body>
+</html>
