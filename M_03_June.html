@@ -625,7 +625,7 @@ document.getElementById("output").innerHTML = `
         font-weight:600;
         color:#555;
       ">
-${document.getElementById("currentDate").textContent}
+        ${document.getElementById("currentDate").textContent}
       </div>
     </div>
 
@@ -799,6 +799,9 @@ const attainmentTextColor =
   ========================= */
   const totalAttainment = sumProjFull
   ? ((sumTotalOrders / sumProjFull) * 100).toFixed(2)
+  : "0.00";
+  const avgActualRiders = storeCount
+  ? (sumActualRiders / storeCount).toFixed(2)
   : "0.00"; 
   const totalRow = document.createElement("tr");
   totalRow.className = "total-row";
@@ -820,7 +823,7 @@ const attainmentTextColor =
 
     <td>${(sumCancelledPct / storeCount).toFixed(2)}%</td>
 
-    <td>${sumActualRiders}</td>
+    <td>${avgActualRiders}</td>
     <td>${sumIdleRider}</td>
     <td>${(sumBF / storeCount).toFixed(2)}</td>
 
