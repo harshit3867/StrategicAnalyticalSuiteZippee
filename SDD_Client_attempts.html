@@ -168,7 +168,7 @@ const storeNameMap = {
   "zippee_manikonda_sdd": "Hyderabad | Manikonda",
   "zippee_matunga_valkyriesdd": "Mumbai | Matunga",
   "zippee_periyamet_sdd": "Chennai | Periyamet",
-  "zippee_topsia_valkyriesdd": "Kolkata | Topsia"
+  "zippee_kolkata_sdd": "Kolkata | Topsia"
 };
 
 document.getElementById("fileInput").addEventListener("change", function(e){
@@ -183,6 +183,15 @@ document.getElementById("fileInput").addEventListener("change", function(e){
 });
 
 function processData(data){
+
+  data.forEach(row=>{
+    let store = (row["Darkstore"] || "").trim();
+
+    if(store.toLowerCase().includes("kolkata")){
+      console.log("KOLKATA STORE =", JSON.stringify(store));
+    }
+  });
+
   originalData = data;
   let pivot = {};
   let latestMap = {};
@@ -190,6 +199,14 @@ function processData(data){
   data.forEach(row=>{
     let store = (row["Darkstore"]||"").trim();
     let brand = (row["Brand Name"] || "").trim().toLowerCase();
+    if(store === "zippee_kolkata_sdd"){
+    console.log(
+        "RAW KOLKATA",
+        row["AWB Number"],
+        "STATUS=" + row["Current Status"],
+        "ATTEMPT=" + row["No. of Attempts"]
+    );
+}
 
 if(brand === "testing_fabbox" || brand === "supertails") return;
 let trip = (row["Trip ID"] || "").toString().trim();
@@ -209,14 +226,14 @@ const allowedStores = [
   "zippee_manikonda_sdd",
   "zippee_matunga_valkyriesdd",
   "zippee_periyamet_sdd",
-  "zippee_topsia_valkyriesdd"
+  "zippee_kolkata_sdd"
 ];
 
 if(!allowedStores.includes(store)) return;
 let creationRaw = (row["Creation Date"] || "").trim();
 
 // Clean Excel format like ="30/04/2026 10:54 AM"
-creationRaw = creationRaw.replace(/^="|"$|/g, "");
+creationRaw = creationRaw.replace(/^="|"$/g, "");
 
 // Convert to Date
 let parts = creationRaw.split(/[\s/:]/); 
@@ -244,8 +261,14 @@ if(parts.length >= 6){
 
   let cutoff = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 15, 0, 0);
 
-  // ❌ REMOVE if today and after 11 AM
-  if(isToday && creationDate > cutoff) return;
+  if(isToday && creationDate > cutoff){
+    console.log(
+        "REMOVED DATE",
+        row["AWB Number"],
+        creationRaw
+    );
+    return;
+}
 }
     let awb = (row["AWB Number"]||"").trim();
     let attempts = parseInt(row["No. of Attempts"])||0;
@@ -253,13 +276,25 @@ if(parts.length >= 6){
 
     if(!awb) return;
 
-    if(!latestMap[awb] || attempts > latestMap[awb].attempts){
-      latestMap[awb] = {attempts,row};
-    }
-  });
+    if(store === "zippee_kolkata_sdd" &&
+   (row["Current Status"] || "").trim().toUpperCase() === "READY"){
+    console.log("ADDING TO MAP", awb);
+}
+latestMap[awb + "_" + Math.random()] = {
+  attempts,
+  row
+};  });
 
   Object.values(latestMap).forEach(obj=>{
     let row = obj.row;
+    if((row["Darkstore"] || "").trim() === "zippee_kolkata_sdd"){
+    console.log(
+        "SURVIVED",
+        row["AWB Number"],
+        row["Current Status"],
+        obj.attempts
+    );
+}
 
     let store = (row["Darkstore"]||"").trim();
     let attempts = obj.attempts.toString();
@@ -304,13 +339,13 @@ html += `
 }
 
 function updateTable(){
+
   let selected=[];
 
-  document.querySelectorAll("#filterBox input:checked").forEach(cb=>{
-    selected.push(cb.value);
-  });
+  document.querySelectorAll('#filterBox input[type="checkbox"][value]:checked')
+    .forEach(cb => selected.push(cb.value));
 
-  processData(originalData);
+  renderTable(selected);
 }
 
 function renderTable(statuses){
@@ -477,13 +512,13 @@ if(!includeTrips && trip !== "") return;
       "zippee_manikonda_sdd",
       "zippee_matunga_valkyriesdd",
       "zippee_periyamet_sdd",
-      "zippee_topsia_valkyriesdd"
+      "zippee_kolkata_sdd"
     ];
 
     if(!allowedStores.includes(store)) return;
 
     // 🔥 Creation Date filter
-    let creationRaw = (row["Creation Date"] || "").trim().replace(/^="|"$|/g, "");
+    let creationRaw = (row["Creation Date"] || "").trim().replace(/^="|"$/g, "");
     let parts = creationRaw.split(/[\s/:]/);
 
     if(parts.length >= 6){
