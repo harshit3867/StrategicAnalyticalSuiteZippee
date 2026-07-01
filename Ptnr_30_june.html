@@ -197,13 +197,17 @@ const files = Array.from(e.target.files)
 for(const file of files){
 
 const data = await file.arrayBuffer()
+const text = new TextDecoder().decode(data);
+const lines = text.split("\n");
+console.log(lines[0]); // Header
+console.log(lines[1]); // First data row
 
-const workbook = XLSX.read(data,{type:'array'})
-const sheet = workbook.Sheets[workbook.SheetNames[0]]
+const rows = text
+    .trim()
+    .split("\n")
+    .map(row => row.split(",").map(cell => cell.replace(/^"|"$/g, "")));
 
-const rows = XLSX.utils.sheet_to_json(sheet,{header:1})
-
-dataset.push(...rows.slice(1))   // merge rows from all files
+dataset.push(...rows.slice(1)); // merge rows from all files
 
 }
 
@@ -214,15 +218,30 @@ function parseIndianDate(str){
     if(!str) return null
 
     // Excel serial date
-    if(typeof str === "number"){
-        return new Date(Math.round((str - 25569) * 86400 * 1000))
-    }
+    if (typeof str === "number") {
 
+    return XLSX.SSF.parse_date_code(str)
+        ? new Date(
+            XLSX.SSF.parse_date_code(str).y,
+            XLSX.SSF.parse_date_code(str).m - 1,
+            XLSX.SSF.parse_date_code(str).d,
+            XLSX.SSF.parse_date_code(str).H,
+            XLSX.SSF.parse_date_code(str).M,
+            XLSX.SSF.parse_date_code(str).S
+        )
+        : null;
+}
     str = String(str).trim()
     // Handle ISO date format like 2026-06-29T10:50:52
-if(str.includes("T")){
-    const d = new Date(str)
-    if(!isNaN(d)) return d
+if (str.includes("T")) {
+
+    const [datePart, timePart] = str.split("T");
+
+    const [year, month, day] = datePart.split("-").map(Number);
+
+    const [hour, minute, second = 0] = timePart.split(":").map(Number);
+
+    return new Date(year, month - 1, day, hour, minute, second);
 }
 
     let parts = str.split(" ")
@@ -275,6 +294,7 @@ if(typeof r[6] === "number"){
     }
 }
 let orderDate = parseIndianDate(r[6]);
+console.log("Parsed Order Date:", orderDate);
 
 let city=(r[21]+"").split(" ").slice(2).join(" ")
 
@@ -340,16 +360,20 @@ if(orderDate < storeOpen){
 }
 let pickupDate = parseIndianDate(r[7])
 let deliveryDate = parseIndianDate(r[30])
+console.log("Order Date:", r[6]);
+console.log("Ship Date:", r[7]);
+console.log("Delivery Date:", r[30]);
+console.log("Whole Row:", r);
 
-
-if(typeof r[6] === "number") orderDate = new Date((r[6]-25569)*86400000)
-if(typeof r[7] === "number") pickupDate = new Date((r[7]-25569)*86400000)   // ⭐ MISSING LINE
-if(typeof r[30] === "number") deliveryDate = new Date((r[30]-25569)*86400000)
 
     let diffMinutes = null
 
 if(orderDate && deliveryDate){
     diffMinutes = (deliveryDate - orderDate) / 60000
+console.log("----------------");
+    console.log("Order :", orderDate);
+    console.log("Delivery :", deliveryDate);
+    console.log("Minutes :", diffMinutes);
 }
     // Delivery time logic (Excel formula equivalent)
 if(deliveryDate && pickupDate){
@@ -367,11 +391,15 @@ if(deliveryDate && pickupDate){
 
         if(diffMinutes <=120){
 
-cities[city].nonbreach++
+    console.log("NON BREACH", trackingNo, diffMinutes);
+
+    cities[city].nonbreach++;
 
 }else{
 
-cities[city].breach++
+    console.log("BREACH", trackingNo, diffMinutes);
+
+    cities[city].breach++;
 
 if(diffMinutes <=135){
 cities[city].breach15++
