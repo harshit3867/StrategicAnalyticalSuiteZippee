@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Mnow <> Pending Order Report</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+
+<style>
+body{
+  margin:0;
+  font-family:Segoe UI,sans-serif;
+  background:
+    linear-gradient(rgba(0,0,0,.75),rgba(0,0,0,.75)),
+    url("zippee.png") no-repeat center center fixed;
+  background-size:cover;
+  color:#fff;
+}
+.header{text-align:center;padding:14px;font-size:22px;font-weight:700}
+.container{width:95%;margin:auto}
+
+.store-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
+  gap:10px;
+}
+.store-card{background:#2f4b66;padding:8px;border-radius:8px}
+.store-title{font-size:13px;font-weight:700;margin-bottom:4px;text-align:center}
+textarea{width:100%;height:80px;border:none;border-radius:6px;padding:6px;font-size:12px}
+
+button{border:none;border-radius:6px;cursor:pointer;font-weight:700}
+.action-btn{background:#0d6efd;color:white;padding:8px 18px}
+.download-btn{background:#16a34a;color:white;padding:8px 16px}
+
+.report{
+  background:white;
+  color:black;
+  padding:10px 14px;
+  border-radius:8px;
+  margin:20px auto;
+  width:max-content;
+  max-width:max-content;
+}
+.report-title{text-align:center;font-size:18px;font-weight:700}
+.report-time{text-align:center;font-size:13px;margin:4px 0 8px}
+
+table{
+  width:auto;
+  border-collapse:collapse;
+  margin:auto;
+}
+th,td{
+  padding:4px 5px;
+  font-size:12px;
+  border-bottom:1px solid #ddd;
+  text-align:center;
+  white-space:nowrap;
+}
+th{background:#c55a11;color:white;font-weight:700}
+
+.footer{text-align:center;font-size:11px;margin-top:6px;color:#333}
+.bottom-disclaimer{
+  text-align:center;
+  font-size:12px;
+  margin-bottom:20px;
+  color:#facc15;
+  font-weight:600;
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="header">Mnow <> Pending Order Report</div>
+
+<div class="container">
+
+<div class="store-grid" id="storeGrid"></div>
+
+<div style="text-align:center;margin:14px 0">
+  <div style="text-align:center;margin:10px 0;">
+  <label><b>Select Time:</b></label>
+
+  <select id="timeSelector">
+    <option value="">Current Time</option>
+    <option>6:00 AM</option>
+    <option>7:00 AM</option>
+    <option>8:00 AM</option>
+    <option>9:00 AM</option>
+    <option>10:00 AM</option>
+    <option>11:00 AM</option>
+    <option>12:00 PM</option>
+    <option>1:00 PM</option>
+    <option>2:00 PM</option>
+    <option>3:00 PM</option>
+    <option>4:00 PM</option>
+    <option>5:00 PM</option>
+    <option>6:00 PM</option>
+    <option>7:00 PM</option>
+    <option>8:00 PM</option>
+    <option>9:00 PM</option>
+    <option>10:00 PM</option>
+  </select>
+</div>
+  <button class="action-btn" onclick="generate()">Generate Reports</button>
+  <button class="download-btn"
+onclick="downloadSingle('report1','Order_ID_Report.png')">
+Download Report
+</button>
+</div>
+<div id="report1" class="report" style="display:none">
+
+<div class="report-title">
+Mnow <> Pending Order Report
+</div>
+
+<div class="report-time" id="time1"></div>
+
+<table id="orderTable">
+</table>
+
+<div class="footer">
+<b>Powered by SASA Automation | Zippee</b>
+</div>
+
+</div>
+
+</div>
+
+<script>
+
+/* ===== STORES ===== */
+const stores=[
+"Kalyan Nagar Mnow","Basaveshwar Nagar Mnow","Jakkur Mnow","Begur Mnow",
+"Thyagaraja Nagar Mnow","Brookfield Mnow","Hulimavu Mnow","Sarjapur Road Mnow",
+"Manikonda Mnow","Gachibowli Mnow","Attapur Mnow","Nizampet Mnow"
+];
+const grid=document.getElementById("storeGrid");
+stores.forEach(s=>{
+  grid.innerHTML+=`
+    <div class="store-card">
+      <div class="store-title">${s}</div>
+      <textarea id="${s}"></textarea>
+    </div>`;
+});
+
+function getCurrentTime() {
+  const now = new Date();
+
+  let hours = now.getHours();
+  const minutes = now.getMinutes();
+
+  const ampm = hours >= 12 ? "PM" : "AM";
+  hours = hours % 12 || 12;
+
+  const formattedMinutes = minutes < 10 ? "0" + minutes : minutes;
+
+  return {
+    displayTime: `${hours}:${formattedMinutes} ${ampm}`
+};
+}
+
+/* ===== GENERATE ===== */
+function generate(){
+
+    const timeObj = getCurrentTime();
+
+    const selectedTime =
+        document.getElementById("timeSelector").value;
+
+    const reportTime =
+        selectedTime || timeObj.displayTime;
+
+    time1.innerText = `Time : ${reportTime}`;
+
+    const orderData = {};
+
+    let maxOrders = 0;
+
+    stores.forEach(store => {
+
+        const text =
+            document.getElementById(store).value;
+
+        // Extract every Order ID starting with MYSHL
+        const ids = (text.match(/MYSHL[A-Z0-9]+/g) || [])
+    .slice(-10)
+    .reverse();
+
+        orderData[store] = ids;
+
+        if(ids.length > maxOrders)
+            maxOrders = ids.length;
+
+    });
+
+    let html = "<thead><tr>";
+
+    stores.forEach(store=>{
+
+    html += `
+    <th>${store.replace(/\s*Mnow$/, "")}</th>`;
+
+});
+    html += "</tr></thead><tbody>";
+
+    for(let i=0;i<maxOrders;i++){
+
+        html += "<tr>";
+
+        stores.forEach(store=>{
+
+            html += `
+            <td>
+                ${orderData[store][i] || ""}
+            </td>`;
+
+        });
+
+        html += "</tr>";
+
+    }
+
+    html += "</tbody>";
+
+    document.getElementById("orderTable").innerHTML = html;
+
+    report1.style.display = "block";
+
+}
+
+/* ===== DOWNLOAD ===== */
+function downloadSingle(id,name){
+  requestAnimationFrame(()=>{
+    html2canvas(document.getElementById(id),{scale:4,backgroundColor:"#fff"})
+    .then(c=>{
+      const a=document.createElement("a");
+      a.href=c.toDataURL("image/png");
+      a.download=name;
+      a.click();
+    });
+  });
+}
+</script>
+<script>
+/* ------------- SCREENSHOT / COPY DETERRENCE -------------- */
+
+/* Temporary Blur Overlay 
+function temporarilyBlur() {
+    const overlay = document.createElement("div");
+    overlay.style.position = "fixed";
+    overlay.style.inset = "0";
+    overlay.style.backdropFilter = "blur(18px)";
+    overlay.style.background = "rgba(255,255,255,0.25)";
+    overlay.style.zIndex = "999999";
+    overlay.style.pointerEvents = "none";
+    document.body.appendChild(overlay);
+    setTimeout(()=> overlay.remove(), 1400);
+}
+*/
+/* Windows Snipping Tool (Win + Shift + S fallback detection) */
+document.addEventListener("keydown", function(e){
+    if (e.shiftKey && e.metaKey) {
+        temporarilyBlur();
+    }
+
+    if (e.shiftKey && e.key.toLowerCase() === "s") {
+        temporarilyBlur();
+    }
+});
+
+/* Mac Screenshot */
+document.addEventListener("keydown", function(e){
+    if (e.metaKey && e.shiftKey && (e.key === "3" || e.key === "4")) {
+        e.preventDefault();
+        temporarilyBlur();
+        alert("Mac screenshot shortcut blocked.");
+    }
+});
+
+/* Disable right-click, select, copy */
+document.addEventListener("contextmenu", e => e.preventDefault());
+document.addEventListener("copy", e => {
+    e.preventDefault();
+    alert("Copying is disabled on this page.");
+});
+
+/* ------------- ANTI-INSPECT / DEVTOOLS -------------- */
+
+/* Detect DevTools */
+setInterval(function () {
+  const threshold = 160;
+  if (
+    window.outerWidth - window.innerWidth > threshold ||
+    window.outerHeight - window.innerHeight > threshold
+  ) {
+    document.body.innerHTML =
+      "<h2 style='text-align:center;margin-top:40px;'>Dev Tools are not allowed 🚫</h2>";
+  }
+}, 500);
+
+/* Block Inspect Keys */
+document.addEventListener("keydown", function(e){
+
+  // F12
+  if (e.keyCode === 123) e.preventDefault();
+
+  // Ctrl + Shift + I / J / C
+  if (e.ctrlKey && e.shiftKey &&
+     ['I','J','C','i','j','c'].includes(e.key)) {
+      e.preventDefault();
+  }
+
+  // Ctrl + U
+  if (e.ctrlKey && ['U','u'].includes(e.key)) {
+      e.preventDefault();
+  }
+
+  // Block any Ctrl + Shift combo
+  if (e.ctrlKey && e.shiftKey) e.preventDefault();
+});
+</script>
+
+</body>
+</html>
