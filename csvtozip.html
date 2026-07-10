@@ -1,0 +1,932 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>Excel & CSV to ZIP Converter</title>
+
+  <!-- JSZip -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+  <!-- SheetJS -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: Inter, Arial, sans-serif;
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at top left, #312e81 0%, transparent 35%),
+        radial-gradient(circle at bottom right, #0f766e 0%, transparent 35%),
+        #070b18;
+      color: white;
+      padding: 30px 20px;
+    }
+
+    .container {
+      max-width: 1000px;
+      margin: auto;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 35px;
+    }
+
+    .header h1 {
+      font-size: clamp(30px, 5vw, 52px);
+      font-weight: 800;
+      margin-bottom: 12px;
+      background: linear-gradient(90deg, #ffffff, #a5b4fc, #5eead4);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .header p {
+      color: #aab2c8;
+      font-size: 16px;
+      line-height: 1.6;
+    }
+
+    .card {
+      background: rgba(255, 255, 255, 0.07);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      backdrop-filter: blur(18px);
+      border-radius: 24px;
+      padding: 28px;
+      box-shadow: 0 25px 70px rgba(0, 0, 0, 0.35);
+    }
+
+    .upload-box {
+      border: 2px dashed rgba(165, 180, 252, 0.45);
+      border-radius: 20px;
+      padding: 50px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: 0.25s ease;
+      background: rgba(255, 255, 255, 0.025);
+    }
+
+    .upload-box:hover,
+    .upload-box.dragging {
+      border-color: #818cf8;
+      background: rgba(129, 140, 248, 0.09);
+      transform: translateY(-2px);
+    }
+
+    .upload-icon {
+      font-size: 54px;
+      margin-bottom: 15px;
+    }
+
+    .upload-box h2 {
+      font-size: 22px;
+      margin-bottom: 8px;
+    }
+
+    .upload-box p {
+      color: #9ca6bd;
+      font-size: 14px;
+    }
+
+    #fileInput {
+      display: none;
+    }
+
+    .summary {
+      display: none;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+      margin-top: 22px;
+    }
+
+    .summary-card {
+      background: rgba(255, 255, 255, 0.055);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 16px;
+      padding: 16px;
+    }
+
+    .summary-card span {
+      color: #8f99af;
+      font-size: 12px;
+      display: block;
+      margin-bottom: 7px;
+    }
+
+    .summary-card strong {
+      font-size: 21px;
+    }
+
+    .files-section {
+      display: none;
+      margin-top: 25px;
+    }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 15px;
+      margin-bottom: 14px;
+    }
+
+    .section-header h3 {
+      font-size: 18px;
+    }
+
+    .clear-btn {
+      border: none;
+      background: rgba(239, 68, 68, 0.13);
+      color: #fca5a5;
+      padding: 9px 14px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    .file-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      max-height: 360px;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+
+    .file-item {
+      display: grid;
+      grid-template-columns: 44px 1fr auto 38px;
+      align-items: center;
+      gap: 12px;
+      padding: 13px;
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.07);
+    }
+
+    .file-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #4f46e5, #0f766e);
+      font-size: 20px;
+    }
+
+    .file-info {
+      min-width: 0;
+    }
+
+    .file-name {
+      font-size: 14px;
+      font-weight: 700;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .file-meta {
+      margin-top: 4px;
+      color: #8f99af;
+      font-size: 12px;
+    }
+
+    .status {
+      font-size: 12px;
+      font-weight: 700;
+      color: #86efac;
+      background: rgba(34, 197, 94, 0.12);
+      padding: 6px 9px;
+      border-radius: 999px;
+    }
+
+    .remove-btn {
+      width: 34px;
+      height: 34px;
+      border: none;
+      border-radius: 9px;
+      cursor: pointer;
+      background: rgba(239, 68, 68, 0.12);
+      color: #fca5a5;
+      font-size: 18px;
+    }
+
+    .settings {
+      display: none;
+      margin-top: 24px;
+      padding: 18px;
+      background: rgba(255, 255, 255, 0.04);
+      border-radius: 16px;
+      border: 1px solid rgba(255, 255, 255, 0.07);
+    }
+
+    .settings label {
+      display: block;
+      color: #b8c0d3;
+      font-size: 13px;
+      margin-bottom: 8px;
+    }
+
+    .settings input {
+      width: 100%;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: rgba(0, 0, 0, 0.22);
+      color: white;
+      border-radius: 12px;
+      padding: 13px 14px;
+      outline: none;
+      font-size: 14px;
+    }
+
+    .settings input:focus {
+      border-color: #818cf8;
+    }
+
+    .action-area {
+      display: none;
+      margin-top: 22px;
+    }
+
+    .download-btn {
+      width: 100%;
+      border: none;
+      padding: 16px;
+      border-radius: 14px;
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: 800;
+      color: white;
+      background: linear-gradient(90deg, #4f46e5, #0f766e);
+      transition: 0.2s ease;
+    }
+
+    .download-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 30px rgba(79, 70, 229, 0.25);
+    }
+
+    .download-btn:disabled {
+      cursor: not-allowed;
+      opacity: 0.6;
+      transform: none;
+    }
+
+    .progress-wrap {
+      display: none;
+      margin-top: 18px;
+    }
+
+    .progress-text {
+      display: flex;
+      justify-content: space-between;
+      color: #aab2c8;
+      font-size: 12px;
+      margin-bottom: 8px;
+    }
+
+    .progress-bar {
+      width: 100%;
+      height: 9px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      width: 0%;
+      height: 100%;
+      background: linear-gradient(90deg, #818cf8, #5eead4);
+      transition: width 0.2s ease;
+    }
+
+    .message {
+      display: none;
+      margin-top: 16px;
+      padding: 13px 15px;
+      border-radius: 12px;
+      font-size: 14px;
+    }
+
+    .message.success {
+      display: block;
+      color: #bbf7d0;
+      background: rgba(34, 197, 94, 0.12);
+      border: 1px solid rgba(34, 197, 94, 0.2);
+    }
+
+    .message.error {
+      display: block;
+      color: #fecaca;
+      background: rgba(239, 68, 68, 0.12);
+      border: 1px solid rgba(239, 68, 68, 0.2);
+    }
+
+    .footer {
+      text-align: center;
+      color: #657089;
+      font-size: 12px;
+      margin-top: 25px;
+    }
+
+    @media (max-width: 650px) {
+      .summary {
+        grid-template-columns: 1fr;
+      }
+
+      .file-item {
+        grid-template-columns: 40px 1fr 34px;
+      }
+
+      .status {
+        display: none;
+      }
+
+      .card {
+        padding: 18px;
+      }
+
+      .upload-box {
+        padding: 38px 15px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="container">
+
+    <div class="header">
+      <h1>Excel & CSV → ZIP</h1>
+      <p>
+        Upload multiple CSV or Excel files.<br>
+        Excel sheets are converted to CSV and everything is packed into one ZIP.
+      </p>
+    </div>
+
+    <div class="card">
+
+      <div class="upload-box" id="uploadBox">
+        <div class="upload-icon">📂</div>
+        <h2>Drop your files here</h2>
+        <p>or click to browse multiple CSV, XLSX and XLS files</p>
+      </div>
+
+      <input
+        type="file"
+        id="fileInput"
+        multiple
+        accept=".csv,.xlsx,.xls"
+      />
+
+      <div class="summary" id="summary">
+        <div class="summary-card">
+          <span>Total Files</span>
+          <strong id="totalFiles">0</strong>
+        </div>
+
+        <div class="summary-card">
+          <span>Total Size</span>
+          <strong id="totalSize">0 KB</strong>
+        </div>
+
+        <div class="summary-card">
+          <span>Output</span>
+          <strong>ZIP</strong>
+        </div>
+      </div>
+
+      <div class="files-section" id="filesSection">
+
+        <div class="section-header">
+          <h3>Selected Files</h3>
+          <button class="clear-btn" id="clearBtn">
+            Clear All
+          </button>
+        </div>
+
+        <div class="file-list" id="fileList"></div>
+
+      </div>
+
+      <div class="settings" id="settings">
+        <label for="zipName">ZIP File Name</label>
+        <input
+          type="text"
+          id="zipName"
+          value="combined_csv_files"
+          placeholder="Enter ZIP file name"
+        />
+      </div>
+
+      <div class="action-area" id="actionArea">
+
+        <button class="download-btn" id="downloadBtn">
+          Generate & Download ZIP
+        </button>
+
+        <div class="progress-wrap" id="progressWrap">
+          <div class="progress-text">
+            <span id="progressStatus">Processing...</span>
+            <span id="progressPercent">0%</span>
+          </div>
+
+          <div class="progress-bar">
+            <div class="progress-fill" id="progressFill"></div>
+          </div>
+        </div>
+
+        <div class="message" id="message"></div>
+
+      </div>
+
+    </div>
+
+    <div class="footer">
+      Powered by SASA Automation | Harshit Saini
+    </div>
+
+  </div>
+
+  <script>
+    const uploadBox = document.getElementById("uploadBox");
+    const fileInput = document.getElementById("fileInput");
+
+    const summary = document.getElementById("summary");
+    const totalFiles = document.getElementById("totalFiles");
+    const totalSize = document.getElementById("totalSize");
+
+    const filesSection = document.getElementById("filesSection");
+    const fileList = document.getElementById("fileList");
+
+    const settings = document.getElementById("settings");
+    const actionArea = document.getElementById("actionArea");
+
+    const clearBtn = document.getElementById("clearBtn");
+    const downloadBtn = document.getElementById("downloadBtn");
+
+    const zipName = document.getElementById("zipName");
+
+    const progressWrap = document.getElementById("progressWrap");
+    const progressStatus = document.getElementById("progressStatus");
+    const progressPercent = document.getElementById("progressPercent");
+    const progressFill = document.getElementById("progressFill");
+
+    const message = document.getElementById("message");
+
+    let selectedFiles = [];
+
+    // -----------------------------
+    // CLICK TO UPLOAD
+    // -----------------------------
+    uploadBox.addEventListener("click", () => {
+      fileInput.click();
+    });
+
+    // -----------------------------
+    // FILE INPUT CHANGE
+    // -----------------------------
+    fileInput.addEventListener("change", (event) => {
+      addFiles(Array.from(event.target.files));
+      fileInput.value = "";
+    });
+
+    // -----------------------------
+    // DRAG EVENTS
+    // -----------------------------
+    uploadBox.addEventListener("dragover", (event) => {
+      event.preventDefault();
+      uploadBox.classList.add("dragging");
+    });
+
+    uploadBox.addEventListener("dragleave", () => {
+      uploadBox.classList.remove("dragging");
+    });
+
+    uploadBox.addEventListener("drop", (event) => {
+      event.preventDefault();
+      uploadBox.classList.remove("dragging");
+
+      const files = Array.from(event.dataTransfer.files);
+      addFiles(files);
+    });
+
+    // -----------------------------
+    // ADD FILES
+    // -----------------------------
+    function addFiles(files) {
+
+      const validFiles = files.filter(file => {
+        const extension = getExtension(file.name);
+        return ["csv", "xlsx", "xls"].includes(extension);
+      });
+
+      validFiles.forEach(file => {
+
+        const duplicate = selectedFiles.some(existing =>
+          existing.name === file.name &&
+          existing.size === file.size &&
+          existing.lastModified === file.lastModified
+        );
+
+        if (!duplicate) {
+          selectedFiles.push(file);
+        }
+      });
+
+      renderFiles();
+    }
+
+    // -----------------------------
+    // RENDER FILE LIST
+    // -----------------------------
+    function renderFiles() {
+
+      fileList.innerHTML = "";
+
+      if (selectedFiles.length === 0) {
+        summary.style.display = "none";
+        filesSection.style.display = "none";
+        settings.style.display = "none";
+        actionArea.style.display = "none";
+        return;
+      }
+
+      summary.style.display = "grid";
+      filesSection.style.display = "block";
+      settings.style.display = "block";
+      actionArea.style.display = "block";
+
+      totalFiles.textContent = selectedFiles.length;
+
+      const totalBytes = selectedFiles.reduce(
+        (sum, file) => sum + file.size,
+        0
+      );
+
+      totalSize.textContent = formatFileSize(totalBytes);
+
+      selectedFiles.forEach((file, index) => {
+
+        const extension = getExtension(file.name);
+
+        const item = document.createElement("div");
+        item.className = "file-item";
+
+        item.innerHTML = `
+          <div class="file-icon">
+            ${extension === "csv" ? "📄" : "📊"}
+          </div>
+
+          <div class="file-info">
+            <div class="file-name" title="${escapeHtml(file.name)}">
+              ${escapeHtml(file.name)}
+            </div>
+
+            <div class="file-meta">
+              ${extension.toUpperCase()} • ${formatFileSize(file.size)}
+            </div>
+          </div>
+
+          <div class="status">
+            Ready
+          </div>
+
+          <button
+            class="remove-btn"
+            onclick="removeFile(${index})"
+            title="Remove file"
+          >
+            ×
+          </button>
+        `;
+
+        fileList.appendChild(item);
+      });
+    }
+
+    // -----------------------------
+    // REMOVE SINGLE FILE
+    // -----------------------------
+    function removeFile(index) {
+      selectedFiles.splice(index, 1);
+      renderFiles();
+      resetMessage();
+    }
+
+    // -----------------------------
+    // CLEAR ALL
+    // -----------------------------
+    clearBtn.addEventListener("click", () => {
+      selectedFiles = [];
+      renderFiles();
+      resetMessage();
+      resetProgress();
+    });
+
+    // -----------------------------
+    // DOWNLOAD ZIP
+    // -----------------------------
+    downloadBtn.addEventListener("click", async () => {
+
+      if (selectedFiles.length === 0) {
+        showMessage("Please upload at least one file.", "error");
+        return;
+      }
+
+      try {
+
+        downloadBtn.disabled = true;
+        downloadBtn.textContent = "Processing Files...";
+
+        progressWrap.style.display = "block";
+        resetMessage();
+
+        const zip = new JSZip();
+
+        let processed = 0;
+
+        for (const file of selectedFiles) {
+
+          const extension = getExtension(file.name);
+
+          updateProgress(
+            processed,
+            selectedFiles.length,
+            `Processing ${file.name}`
+          );
+
+          // CSV FILE
+          if (extension === "csv") {
+
+            const content = await file.text();
+
+            zip.file(
+              getUniqueZipName(zip, sanitizeFileName(file.name)),
+              content
+            );
+          }
+
+          // EXCEL FILE
+          else if (extension === "xlsx" || extension === "xls") {
+
+            const arrayBuffer = await file.arrayBuffer();
+
+            const workbook = XLSX.read(arrayBuffer, {
+              type: "array"
+            });
+
+            workbook.SheetNames.forEach((sheetName, sheetIndex) => {
+
+              const worksheet = workbook.Sheets[sheetName];
+
+              const csvContent = XLSX.utils.sheet_to_csv(
+                worksheet,
+                {
+                  blankrows: true
+                }
+              );
+
+              const originalBaseName = removeExtension(file.name);
+
+              let outputName;
+
+              // If Excel has only one sheet
+              if (workbook.SheetNames.length === 1) {
+                outputName =
+                  sanitizeFileName(originalBaseName) + ".csv";
+              }
+
+              // If Excel has multiple sheets
+              else {
+                outputName =
+                  sanitizeFileName(originalBaseName) +
+                  "_" +
+                  sanitizeFileName(sheetName) +
+                  ".csv";
+              }
+
+              zip.file(
+                getUniqueZipName(zip, outputName),
+                "\uFEFF" + csvContent
+              );
+            });
+          }
+
+          processed++;
+
+          updateProgress(
+            processed,
+            selectedFiles.length,
+            `${processed} of ${selectedFiles.length} files processed`
+          );
+        }
+
+        progressStatus.textContent = "Creating ZIP file...";
+
+        const zipBlob = await zip.generateAsync(
+          {
+            type: "blob",
+            compression: "DEFLATE",
+            compressionOptions: {
+              level: 6
+            }
+          },
+          metadata => {
+            const percent = Math.round(metadata.percent);
+
+            progressFill.style.width = percent + "%";
+            progressPercent.textContent = percent + "%";
+          }
+        );
+
+        // Download
+        const finalZipName =
+          sanitizeFileName(zipName.value.trim() || "combined_csv_files") +
+          ".zip";
+
+        const downloadUrl = URL.createObjectURL(zipBlob);
+
+        const anchor = document.createElement("a");
+        anchor.href = downloadUrl;
+        anchor.download = finalZipName;
+
+        document.body.appendChild(anchor);
+        anchor.click();
+        anchor.remove();
+
+        URL.revokeObjectURL(downloadUrl);
+
+        updateProgress(
+          selectedFiles.length,
+          selectedFiles.length,
+          "Completed"
+        );
+
+        showMessage(
+          `ZIP created successfully: ${finalZipName}`,
+          "success"
+        );
+
+      } catch (error) {
+
+        console.error(error);
+
+        showMessage(
+          "Something went wrong while processing the files.",
+          "error"
+        );
+
+      } finally {
+
+        downloadBtn.disabled = false;
+        downloadBtn.textContent = "Generate & Download ZIP";
+
+      }
+    });
+
+    // -----------------------------
+    // UPDATE PROGRESS
+    // -----------------------------
+    function updateProgress(current, total, statusText) {
+
+      const percent =
+        total === 0
+          ? 0
+          : Math.round((current / total) * 100);
+
+      progressFill.style.width = percent + "%";
+      progressPercent.textContent = percent + "%";
+      progressStatus.textContent = statusText;
+    }
+
+    // -----------------------------
+    // RESET PROGRESS
+    // -----------------------------
+    function resetProgress() {
+      progressWrap.style.display = "none";
+      progressFill.style.width = "0%";
+      progressPercent.textContent = "0%";
+      progressStatus.textContent = "Processing...";
+    }
+
+    // -----------------------------
+    // MESSAGE
+    // -----------------------------
+    function showMessage(text, type) {
+      message.className = "message " + type;
+      message.textContent = text;
+    }
+
+    function resetMessage() {
+      message.className = "message";
+      message.textContent = "";
+    }
+
+    // -----------------------------
+    // GET EXTENSION
+    // -----------------------------
+    function getExtension(fileName) {
+      return fileName
+        .split(".")
+        .pop()
+        .toLowerCase();
+    }
+
+    // -----------------------------
+    // REMOVE EXTENSION
+    // -----------------------------
+    function removeExtension(fileName) {
+      return fileName.replace(/\.[^/.]+$/, "");
+    }
+
+    // -----------------------------
+    // FORMAT FILE SIZE
+    // -----------------------------
+    function formatFileSize(bytes) {
+
+      if (bytes === 0) return "0 Bytes";
+
+      const units = ["Bytes", "KB", "MB", "GB"];
+      const index = Math.floor(
+        Math.log(bytes) / Math.log(1024)
+      );
+
+      return (
+        parseFloat(
+          (bytes / Math.pow(1024, index)).toFixed(2)
+        ) +
+        " " +
+        units[index]
+      );
+    }
+
+    // -----------------------------
+    // SANITIZE FILE NAME
+    // -----------------------------
+    function sanitizeFileName(name) {
+
+      return name
+        .replace(/[<>:"/\\|?*\x00-\x1F]/g, "_")
+        .replace(/\s+/g, " ")
+        .trim();
+    }
+
+    // -----------------------------
+    // UNIQUE ZIP FILE NAME
+    // Prevent overwrite if duplicate names
+    // -----------------------------
+    function getUniqueZipName(zip, fileName) {
+
+      if (!zip.file(fileName)) {
+        return fileName;
+      }
+
+      const extensionMatch = fileName.match(/(\.[^.]+)$/);
+
+      const extension = extensionMatch
+        ? extensionMatch[1]
+        : "";
+
+      const baseName = extension
+        ? fileName.slice(0, -extension.length)
+        : fileName;
+
+      let counter = 2;
+      let newName;
+
+      do {
+        newName =
+          `${baseName}_${counter}${extension}`;
+
+        counter++;
+      } while (zip.file(newName));
+
+      return newName;
+    }
+
+    // -----------------------------
+    // ESCAPE HTML
+    // -----------------------------
+    function escapeHtml(text) {
+
+      const div = document.createElement("div");
+      div.textContent = text;
+
+      return div.innerHTML;
+    }
+
+  </script>
+
+</body>
+</html>
