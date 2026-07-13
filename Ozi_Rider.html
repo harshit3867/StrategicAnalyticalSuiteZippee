@@ -1,0 +1,1507 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Zippee OZI Rider Report</title>
+
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+
+<style>
+
+:root {
+    --primary-900: #003f8c;
+    --glass-bg: rgba(255, 255, 255, 0.16);
+    --card-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html,
+body {
+    margin: 0;
+    padding: 0;
+    font-family: "Segoe UI", Arial, sans-serif;
+}
+
+body {
+    min-height: 100vh;
+    background: url('Zippee.png') center/cover fixed no-repeat;
+}
+
+body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background: rgba(255, 255, 255, 0.24);
+    backdrop-filter: blur(6px);
+    z-index: -1;
+}
+
+
+/* ===============================
+   HEADER
+================================ */
+
+.header {
+    background: linear-gradient(
+        90deg,
+        rgba(0, 63, 140, 0.85),
+        rgba(0, 89, 179, 0.85)
+    );
+
+    color: white;
+
+    padding: 18px 36px;
+
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.header h1 {
+    margin: 0;
+    font-size: 26px;
+}
+
+.logo {
+    height: 48px;
+}
+
+
+/* ===============================
+   MAIN CARD
+================================ */
+
+.card {
+    background: var(--glass-bg);
+
+    backdrop-filter: blur(10px) saturate(120%);
+
+    margin: 30px auto;
+
+    max-width: 1300px;
+
+    padding: 30px;
+
+    border-radius: 18px;
+
+    box-shadow: var(--card-shadow);
+}
+
+.title {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--primary-900);
+}
+
+
+/* ===============================
+   FILE INPUT
+================================ */
+
+.upload-area {
+    margin-top: 15px;
+
+    padding: 20px;
+
+    border: 2px dashed rgba(0, 102, 204, 0.55);
+
+    border-radius: 12px;
+
+    background: rgba(255, 255, 255, 0.35);
+}
+
+#fileInput {
+    width: 100%;
+    font-size: 14px;
+}
+
+.file-name {
+    margin-top: 10px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #333;
+}
+
+
+/* ===============================
+   CONTROLS
+================================ */
+
+.controls {
+    display: flex;
+
+    gap: 8px;
+
+    flex-wrap: wrap;
+
+    margin-top: 12px;
+}
+
+.button {
+    background: linear-gradient(135deg, #0A66C2, #0078FF);
+
+    border: none;
+
+    border-radius: 10px;
+
+    padding: 10px 16px;
+
+    color: white;
+
+    cursor: pointer;
+
+    font-weight: 700;
+}
+
+.button:hover {
+    opacity: 0.9;
+}
+
+.download-button {
+    background: linear-gradient(135deg, #087b3d, #00a651);
+}
+
+#errorMessage {
+    margin-top: 10px;
+    color: #b00020;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+
+/* ===============================
+   REPORT
+================================ */
+
+#reportContainer {
+    display: none;
+
+    margin-top: 25px;
+
+    text-align: center;
+}
+
+#captureBox {
+    position: relative;
+
+    display: inline-block;
+
+    width: fit-content;
+
+    max-width: 100%;
+
+    margin: auto;
+
+    background: #ffffff;
+
+    padding: 15px 0 10px 0;
+}
+
+
+/* ===============================
+   REPORT HEADING
+================================ */
+
+.report-heading {
+    text-align: center;
+
+    margin-bottom: 15px;
+
+    width: 100%;
+}
+
+.report-title {
+    font-size: 18px;
+    font-weight: 800;
+}
+
+.report-date {
+    margin-top: 4px;
+
+    font-size: 13px;
+}
+
+
+/* ===============================
+   TABLE
+================================ */
+
+.table-wrapper {
+    max-width: 100%;
+
+    overflow-x: auto;
+}
+
+table {
+    border-collapse: collapse;
+
+    background: white;
+
+    border-radius: 12px;
+
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+
+    margin: 0 auto;
+
+    table-layout: auto;
+
+    width: auto;
+}
+
+th {
+    background: #f4f6f8;
+
+    font-weight: 700;
+}
+
+th,
+td {
+    border: 1px solid #ddd;
+
+    padding: 6px 8px;
+
+    font-size: 13px;
+
+    text-align: center;
+
+    vertical-align: middle;
+
+    white-space: nowrap;
+}
+
+
+/* COLUMN WIDTHS */
+
+th:nth-child(1),
+td:nth-child(1) {
+    width: 70px;
+}
+
+th:nth-child(2),
+td:nth-child(2) {
+    width: 180px;
+}
+
+th:nth-child(3),
+td:nth-child(3) {
+    width: 100px;
+}
+
+th:nth-child(4),
+td:nth-child(4) {
+    width: 95px;
+}
+
+th:nth-child(5),
+td:nth-child(5),
+th:nth-child(6),
+td:nth-child(6) {
+    width: 160px;
+}
+
+th:nth-child(7),
+td:nth-child(7) {
+    width: 95px;
+}
+
+th:nth-child(8),
+td:nth-child(8) {
+    width: 105px;
+}
+
+
+tbody tr:hover {
+    background: #eefaff;
+}
+
+
+/* ===============================
+   STATUS
+================================ */
+
+.status-active {
+    font-weight: 700;
+    color: #087b3d;
+}
+
+.status-completed {
+    font-weight: 700;
+    color: #1257a6;
+}
+
+.status-auto {
+    font-weight: 700;
+    color: #b02727;
+}
+
+
+/* ===============================
+   ORDER INPUT
+================================ */
+
+.order-input {
+    width: 80px;
+
+    padding: 5px 6px;
+
+    border: 1.5px solid #0aaee5;
+
+    border-radius: 5px;
+
+    outline: none;
+
+    text-align: center;
+
+    font-size: 13px;
+
+    font-weight: 700;
+
+    background: #f5fcff;
+}
+
+.order-input:focus {
+    border-color: #007fa8;
+
+    background: white;
+
+    box-shadow: 0 0 5px rgba(10, 174, 229, 0.5);
+}
+.phone-cell {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+}
+
+.copy-phone-btn {
+    border: none;
+    background: #0A66C2;
+    color: white;
+    border-radius: 4px;
+    padding: 3px 6px;
+    font-size: 10px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.copy-phone-btn:hover {
+    background: #004f9e;
+}
+
+/* ===============================
+   FOOTER
+================================ */
+
+.footer-watermark {
+    width: 100%;
+
+    display: flex;
+
+    justify-content: center;
+
+    align-items: center;
+
+    margin-top: 10px;
+
+    font-size: 11px;
+
+    font-weight: 700;
+
+    color: #000;
+
+    letter-spacing: 1px;
+
+    text-transform: uppercase;
+}
+
+
+/* ===============================
+   RESPONSIVE
+================================ */
+
+@media(max-width: 700px) {
+
+    .header {
+        padding: 15px 20px;
+    }
+
+    .header h1 {
+        font-size: 20px;
+    }
+
+    .logo {
+        height: 38px;
+    }
+
+    .card {
+        margin: 15px;
+        padding: 18px;
+    }
+
+}
+
+</style>
+</head>
+
+
+<body>
+
+
+<!-- ===============================
+     HEADER
+================================ -->
+
+<div class="header">
+
+    <h1>Zippee – OZI Rider Report</h1>
+
+    <img
+        class="logo"
+        src="https://i.imgur.com/7yUVE8U.png"
+        alt="Zippee"
+    >
+
+</div>
+
+
+
+<!-- ===============================
+     MAIN CARD
+================================ -->
+
+<div class="card">
+
+    <div class="title">
+        Upload Attendance Dataset
+    </div>
+
+
+    <div class="upload-area">
+
+        <input
+            type="file"
+            id="fileInput"
+            accept=".xlsx,.xls,.csv"
+        >
+
+        <div
+            class="file-name"
+            id="fileName"
+        >
+            No file selected
+        </div>
+
+        <div id="errorMessage"></div>
+
+    </div>
+
+
+    <div class="controls">
+
+        <button
+            class="button"
+            onclick="generateReport()"
+        >
+            Generate Report
+        </button>
+
+        <button
+    class="button download-button"
+    id="downloadButton"
+    onclick="downloadPNG()"
+    style="display:none;"
+>
+    Download PNG Report
+</button>
+
+    </div>
+
+
+
+    <!-- ===============================
+         REPORT
+    ================================ -->
+
+    <div id="reportContainer">
+
+        <div id="captureBox">
+
+
+            <!-- REPORT HEADING -->
+
+            <div class="report-heading">
+
+                <div class="report-title">
+                    ZIPPEE &lt;&gt; OZI Rider Report
+                </div>
+
+                <div
+                    class="report-date"
+                    id="reportDate"
+                ></div>
+
+            </div>
+
+
+
+            <!-- TABLE -->
+
+            <div class="table-wrapper">
+
+                <table>
+
+                    <thead>
+
+                        <tr>
+
+                            <th>Rider ID</th>
+
+                            <th>Rider Name</th>
+
+                            <th>Phone</th>
+
+                            <th>Status</th>
+
+                            <th>Punch In (IST)</th>
+
+                            <th>Punch Out (IST)</th>
+
+                            <th>Active Hour</th>
+
+                            <th>Order</th>
+
+                        </tr>
+
+                    </thead>
+
+
+                    <tbody id="reportBody"></tbody>
+
+                </table>
+
+            </div>
+
+
+
+            <!-- FOOTER -->
+
+            <div class="footer-watermark">
+
+                Powered by SASA Automation | Zippee
+
+            </div>
+
+
+        </div>
+
+    </div>
+
+
+</div>
+
+
+
+<script>
+
+const fileInput = document.getElementById("fileInput");
+
+let uploadedRows = [];
+
+let reportData = [];
+
+
+/* ===============================
+   FILE UPLOAD
+================================ */
+
+fileInput.addEventListener("change", function(event) {
+
+    const file = event.target.files[0];
+
+    if (!file) {
+        return;
+    }
+
+
+    document.getElementById("fileName").innerText = file.name;
+
+    document.getElementById("errorMessage").innerText = "";
+
+
+    const reader = new FileReader();
+
+
+    reader.onload = function(e) {
+
+        try {
+
+            const data = new Uint8Array(e.target.result);
+
+
+            const workbook = XLSX.read(
+                data,
+                {
+                    type: "array",
+                    cellDates: true
+                }
+            );
+
+
+            const sheetName = workbook.SheetNames[0];
+
+
+            const worksheet = workbook.Sheets[sheetName];
+
+
+            uploadedRows = XLSX.utils.sheet_to_json(
+                worksheet,
+                {
+                    header: 1,
+                    defval: "",
+                    raw: false
+                }
+            );
+
+
+            if (uploadedRows.length <= 1) {
+
+                uploadedRows = [];
+
+                showError(
+                    "Excel file contains no attendance records."
+                );
+
+                return;
+
+            }
+
+
+            document.getElementById(
+                "fileName"
+            ).innerText =
+
+                file.name + " — Ready to generate";
+
+
+        }
+
+        catch (error) {
+
+            console.error(error);
+
+            uploadedRows = [];
+
+            showError(
+                "Unable to process Excel file."
+            );
+
+        }
+
+    };
+
+
+    reader.readAsArrayBuffer(file);
+
+});
+
+
+
+/* ===============================
+   GENERATE REPORT
+================================ */
+
+function generateReport() {
+
+    if (uploadedRows.length === 0) {
+
+        showError(
+            "Please select a valid attendance Excel file."
+        );
+
+        return;
+
+    }
+
+
+    document.getElementById(
+        "errorMessage"
+    ).innerText = "";
+
+
+    processData(uploadedRows);
+
+
+    updateReportDate();
+
+
+    document.getElementById(
+        "reportContainer"
+    ).style.display = "block";
+
+
+    document.getElementById(
+        "downloadButton"
+    ).style.display = "inline-block";
+
+}
+
+
+
+/* ===============================
+   PROCESS DATA
+================================ */
+
+function processData(rows) {
+
+    reportData = [];
+
+
+    for (let i = 1; i < rows.length; i++) {
+
+        const row = rows[i];
+
+
+        if (
+            !row ||
+            row.every(cell => cell === "")
+        ) {
+
+            continue;
+
+        }
+
+
+        const riderID = row[0];
+
+        const riderName = row[1];
+
+
+        /*
+        ONLY RIDER NAME ENDING WITH ZIPPEE
+        */
+
+        const riderNameText = String(
+            riderName
+        ).trim();
+
+
+        if (
+            !/zippee$/i.test(riderNameText)
+        ) {
+
+            continue;
+
+        }
+
+
+        const phone = row[2];
+
+        const status = row[4];
+
+        const punchIn = row[5];
+
+
+        const punchOut =
+
+            row[6] === "" ||
+            row[6] == null
+
+            ? "Null"
+
+            : row[6];
+
+
+        if (riderID === "") {
+
+            continue;
+
+        }
+
+
+        const activeHour = calculateActiveHour(
+            punchIn,
+            punchOut
+        );
+
+
+        reportData.push({
+
+            riderID: riderID,
+
+            riderName: riderName,
+
+            phone: phone,
+
+            status: status,
+
+            punchIn: punchIn,
+
+            punchOut: punchOut,
+
+            activeHour: activeHour,
+
+            order: ""
+
+        });
+
+    }
+
+
+    generateTable();
+
+}
+
+
+
+/* ===============================
+   ACTIVE HOUR
+================================ */
+
+function calculateActiveHour(
+    punchIn,
+    punchOut
+) {
+
+    if (!punchIn) {
+
+        return "";
+
+    }
+
+
+    const start = parseExcelDate(punchIn);
+
+
+    if (!start) {
+
+        return "";
+
+    }
+
+
+    let end;
+
+
+    /*
+    PUNCH OUT NULL
+    CURRENT IST - PUNCH IN
+    */
+
+    if (
+
+        !punchOut ||
+
+        String(punchOut)
+            .trim()
+            .toLowerCase() === "null"
+
+    ) {
+
+        end = getCurrentISTDate();
+
+    }
+
+    else {
+
+        end = parseExcelDate(punchOut);
+
+    }
+
+
+    if (!end) {
+
+        return "";
+
+    }
+
+
+    const difference =
+
+        end.getTime() -
+
+        start.getTime();
+
+
+    if (difference < 0) {
+
+        return "";
+
+    }
+
+
+    const totalSeconds =
+
+        Math.floor(
+            difference / 1000
+        );
+
+
+    const hours =
+
+        Math.floor(
+            totalSeconds / 3600
+        );
+
+
+    const minutes =
+
+        Math.floor(
+            (totalSeconds % 3600) / 60
+        );
+
+
+    const seconds =
+
+        totalSeconds % 60;
+
+
+    return (
+
+        String(hours).padStart(2, "0")
+
+        + ":" +
+
+        String(minutes).padStart(2, "0")
+
+        + ":" +
+
+        String(seconds).padStart(2, "0")
+
+    );
+
+}
+
+
+
+/* ===============================
+   CURRENT IST
+================================ */
+
+function getCurrentISTDate() {
+
+    const now = new Date();
+
+
+    const istParts =
+
+        new Intl.DateTimeFormat(
+
+            "en-CA",
+
+            {
+
+                timeZone: "Asia/Kolkata",
+
+                year: "numeric",
+
+                month: "2-digit",
+
+                day: "2-digit",
+
+                hour: "2-digit",
+
+                minute: "2-digit",
+
+                second: "2-digit",
+
+                hourCycle: "h23"
+
+            }
+
+        ).formatToParts(now);
+
+
+    const parts = {};
+
+
+    istParts.forEach(part => {
+
+        parts[part.type] = part.value;
+
+    });
+
+
+    return new Date(
+
+        Number(parts.year),
+
+        Number(parts.month) - 1,
+
+        Number(parts.day),
+
+        Number(parts.hour),
+
+        Number(parts.minute),
+
+        Number(parts.second)
+
+    );
+
+}
+
+
+
+/* ===============================
+   DATE PARSER
+================================ */
+
+function parseExcelDate(value) {
+
+    if (!value) {
+
+        return null;
+
+    }
+
+
+    if (value instanceof Date) {
+
+        return value;
+
+    }
+
+
+    const text = String(value).trim();
+
+
+    const match = text.match(
+
+        /^(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2}):(\d{2})$/
+
+    );
+
+
+    if (match) {
+
+        return new Date(
+
+            Number(match[1]),
+
+            Number(match[2]) - 1,
+
+            Number(match[3]),
+
+            Number(match[4]),
+
+            Number(match[5]),
+
+            Number(match[6])
+
+        );
+
+    }
+
+
+    const date = new Date(text);
+
+
+    if (isNaN(date.getTime())) {
+
+        return null;
+
+    }
+
+
+    return date;
+
+}
+
+
+
+/* ===============================
+   GENERATE TABLE
+================================ */
+
+function generateTable() {
+
+    const tbody = document.getElementById(
+        "reportBody"
+    );
+
+
+    tbody.innerHTML = "";
+
+
+    reportData.forEach(
+        (item, index) => {
+
+
+            const tr = document.createElement(
+                "tr"
+            );
+
+
+            const statusClass =
+
+                getStatusClass(
+                    item.status
+                );
+
+
+            tr.innerHTML = `
+
+                <td>
+                    ${escapeHTML(item.riderID)}
+                </td>
+
+                <td>
+                    ${escapeHTML(item.riderName)}
+                </td>
+
+               <td>
+    <div class="phone-cell">
+
+        <span>
+            ${escapeHTML(item.phone)}
+        </span>
+
+        <button
+            class="copy-phone-btn"
+            onclick="copyPhone('${escapeHTML(item.phone)}', this)"
+        >
+            Copy
+        </button>
+
+    </div>
+</td>
+                <td class="${statusClass}">
+                    ${escapeHTML(item.status)}
+                </td>
+
+                <td>
+                    ${escapeHTML(item.punchIn)}
+                </td>
+
+                <td>
+                    ${escapeHTML(item.punchOut)}
+                </td>
+
+                <td>
+                    ${escapeHTML(item.activeHour)}
+                </td>
+
+                <td>
+
+                    <input
+
+                        class="order-input"
+
+                        type="number"
+
+                        min="0"
+
+                        step="1"
+
+                        value="${escapeHTML(item.order)}"
+
+                        oninput="
+                            updateOrder(
+                                ${index},
+                                this.value
+                            )
+                        "
+
+                    >
+
+                </td>
+
+            `;
+
+
+            tbody.appendChild(tr);
+
+        }
+    );
+
+}
+
+
+
+/* ===============================
+   UPDATE ORDER
+================================ */
+
+function updateOrder(index, value) {
+
+    reportData[index].order = value;
+
+}
+/* ===============================
+   COPY PHONE NUMBER
+================================ */
+
+async function copyPhone(phone, button) {
+
+    try {
+
+        await navigator.clipboard.writeText(phone);
+
+        const oldText = button.innerText;
+
+        button.innerText = "Copied";
+
+        setTimeout(() => {
+            button.innerText = oldText;
+        }, 1000);
+
+    } catch (error) {
+
+        console.error(error);
+
+        alert("Unable to copy phone number.");
+
+    }
+
+}
+
+
+
+/* ===============================
+   STATUS CLASS
+================================ */
+
+function getStatusClass(status) {
+
+    const value = String(
+        status
+    ).toUpperCase();
+
+
+    if (value === "ACTIVE") {
+
+        return "status-active";
+
+    }
+
+
+    if (value === "COMPLETED") {
+
+        return "status-completed";
+
+    }
+
+
+    if (value === "AUTO_CLOSED") {
+
+        return "status-auto";
+
+    }
+
+
+    return "";
+
+}
+
+
+
+/* ===============================
+   REPORT DATE
+================================ */
+
+function updateReportDate() {
+
+    const now = new Date();
+
+
+    const date = now.toLocaleDateString(
+
+        "en-GB",
+
+        {
+
+            timeZone: "Asia/Kolkata",
+
+            day: "2-digit",
+
+            month: "short",
+
+            year: "numeric"
+
+        }
+
+    );
+
+
+    const time = now.toLocaleTimeString(
+
+        "en-US",
+
+        {
+
+            timeZone: "Asia/Kolkata",
+
+            hour: "numeric",
+
+            minute: "2-digit",
+
+            hour12: true
+
+        }
+
+    );
+
+
+    document.getElementById(
+        "reportDate"
+    ).innerHTML =
+
+        "Date: " + date +
+
+        "&nbsp;&nbsp; Time: " + time;
+
+}
+
+
+
+/* ===============================
+   DOWNLOAD PNG
+================================ */
+
+async function downloadPNG() {
+
+    if (reportData.length === 0) {
+
+        alert("No report data available.");
+
+        return;
+
+    }
+
+    /*
+    RECALCULATE ACTIVE HOURS
+    */
+
+    reportData.forEach(item => {
+
+        item.activeHour = calculateActiveHour(
+            item.punchIn,
+            item.punchOut
+        );
+
+    });
+
+    /*
+    REGENERATE TABLE WITH LATEST TIME
+    */
+
+    generateTable();
+
+    updateReportDate();
+
+    /*
+    WAIT FOR DOM UPDATE
+    */
+
+    await new Promise(resolve =>
+        setTimeout(resolve, 150)
+    );
+
+    const captureBox =
+        document.getElementById("captureBox");
+
+    try {
+const copyButtons = document.querySelectorAll(
+    ".copy-phone-btn"
+);
+
+copyButtons.forEach(button => {
+    button.style.display = "none";
+});
+        const canvas = await html2canvas(
+            captureBox,
+            {
+    scale: 3,
+    backgroundColor: "#ffffff",
+    useCORS: true,
+    logging: false
+}
+        );
+// SHOW COPY BUTTONS AGAIN AFTER PNG CAPTURE
+copyButtons.forEach(button => {
+    button.style.display = "";
+});
+        const image = canvas.toDataURL("image/png");
+
+        const link = document.createElement("a");
+
+        link.href = image;
+
+        link.download =
+            "Zippee_OZI_Rider_Report.png";
+
+        document.body.appendChild(link);
+
+        link.click();
+
+        document.body.removeChild(link);
+
+    }
+
+    catch (error) {
+
+        console.error(error);
+
+        alert("Unable to generate PNG report.");
+
+    }
+
+}
+
+
+
+/* ===============================
+   ESCAPE HTML
+================================ */
+
+function escapeHTML(value) {
+
+    return String(value ?? "")
+
+        .replace(/&/g, "&amp;")
+
+        .replace(/</g, "&lt;")
+
+        .replace(/>/g, "&gt;")
+
+        .replace(/"/g, "&quot;")
+
+        .replace(/'/g, "&#039;");
+
+}
+
+
+
+/* ===============================
+   ERROR
+================================ */
+
+function showError(message) {
+
+    document.getElementById(
+        "errorMessage"
+    ).innerText = message;
+
+
+    document.getElementById(
+        "reportContainer"
+    ).style.display = "none";
+
+
+    document.getElementById(
+        "downloadButton"
+    ).style.display = "none";
+
+}
+
+</script>
+
+</body>
+
+</html>
