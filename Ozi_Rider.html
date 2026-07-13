@@ -190,18 +190,12 @@ body::before {
 
 #captureBox {
     position: relative;
-
     display: inline-block;
-
     width: fit-content;
-
     max-width: 100%;
-
     margin: auto;
-
     background: #ffffff;
-
-    padding: 15px 0 10px 0;
+    padding: 8px 0 6px 0;
 }
 
 
@@ -211,21 +205,18 @@ body::before {
 
 .report-heading {
     text-align: center;
-
-    margin-bottom: 15px;
-
+    margin-bottom: 7px;
     width: 100%;
 }
 
 .report-title {
-    font-size: 18px;
+    font-size: 15px;
     font-weight: 800;
 }
 
 .report-date {
-    margin-top: 4px;
-
-    font-size: 13px;
+    margin-top: 2px;
+    font-size: 10px;
 }
 
 
@@ -264,15 +255,10 @@ th {
 th,
 td {
     border: 1px solid #ddd;
-
-    padding: 6px 8px;
-
-    font-size: 13px;
-
+    padding: 4px 5px;
+    font-size: 10px;
     text-align: center;
-
     vertical-align: middle;
-
     white-space: nowrap;
 }
 
@@ -281,42 +267,40 @@ td {
 
 th:nth-child(1),
 td:nth-child(1) {
-    width: 70px;
+    width: 55px;
 }
 
 th:nth-child(2),
 td:nth-child(2) {
-    width: 180px;
+    width: 145px;
 }
 
 th:nth-child(3),
 td:nth-child(3) {
-    width: 100px;
+    width: 80px;
 }
 
 th:nth-child(4),
 td:nth-child(4) {
-    width: 95px;
+    width: 75px;
 }
 
 th:nth-child(5),
 td:nth-child(5),
 th:nth-child(6),
 td:nth-child(6) {
-    width: 160px;
+    width: 130px;
 }
 
 th:nth-child(7),
 td:nth-child(7) {
-    width: 95px;
+    width: 75px;
 }
 
 th:nth-child(8),
 td:nth-child(8) {
-    width: 105px;
+    width: 65px;
 }
-
-
 tbody tr:hover {
     background: #eefaff;
 }
@@ -372,6 +356,14 @@ tbody tr:hover {
     background: white;
 
     box-shadow: 0 0 5px rgba(10, 174, 229, 0.5);
+}
+.png-order-value {
+    display: inline-block;
+    min-width: 50px;
+    padding: 3px 4px;
+    font-size: 10px;
+    font-weight: 700;
+    text-align: center;
 }
 .phone-cell {
     display: flex;
@@ -464,8 +456,7 @@ tbody tr:hover {
 
     <img
         class="logo"
-        src="https://i.imgur.com/7yUVE8U.png"
-        alt="Zippee"
+        src="SASA.png"
     >
 
 </div>
@@ -1391,17 +1382,11 @@ function updateReportDate() {
 async function downloadPNG() {
 
     if (reportData.length === 0) {
-
         alert("No report data available.");
-
         return;
-
     }
 
-    /*
-    RECALCULATE ACTIVE HOURS
-    */
-
+    // Recalculate Active Hours
     reportData.forEach(item => {
 
         item.activeHour = calculateActiveHour(
@@ -1411,17 +1396,8 @@ async function downloadPNG() {
 
     });
 
-    /*
-    REGENERATE TABLE WITH LATEST TIME
-    */
-
     generateTable();
-
     updateReportDate();
-
-    /*
-    WAIT FOR DOM UPDATE
-    */
 
     await new Promise(resolve =>
         setTimeout(resolve, 150)
@@ -1430,30 +1406,65 @@ async function downloadPNG() {
     const captureBox =
         document.getElementById("captureBox");
 
-    try {
-const copyButtons = document.querySelectorAll(
-    ".copy-phone-btn"
-);
+    const copyButtons =
+        document.querySelectorAll(".copy-phone-btn");
 
-copyButtons.forEach(button => {
-    button.style.display = "none";
-});
+    const orderInputs =
+        document.querySelectorAll(".order-input");
+
+    const orderReplacements = [];
+
+    try {
+
+        // Hide Copy Buttons
+        copyButtons.forEach(button => {
+            button.style.display = "none";
+        });
+
+
+        // Replace Order Inputs with Plain Text
+        orderInputs.forEach(input => {
+
+            const span = document.createElement("span");
+
+            span.className = "png-order-value";
+
+            span.innerText = input.value || "";
+
+            input.style.display = "none";
+
+            input.parentNode.appendChild(span);
+
+            orderReplacements.push({
+                input: input,
+                span: span
+            });
+
+        });
+
+
+        await new Promise(resolve =>
+            setTimeout(resolve, 100)
+        );
+
+
         const canvas = await html2canvas(
             captureBox,
             {
-    scale: 3,
-    backgroundColor: "#ffffff",
-    useCORS: true,
-    logging: false
-}
+                scale: 3,
+                backgroundColor: "#ffffff",
+                useCORS: true,
+                logging: false
+            }
         );
-// SHOW COPY BUTTONS AGAIN AFTER PNG CAPTURE
-copyButtons.forEach(button => {
-    button.style.display = "";
-});
-        const image = canvas.toDataURL("image/png");
 
-        const link = document.createElement("a");
+
+        const image =
+            canvas.toDataURL("image/png");
+
+
+        const link =
+            document.createElement("a");
 
         link.href = image;
 
@@ -1473,6 +1484,25 @@ copyButtons.forEach(button => {
         console.error(error);
 
         alert("Unable to generate PNG report.");
+
+    }
+
+    finally {
+
+        // Show Copy Buttons Again
+        copyButtons.forEach(button => {
+            button.style.display = "";
+        });
+
+
+        // Restore Order Inputs
+        orderReplacements.forEach(item => {
+
+            item.span.remove();
+
+            item.input.style.display = "";
+
+        });
 
     }
 
