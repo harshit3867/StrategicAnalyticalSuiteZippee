@@ -1201,13 +1201,8 @@ function generateTable() {
 
                         value="${escapeHTML(item.order)}"
 
-                        oninput="
-                            updateOrder(
-                                ${index},
-                                this.value
-                            )
-                        "
-
+                        oninput="updateOrder(${index}, this.value)"
+onkeydown="handleOrderKey(event, ${index})"
                     >
 
                 </td>
@@ -1231,6 +1226,35 @@ function generateTable() {
 function updateOrder(index, value) {
 
     reportData[index].order = value;
+
+}
+/* ===============================
+   ORDER KEY NAVIGATION
+================================ */
+
+function handleOrderKey(event, index) {
+
+    if (
+        event.key === "Enter" ||
+        event.key === "Tab"
+    ) {
+
+        event.preventDefault();
+
+        const orderInputs =
+            document.querySelectorAll(".order-input");
+
+        const nextInput = orderInputs[index + 1];
+
+        if (nextInput) {
+
+            nextInput.focus();
+
+            nextInput.select();
+
+        }
+
+    }
 
 }
 /* ===============================
