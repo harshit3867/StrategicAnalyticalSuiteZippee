@@ -533,9 +533,20 @@ const attempts = String(
     "0"
 ).trim();
 
-const darkstore =
+let darkstore =
 String(row["Darkstore"] || "").trim();
 
+const delhiHubStores = [
+    "zippee_okhla_sdd",
+    "zippee_ghaziabad_sdd",
+    "zippee_wazirpur_sdd",
+    "zippee_dwarka_sdd",
+    "zippee_gurugram_sdd"
+];
+
+if(delhiHubStores.includes(darkstore.toLowerCase())){
+    darkstore = "Delhi_Hub";
+}
 if(!brandStats[brand]){
     brandStats[brand] = {};
 }
