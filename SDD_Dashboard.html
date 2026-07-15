@@ -1,0 +1,3432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>SASA Shipment Analytics Dashboard</title>
+
+<!-- Libraries -->
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+
+<style>
+/* =========================================================
+   GLOBAL
+========================================================= */
+*{
+    box-sizing:border-box;
+    margin:0;
+    padding:0;
+}
+
+:root{
+    --bg:#07111f;
+    --panel:#0d1b2a;
+    --panel2:#102235;
+    --border:rgba(255,255,255,.10);
+    --text:#eef6ff;
+    --muted:#91a4b7;
+    --blue:#38bdf8;
+    --green:#22c55e;
+    --red:#ef4444;
+    --orange:#f59e0b;
+    --purple:#a855f7;
+    --cyan:#06b6d4;
+}
+
+body{
+    font-family:Inter,Segoe UI,Arial,sans-serif;
+    background:
+        radial-gradient(circle at 15% 20%, rgba(56,189,248,.12), transparent 25%),
+        radial-gradient(circle at 85% 10%, rgba(168,85,247,.10), transparent 25%),
+        linear-gradient(135deg,#050b14,#081421 45%,#07111f);
+    color:var(--text);
+    min-height:100vh;
+}
+
+/* =========================================================
+   HEADER
+========================================================= */
+.header{
+    padding:24px 28px;
+    border-bottom:1px solid var(--border);
+    background:rgba(5,11,20,.82);
+    backdrop-filter:blur(16px);
+    position:sticky;
+    top:0;
+    z-index:50;
+}
+
+.header-inner{
+    max-width:1700px;
+    margin:auto;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:20px;
+}
+
+.brand h1{
+    font-size:25px;
+    font-weight:800;
+    letter-spacing:-.5px;
+}
+
+.brand h1 span{
+    color:var(--blue);
+}
+
+.brand p{
+    color:var(--muted);
+    margin-top:5px;
+    font-size:13px;
+}
+
+.header-actions{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+}
+
+/* =========================================================
+   BUTTONS
+========================================================= */
+button,
+.upload-btn{
+    border:none;
+    border-radius:10px;
+    padding:11px 16px;
+    font-weight:700;
+    cursor:pointer;
+    transition:.2s ease;
+    font-size:13px;
+}
+
+button:hover,
+.upload-btn:hover{
+    transform:translateY(-1px);
+}
+
+.primary{
+    background:linear-gradient(135deg,#0ea5e9,#2563eb);
+    color:white;
+}
+
+.success{
+    background:linear-gradient(135deg,#16a34a,#22c55e);
+    color:white;
+}
+
+.secondary{
+    background:#16283b;
+    color:white;
+    border:1px solid var(--border);
+}
+
+.danger{
+    background:#3b1720;
+    color:#fecaca;
+    border:1px solid rgba(239,68,68,.25);
+}
+
+input[type=file]{
+    display:none;
+}
+
+/* =========================================================
+   CONTAINER
+========================================================= */
+.container{
+    max-width:1700px;
+    margin:auto;
+    padding:24px;
+}
+
+/* =========================================================
+   UPLOAD
+========================================================= */
+.upload-zone{
+    border:1.5px dashed rgba(56,189,248,.45);
+    background:rgba(13,27,42,.75);
+    border-radius:18px;
+    padding:28px;
+    text-align:center;
+    margin-bottom:22px;
+    transition:.2s;
+}
+
+.upload-zone.dragover{
+    border-color:var(--blue);
+    background:rgba(56,189,248,.10);
+}
+
+.upload-zone h2{
+    font-size:20px;
+    margin-bottom:7px;
+}
+
+.upload-zone p{
+    color:var(--muted);
+    margin-bottom:16px;
+    font-size:14px;
+}
+
+.file-info{
+    margin-top:12px;
+    color:#bae6fd;
+    font-size:13px;
+}
+
+/* =========================================================
+   FILTERS
+========================================================= */
+.filters{
+    display:grid;
+    grid-template-columns:repeat(6,minmax(150px,1fr));
+    gap:12px;
+    background:rgba(13,27,42,.82);
+    border:1px solid var(--border);
+    padding:16px;
+    border-radius:16px;
+    margin-bottom:20px;
+}
+
+.filter-group label{
+    display:block;
+    color:var(--muted);
+    font-size:11px;
+    text-transform:uppercase;
+    font-weight:800;
+    margin-bottom:7px;
+    letter-spacing:.5px;
+}
+
+select,
+input[type=date],
+input[type=text]{
+    width:100%;
+    background:#081522;
+    color:white;
+    border:1px solid var(--border);
+    border-radius:9px;
+    padding:10px 11px;
+    outline:none;
+}
+
+select:focus,
+input:focus{
+    border-color:var(--blue);
+}
+
+/* =========================================================
+   KPI GRID
+========================================================= */
+.kpi-grid{
+    display:grid;
+    grid-template-columns:repeat(8,1fr);
+    gap:13px;
+    margin-bottom:20px;
+}
+
+.kpi{
+    position:relative;
+    overflow:hidden;
+    background:linear-gradient(145deg,rgba(16,34,53,.95),rgba(9,24,38,.95));
+    border:1px solid var(--border);
+    border-radius:16px;
+    padding:17px;
+    min-height:112px;
+}
+
+.kpi::after{
+    content:"";
+    position:absolute;
+    width:75px;
+    height:75px;
+    border-radius:50%;
+    right:-25px;
+    top:-25px;
+    background:var(--accent);
+    opacity:.12;
+}
+
+.kpi-label{
+    color:var(--muted);
+    font-size:11px;
+    text-transform:uppercase;
+    font-weight:800;
+    letter-spacing:.5px;
+}
+
+.kpi-value{
+    font-size:27px;
+    font-weight:900;
+    margin-top:10px;
+    letter-spacing:-1px;
+}
+
+.kpi-sub{
+    color:var(--muted);
+    font-size:11px;
+    margin-top:6px;
+}
+
+.blue{--accent:var(--blue)}
+.green{--accent:var(--green)}
+.red{--accent:var(--red)}
+.orange{--accent:var(--orange)}
+.purple{--accent:var(--purple)}
+.cyan{--accent:var(--cyan)}
+
+/* =========================================================
+   PANELS
+========================================================= */
+.grid-2{
+    display:grid;
+    grid-template-columns:1.6fr 1fr;
+    gap:16px;
+    margin-bottom:16px;
+}
+
+.grid-equal{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:16px;
+    margin-bottom:16px;
+}
+
+.panel{
+    background:rgba(13,27,42,.88);
+    border:1px solid var(--border);
+    border-radius:17px;
+    padding:18px;
+    overflow:hidden;
+}
+
+.panel-title{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:16px;
+    gap:12px;
+}
+
+.panel-title h3{
+    font-size:15px;
+}
+
+.panel-title span{
+    color:var(--muted);
+    font-size:11px;
+}
+
+.chart-wrap{
+    height:330px;
+    position:relative;
+}
+
+/* =========================================================
+   INSIGHTS
+========================================================= */
+.insights{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:12px;
+}
+
+.insight{
+    padding:15px;
+    background:#091827;
+    border:1px solid var(--border);
+    border-radius:12px;
+}
+
+.insight-title{
+    font-size:11px;
+    color:var(--muted);
+    text-transform:uppercase;
+    font-weight:800;
+}
+
+.insight-value{
+    margin-top:8px;
+    font-size:15px;
+    font-weight:800;
+    line-height:1.4;
+}
+
+/* =========================================================
+   TABLES
+========================================================= */
+.table-panel{
+    margin-bottom:16px;
+}
+
+.table-tools{
+    display:flex;
+    gap:10px;
+    align-items:center;
+}
+
+.table-tools input{
+    width:220px;
+}
+
+.table-wrap{
+    overflow:auto;
+    max-height:520px;
+    border-radius:10px;
+}
+
+table{
+    width:100%;
+    border-collapse:collapse;
+    min-width:900px;
+}
+
+/* =========================================================
+   READY BIFURCATION FULL WIDTH
+========================================================= */
+.ready-bifurcation-wrap{
+    width:100%;
+    max-height:none;
+    overflow-x:auto;
+    overflow-y:hidden;
+}
+
+#readyBifurcationTable{
+    width:max-content;
+    min-width:100%;
+    border-collapse:collapse;
+    table-layout:auto;
+}
+
+#readyBifurcationTable th,
+#readyBifurcationTable td{
+    white-space:nowrap;
+    text-align:center;
+    padding:12px 16px;
+}
+
+#readyBifurcationTable th:first-child,
+#readyBifurcationTable td:first-child{
+    position:sticky;
+    left:0;
+    z-index:5;
+    background:#10263a;
+    text-align:left;
+    min-width:140px;
+}
+
+#readyBifurcationTable thead th{
+    min-width:150px;
+}
+
+thead{
+    position:sticky;
+    top:0;
+    z-index:4;
+}
+
+th{
+    background:#10263a;
+    color:#cdefff;
+    text-align:left;
+    padding:12px 10px;
+    font-size:11px;
+    text-transform:uppercase;
+    white-space:nowrap;
+    cursor:pointer;
+}
+
+td{
+    padding:11px 10px;
+    border-bottom:1px solid rgba(255,255,255,.06);
+    font-size:12px;
+    white-space:nowrap;
+}
+
+tbody tr:hover{
+    background:rgba(56,189,248,.06);
+}
+
+.badge{
+    display:inline-block;
+    padding:5px 8px;
+    border-radius:20px;
+    font-size:10px;
+    font-weight:800;
+}
+
+.badge-green{
+    background:rgba(34,197,94,.15);
+    color:#86efac;
+}
+
+.badge-red{
+    background:rgba(239,68,68,.15);
+    color:#fca5a5;
+}
+
+.badge-orange{
+    background:rgba(245,158,11,.15);
+    color:#fcd34d;
+}
+
+/* =========================================================
+   LOADER
+========================================================= */
+.loader-overlay{
+    position:fixed;
+    inset:0;
+    background:rgba(3,8,15,.88);
+    z-index:999;
+    display:none;
+    align-items:center;
+    justify-content:center;
+    backdrop-filter:blur(7px);
+}
+
+.loader-box{
+    text-align:center;
+}
+
+.spinner{
+    width:54px;
+    height:54px;
+    border:5px solid rgba(255,255,255,.12);
+    border-top-color:var(--blue);
+    border-radius:50%;
+    animation:spin .8s linear infinite;
+    margin:auto;
+}
+
+@keyframes spin{
+    to{transform:rotate(360deg)}
+}
+
+.loader-box p{
+    margin-top:14px;
+    color:#bae6fd;
+}
+
+/* =========================================================
+   EMPTY
+========================================================= */
+.empty{
+    color:var(--muted);
+    text-align:center;
+    padding:30px;
+}
+
+/* =========================================================
+   FOOTER
+========================================================= */
+.footer{
+    text-align:center;
+    color:var(--muted);
+    padding:25px 10px 35px;
+    font-size:12px;
+}
+
+/* =========================================================
+   RESPONSIVE
+========================================================= */
+@media(max-width:1350px){
+    .kpi-grid{
+        grid-template-columns:repeat(4,1fr);
+    }
+    .filters{
+        grid-template-columns:repeat(3,1fr);
+    }
+}
+
+@media(max-width:900px){
+    .grid-2,
+    .grid-equal{
+        grid-template-columns:1fr;
+    }
+
+    .kpi-grid{
+        grid-template-columns:repeat(2,1fr);
+    }
+
+    .filters{
+        grid-template-columns:1fr 1fr;
+    }
+
+    .insights{
+        grid-template-columns:1fr 1fr;
+    }
+
+    .header-inner{
+        flex-direction:column;
+        align-items:flex-start;
+    }
+}
+
+@media(max-width:560px){
+    .container{
+        padding:12px;
+    }
+
+    .kpi-grid,
+    .filters,
+    .insights{
+        grid-template-columns:1fr;
+    }
+
+    .header{
+        padding:18px 14px;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<!-- LOADER -->
+<div class="loader-overlay" id="loader">
+    <div class="loader-box">
+        <div class="spinner"></div>
+        <p id="loaderText">Processing shipment data...</p>
+    </div>
+</div>
+
+<!-- HEADER -->
+<header class="header">
+    <div class="header-inner">
+        <div class="brand">
+            <h1><span>SASA</span> Shipment Analytics Control Tower</h1>
+            <p>Darkstore • Brand • Delivery • RTO • Rider • Aging Analytics</p>
+        </div>
+
+        <div class="header-actions">
+            <label for="fileInput" class="upload-btn primary">
+                Upload CSV
+            </label>
+
+            <input type="file" id="fileInput" accept=".csv">
+
+            <button class="success" onclick="downloadFilteredCSV()">
+                Download Filtered CSV
+            </button>
+
+            <button class="secondary" onclick="downloadDashboardPNG()">
+                Download PNG
+            </button>
+        </div>
+    </div>
+</header>
+
+<main class="container" id="dashboard">
+
+    <!-- UPLOAD -->
+    <section class="upload-zone" id="dropZone">
+        <h2>Upload Shipment Detailed Report</h2>
+        <p>Upload your SHIPMENT_DETAILED_REPORT CSV file</p>
+
+        <label for="fileInput" class="upload-btn primary">
+            Select CSV File
+        </label>
+
+        <div class="file-info" id="fileInfo">
+            No file loaded
+        </div>
+    </section>
+
+    <!-- FILTERS -->
+    <section class="filters">
+<div class="filter-group">
+    <label>Specific Date</label>
+    <input type="date" id="specificDate">
+</div>
+        <div class="filter-group">
+            <label>From Date</label>
+            <input type="date" id="fromDate">
+        </div>
+
+        <div class="filter-group">
+            <label>To Date</label>
+            <input type="date" id="toDate">
+        </div>
+
+        <div class="filter-group">
+            <label>Darkstore</label>
+            <select id="darkstoreFilter">
+                <option value="">All Darkstores</option>
+            </select>
+        </div>
+
+        <div class="filter-group">
+            <label>Brand</label>
+            <select id="brandFilter">
+                <option value="">All Brands</option>
+            </select>
+        </div>
+
+        <div class="filter-group">
+            <label>Status</label>
+            <select id="statusFilter">
+                <option value="">All Statuses</option>
+            </select>
+        </div>
+
+        <div class="filter-group">
+            <label>Action</label>
+            <button class="danger" style="width:100%" onclick="resetFilters()">
+                Reset Filters
+            </button>
+        </div>
+
+    </section>
+
+    <!-- KPI -->
+    <section class="kpi-grid">
+
+        <div class="kpi blue">
+            <div class="kpi-label">Total Orders</div>
+            <div class="kpi-value" id="kpiTotal">0</div>
+            <div class="kpi-sub">Filtered shipments</div>
+        </div>
+
+        <div class="kpi green">
+            <div class="kpi-label">Delivered</div>
+            <div class="kpi-value" id="kpiDelivered">0</div>
+            <div class="kpi-sub">Successfully delivered</div>
+        </div>
+
+        <div class="kpi green">
+            <div class="kpi-label">Delivery %</div>
+            <div class="kpi-value" id="kpiDeliveryPct">0%</div>
+            <div class="kpi-sub">Delivered / Total</div>
+        </div>
+
+        <div class="kpi red">
+            <div class="kpi-label">RTO Orders</div>
+            <div class="kpi-value" id="kpiRTO">0</div>
+            <div class="kpi-sub">Return to origin</div>
+        </div>
+
+        <div class="kpi red">
+            <div class="kpi-label">RTO %</div>
+            <div class="kpi-value" id="kpiRTOPct">0%</div>
+            <div class="kpi-sub">RTO / Total</div>
+        </div>
+
+        <div class="kpi orange">
+    <div class="kpi-label">Not Dispatched</div>
+    <div class="kpi-value" id="kpiPending">0</div>
+    <div class="kpi-sub">Pending to Dispatch</div>
+</div>
+        <div class="kpi purple">
+            <div class="kpi-label">Attempted</div>
+            <div class="kpi-value" id="kpiAttempted">0</div>
+            <div class="kpi-sub">Delivery attempted</div>
+        </div>
+
+        <div class="kpi cyan">
+            <div class="kpi-label">Avg Delivery TAT</div>
+            <div class="kpi-value" id="kpiTat">0h</div>
+            <div class="kpi-sub">Order to delivery</div>
+        </div>
+
+    </section>
+
+    <!-- INSIGHTS -->
+    <section class="panel" style="margin-bottom:16px">
+        <div class="panel-title">
+            <h3>Automatic Performance Insights</h3>
+            <span>Based on current filters</span>
+        </div>
+
+        <div class="insights">
+            <div class="insight">
+                <div class="insight-title">Best Darkstore</div>
+                <div class="insight-value" id="bestStore">-</div>
+            </div>
+
+            <div class="insight">
+                <div class="insight-title">Highest RTO Store</div>
+                <div class="insight-value" id="worstRtoStore">-</div>
+            </div>
+
+            <div class="insight">
+                <div class="insight-title">Top Volume Brand</div>
+                <div class="insight-value" id="topBrand">-</div>
+            </div>
+
+            <div class="insight">
+                <div class="insight-title">Oldest Pending Shipment</div>
+                <div class="insight-value" id="oldestPending">-</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CHART ROW 1 -->
+    <section class="grid-2">
+
+        <div class="panel">
+            <div class="panel-title">
+                <h3>Daily Shipment Trend</h3>
+                <span>Orders vs Delivered vs RTO</span>
+            </div>
+
+            <div class="chart-wrap">
+                <canvas id="dailyTrendChart"></canvas>
+            </div>
+        </div>
+
+        <div class="panel">
+            <div class="panel-title">
+                <h3>Status Distribution</h3>
+                <span>Current shipment status</span>
+            </div>
+
+            <div class="chart-wrap">
+                <canvas id="statusChart"></canvas>
+            </div>
+        </div>
+
+    </section>
+
+    <!-- CHART ROW 2 -->
+    <section class="grid-equal">
+
+        <div class="panel">
+            <div class="panel-title">
+                <h3>Darkstore Performance</h3>
+                <span>Top stores by volume</span>
+            </div>
+
+            <div class="chart-wrap">
+                <canvas id="storeChart"></canvas>
+            </div>
+        </div>
+
+        <div class="panel">
+            <div class="panel-title">
+                <h3>Brand Performance</h3>
+                <span>Top brands by order volume</span>
+            </div>
+
+            <div class="chart-wrap">
+                <canvas id="brandChart"></canvas>
+            </div>
+        </div>
+
+    </section>
+
+    <!-- CHART ROW 3 -->
+    <section class="grid-equal">
+
+        <!-- DELIVERY TAT DISTRIBUTION -->
+        <div class="panel">
+            <div class="panel-title">
+                <h3>Delivery TAT Distribution</h3>
+                <span>Marketplace order to actual delivery</span>
+            </div>
+
+            <div class="chart-wrap">
+                <canvas id="tatChart"></canvas>
+            </div>
+        </div>
+
+        <!-- PENDING AGING -->
+        <div class="panel">
+            <div class="panel-title">
+                <h3>Pending Aging</h3>
+                <span>Open shipment aging</span>
+            </div>
+
+            <div class="chart-wrap">
+                <canvas id="agingChart"></canvas>
+            </div>
+        </div>
+
+    </section>
+
+    <!-- READY PENDENCY BIFURCATION - FULL WIDTH -->
+    <section class="panel table-panel">
+
+        <div class="panel-title">
+            <div>
+                <h3>READY Pendency Bifurcation</h3>
+                <span>Darkstore-wise READY orders by No. of Attempts</span>
+            </div>
+        </div>
+
+        <div class="table-wrap ready-bifurcation-wrap">
+            <table id="readyBifurcationTable">
+                <thead></thead>
+                <tbody></tbody>
+            </table>
+        </div>
+
+    </section>
+
+    <!-- DARKSTORE TABLE -->
+    <section class="panel table-panel">
+
+        <div class="panel-title">
+            <div>
+                <h3>Darkstore Performance Analytics</h3>
+                <span>Click table headers to sort</span>
+            </div>
+
+            <div class="table-tools">
+                <input
+                    type="text"
+                    id="storeSearch"
+                    placeholder="Search darkstore..."
+                >
+            </div>
+        </div>
+
+        <div class="table-wrap">
+            <table id="storeTable">
+                <thead>
+                    <tr>
+                        <th data-key="name">Darkstore</th>
+                        <th data-key="total">Total Orders</th>
+                        <th data-key="delivered">Delivered</th>
+                        <th data-key="deliveryPct">Delivery %</th>
+                        <th data-key="rto">RTO</th>
+                        <th data-key="rtoPct">RTO %</th>
+                        <th data-key="pending">Pending</th>
+                        <th data-key="attempted">Attempted</th>
+                        <th data-key="avgTat">Avg TAT</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+
+    </section>
+
+    <!-- BRAND TABLE -->
+    <section class="panel table-panel">
+
+        <div class="panel-title">
+            <div>
+                <h3>Brand Performance Analytics</h3>
+                <span>Brand-wise shipment performance</span>
+            </div>
+
+            <div class="table-tools">
+                <input
+                    type="text"
+                    id="brandSearch"
+                    placeholder="Search brand..."
+                >
+            </div>
+        </div>
+
+        <div class="table-wrap">
+            <table id="brandTable">
+                <thead>
+                    <tr>
+                        <th data-key="name">Brand</th>
+                        <th data-key="total">Total Orders</th>
+                        <th data-key="delivered">Delivered</th>
+                        <th data-key="deliveryPct">Delivery %</th>
+                        <th data-key="rto">RTO</th>
+                        <th data-key="rtoPct">RTO %</th>
+                        <th data-key="pending">Pending</th>
+                        <th data-key="attempted">Attempted</th>
+                        <th data-key="avgTat">Avg TAT</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+
+    </section>
+
+    <!-- RIDER TABLE -->
+    <section class="panel table-panel">
+
+        <div class="panel-title">
+            <div>
+                <h3>Rider Performance Analytics</h3>
+                <span>Based on Rider Name and shipment status</span>
+            </div>
+
+            <div class="table-tools">
+                <input
+                    type="text"
+                    id="riderSearch"
+                    placeholder="Search rider..."
+                >
+            </div>
+        </div>
+
+        <div class="table-wrap">
+            <table id="riderTable">
+                <thead>
+                    <tr>
+                        <th>Rider Name</th>
+                        <th>Rider ID</th>
+                        <th>Total Orders</th>
+                        <th>Delivered</th>
+                        <th>Delivery %</th>
+                        <th>RTO</th>
+                        <th>Attempted</th>
+                        <th>Avg Attempts</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+
+    </section>
+
+</main>
+
+<footer class="footer">
+    Powered by SASA Automation | Harshit Saini – Data Analyst, Zippee
+</footer>
+
+<script>
+/* =========================================================
+   GLOBAL STATE
+========================================================= */
+let rawData = [];
+let filteredData = [];
+
+let charts = {};
+
+let storeAnalytics = [];
+let brandAnalytics = [];
+let riderAnalytics = [];
+
+Chart.register(ChartDataLabels);
+
+/* =========================================================
+   DOM
+========================================================= */
+const fileInput = document.getElementById("fileInput");
+const dropZone = document.getElementById("dropZone");
+
+const specificDate = document.getElementById("specificDate");
+const fromDate = document.getElementById("fromDate");
+const toDate = document.getElementById("toDate");
+const darkstoreFilter = document.getElementById("darkstoreFilter");
+const brandFilter = document.getElementById("brandFilter");
+const statusFilter = document.getElementById("statusFilter");
+
+/* =========================================================
+   HELPERS
+========================================================= */
+function showLoader(text = "Processing shipment data..."){
+    document.getElementById("loaderText").textContent = text;
+    document.getElementById("loader").style.display = "flex";
+}
+
+function hideLoader(){
+    document.getElementById("loader").style.display = "none";
+}
+
+function cleanText(value){
+    if(value === null || value === undefined) return "";
+    return String(value).trim();
+}
+function formatStoreName(value){
+
+    const store = cleanText(value);
+
+    return store.replace(/^zippee_/i, "");
+}
+
+function normalizeStatus(value){
+    return cleanText(value).toUpperCase();
+}
+
+function formatNumber(value){
+    return Number(value || 0).toLocaleString("en-IN");
+}
+
+function pct(a,b){
+    if(!b) return 0;
+    return (a / b) * 100;
+}
+
+function safeFixed(value, digits = 1){
+    const n = Number(value);
+    return Number.isFinite(n) ? n.toFixed(digits) : "0.0";
+}
+
+/* =========================================================
+   DATE PARSER
+   Supports:
+   ="16/06/2026 10:00 AM"
+   16/06/2026 10:00 AM
+   DD/MM/YYYY
+========================================================= */
+function parseDate(value){
+
+    if(!value) return null;
+
+    let s = String(value).trim();
+
+    // Remove Excel formula wrapper
+    s = s.replace(/^="/, "").replace(/"$/, "");
+
+    // Remove surrounding quotes
+    s = s.replace(/^"/, "").replace(/"$/, "");
+
+    // DD/MM/YYYY with optional time
+    const match = s.match(
+        /^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)?)?/i
+    );
+
+    if(match){
+        let day = Number(match[1]);
+        let month = Number(match[2]) - 1;
+        let year = Number(match[3]);
+
+        let hour = Number(match[4] || 0);
+        let minute = Number(match[5] || 0);
+        let second = Number(match[6] || 0);
+
+        const ampm = (match[7] || "").toUpperCase();
+
+        if(ampm === "PM" && hour < 12) hour += 12;
+        if(ampm === "AM" && hour === 12) hour = 0;
+
+        const d = new Date(
+            year,
+            month,
+            day,
+            hour,
+            minute,
+            second
+        );
+
+        return isNaN(d.getTime()) ? null : d;
+    }
+
+    const fallback = new Date(s);
+
+    return isNaN(fallback.getTime())
+        ? null
+        : fallback;
+}
+
+function dateKey(date){
+    if(!date) return "";
+
+    const y = date.getFullYear();
+    const m = String(date.getMonth()+1).padStart(2,"0");
+    const d = String(date.getDate()).padStart(2,"0");
+
+    return `${y}-${m}-${d}`;
+}
+
+function formatDateDisplay(key){
+    if(!key) return "";
+
+    const [y,m,d] = key.split("-");
+
+    return `${d}/${m}/${y}`;
+}
+
+function hoursBetween(start,end){
+    if(!start || !end) return null;
+
+    const diff = (end - start) / 3600000;
+
+    return diff >= 0 && Number.isFinite(diff)
+        ? diff
+        : null;
+}
+
+/* =========================================================
+   STATUS LOGIC
+========================================================= */
+function isDelivered(row){
+    return normalizeStatus(row["Current Status"]) === "DELIVERED";
+}
+
+function isRTO(row){
+    const s = normalizeStatus(row["Current Status"]);
+    return s === "RTO" || s.includes("RETURN TO ORIGIN");
+}
+
+function isCancelled(row){
+    return normalizeStatus(row["Current Status"]) === "CANCELLED";
+}
+
+function isAttempted(row){
+    const s = normalizeStatus(row["Current Status"]);
+
+    const attempts = Number(
+        cleanText(row["No. of Attempts"]).replace(/,/g,"")
+    ) || 0;
+
+    return (
+        s === "DELIVERY_ATTEMPTED" ||
+        s.includes("ATTEMPT") ||
+        attempts > 0
+    );
+}
+
+function isNotDispatched(row){
+    return normalizeStatus(row["Current Status"]) === "READY";
+}
+
+function isPending(row){
+    return (
+        !isDelivered(row) &&
+        !isRTO(row) &&
+        !isCancelled(row) &&
+        !isNotDispatched(row)
+    );
+}
+
+/* =========================================================
+   FILE UPLOAD
+========================================================= */
+fileInput.addEventListener("change", e => {
+    const file = e.target.files[0];
+    if(file) loadCSV(file);
+});
+
+dropZone.addEventListener("dragover", e => {
+    e.preventDefault();
+    dropZone.classList.add("dragover");
+});
+
+dropZone.addEventListener("dragleave", () => {
+    dropZone.classList.remove("dragover");
+});
+
+dropZone.addEventListener("drop", e => {
+    e.preventDefault();
+
+    dropZone.classList.remove("dragover");
+
+    const file = e.dataTransfer.files[0];
+
+    if(file){
+        loadCSV(file);
+    }
+});
+
+function loadCSV(file){
+
+    showLoader("Reading shipment report...");
+
+    document.getElementById("fileInfo").textContent =
+        `${file.name} • Loading...`;
+
+    Papa.parse(file,{
+        header:true,
+        skipEmptyLines:true,
+        worker:true,
+
+        complete:function(results){
+
+            rawData = results.data.filter(row =>
+                Object.values(row).some(v => cleanText(v) !== "")
+            );
+
+            prepareRows();
+
+            document.getElementById("fileInfo").textContent =
+                `${file.name} • ${formatNumber(rawData.length)} records loaded`;
+
+            populateFilters();
+
+            filteredData = [...rawData];
+
+            setDateRange();
+
+            updateDashboard();
+
+            hideLoader();
+        },
+
+        error:function(error){
+            hideLoader();
+            alert("CSV Error: " + error.message);
+        }
+    });
+}
+
+/* =========================================================
+   PREPARE ROWS ONCE
+   Important for performance with 51K+ rows
+========================================================= */
+function prepareRows(){
+
+    rawData.forEach(row => {
+
+        row.__creationDate =
+            parseDate(row["Creation Date"]);
+
+        row.__marketplaceDate =
+            parseDate(row["Marketplace Order Date"]);
+
+        row.__deliveryDate =
+            parseDate(row["Actual Delivery Date Time"]) ||
+            parseDate(row["Shipment Delivered Time"]);
+
+        row.__status =
+            normalizeStatus(row["Current Status"]);
+
+        row.__darkstore =
+    formatStoreName(row["Darkstore"]) || "Unknown";
+
+        row.__brand =
+            cleanText(row["Brand Name"]) || "Unknown";
+
+        row.__rider =
+            cleanText(row["Rider Name"]);
+
+        row.__riderId =
+            cleanText(row["Rider ID"]);
+
+        row.__attempts =
+            Number(
+                cleanText(row["No. of Attempts"])
+                    .replace(/,/g,"")
+            ) || 0;
+
+        row.__tat =
+            hoursBetween(
+                row.__marketplaceDate,
+                row.__deliveryDate
+            );
+    });
+}
+
+/* =========================================================
+   FILTER OPTIONS
+========================================================= */
+function populateFilters(){
+
+    fillSelect(
+        darkstoreFilter,
+        uniqueSorted(rawData.map(r => r.__darkstore)),
+        "All Darkstores"
+    );
+
+    fillSelect(
+        brandFilter,
+        uniqueSorted(rawData.map(r => r.__brand)),
+        "All Brands"
+    );
+
+    fillSelect(
+        statusFilter,
+        uniqueSorted(rawData.map(r => r.__status)),
+        "All Statuses"
+    );
+}
+
+function uniqueSorted(arr){
+    return [...new Set(arr.filter(Boolean))]
+        .sort((a,b) => a.localeCompare(b));
+}
+
+function fillSelect(select, values, firstLabel){
+
+    select.innerHTML =
+        `<option value="">${firstLabel}</option>`;
+
+    values.forEach(value => {
+        const option = document.createElement("option");
+        option.value = value;
+        option.textContent = value;
+        select.appendChild(option);
+    });
+}
+
+function setDateRange(){
+
+    const dates = rawData
+        .map(r => r.__creationDate)
+        .filter(Boolean)
+        .sort((a,b) => a-b);
+
+    if(!dates.length) return;
+
+    fromDate.value = dateKey(dates[0]);
+    toDate.value = dateKey(dates[dates.length-1]);
+}
+
+/* =========================================================
+   FILTER EVENTS
+========================================================= */
+[
+    specificDate,
+    fromDate,
+    toDate,
+    darkstoreFilter,
+    brandFilter,
+    statusFilter
+].forEach(el => {
+    el.addEventListener("change", applyFilters);
+});
+
+function applyFilters(){
+
+    if(!rawData.length) return;
+
+    showLoader("Applying dashboard filters...");
+
+    setTimeout(() => {
+
+        const specific = specificDate.value
+    ? specificDate.value
+    : "";
+
+const from = fromDate.value
+    ? new Date(fromDate.value + "T00:00:00")
+    : null;
+
+const to = toDate.value
+    ? new Date(toDate.value + "T23:59:59")
+    : null;
+        const store = darkstoreFilter.value;
+        const brand = brandFilter.value;
+        const status = statusFilter.value;
+
+        filteredData = rawData.filter(row => {
+
+            const d = row.__creationDate;
+
+        if(specific && dateKey(d) !== specific)
+    return false;
+
+            if(from && (!d || d < from)) return false;
+            if(to && (!d || d > to)) return false;
+
+            if(store && row.__darkstore !== store)
+                return false;
+
+            if(brand && row.__brand !== brand)
+                return false;
+
+            if(status && row.__status !== status)
+                return false;
+
+            return true;
+        });
+
+        updateDashboard();
+
+        hideLoader();
+
+    },50);
+}
+
+function resetFilters(){
+
+    if(!rawData.length) return;
+
+    specificDate.value = "";
+darkstoreFilter.value = "";
+brandFilter.value = "";
+statusFilter.value = "";
+    setDateRange();
+
+    filteredData = [...rawData];
+
+    updateDashboard();
+}
+
+/* =========================================================
+   MAIN DASHBOARD UPDATE
+========================================================= */
+function updateDashboard(){
+
+    updateKPIs();
+
+    storeAnalytics =
+        buildGroupAnalytics(filteredData, "__darkstore");
+
+    brandAnalytics =
+        buildGroupAnalytics(filteredData, "__brand");
+
+    riderAnalytics =
+        buildRiderAnalytics(filteredData);
+
+    updateInsights();
+
+    renderDailyTrend();
+renderStatusChart();
+renderStoreChart();
+renderBrandChart();
+renderReadyBifurcationTable();
+renderAgingChart();
+renderTatChart();
+
+    renderStoreTable();
+    renderBrandTable();
+    renderRiderTable();
+}
+
+/* =========================================================
+   KPI
+========================================================= */
+function updateKPIs(){
+
+    const total = filteredData.length;
+
+    const delivered =
+        filteredData.filter(isDelivered).length;
+
+    const rto =
+        filteredData.filter(isRTO).length;
+
+    const pending =
+    filteredData.filter(isNotDispatched).length;
+
+    const attempted =
+        filteredData.filter(isAttempted).length;
+
+    const tats = filteredData
+        .filter(isDelivered)
+        .map(r => r.__tat)
+        .filter(v => v !== null);
+
+    const avgTat = tats.length
+        ? tats.reduce((a,b) => a+b,0) / tats.length
+        : 0;
+
+    document.getElementById("kpiTotal").textContent =
+        formatNumber(total);
+
+    document.getElementById("kpiDelivered").textContent =
+        formatNumber(delivered);
+
+    document.getElementById("kpiDeliveryPct").textContent =
+        safeFixed(pct(delivered,total),1) + "%";
+
+    document.getElementById("kpiRTO").textContent =
+        formatNumber(rto);
+
+    document.getElementById("kpiRTOPct").textContent =
+        safeFixed(pct(rto,total),1) + "%";
+
+    document.getElementById("kpiPending").textContent =
+        formatNumber(pending);
+
+    document.getElementById("kpiAttempted").textContent =
+        formatNumber(attempted);
+
+    document.getElementById("kpiTat").textContent =
+        safeFixed(avgTat,1) + "h";
+}
+
+/* =========================================================
+   GROUP ANALYTICS
+========================================================= */
+function buildGroupAnalytics(data, key){
+
+    const map = new Map();
+
+    data.forEach(row => {
+
+        const name = row[key] || "Unknown";
+
+        if(!map.has(name)){
+            map.set(name,{
+                name,
+                total:0,
+                delivered:0,
+                rto:0,
+                pending:0,
+                attempted:0,
+                tatSum:0,
+                tatCount:0
+            });
+        }
+
+        const item = map.get(name);
+
+        item.total++;
+
+        if(isDelivered(row))
+            item.delivered++;
+
+        if(isRTO(row))
+            item.rto++;
+
+        if(isPending(row))
+            item.pending++;
+
+        if(isAttempted(row))
+            item.attempted++;
+
+        if(
+            isDelivered(row) &&
+            row.__tat !== null
+        ){
+            item.tatSum += row.__tat;
+            item.tatCount++;
+        }
+    });
+
+    return [...map.values()].map(item => ({
+        ...item,
+
+        deliveryPct:
+            pct(item.delivered,item.total),
+
+        rtoPct:
+            pct(item.rto,item.total),
+
+        avgTat:
+            item.tatCount
+                ? item.tatSum / item.tatCount
+                : 0
+    }));
+}
+
+/* =========================================================
+   RIDER ANALYTICS
+========================================================= */
+function buildRiderAnalytics(data){
+
+    const map = new Map();
+
+    data.forEach(row => {
+
+        if(!row.__rider) return;
+
+        const key =
+            `${row.__rider}|||${row.__riderId}`;
+
+        if(!map.has(key)){
+            map.set(key,{
+                name:row.__rider,
+                riderId:row.__riderId,
+                total:0,
+                delivered:0,
+                rto:0,
+                attempted:0,
+                attemptSum:0
+            });
+        }
+
+        const item = map.get(key);
+
+        item.total++;
+        item.attemptSum += row.__attempts;
+
+        if(isDelivered(row))
+            item.delivered++;
+
+        if(isRTO(row))
+            item.rto++;
+
+        if(isAttempted(row))
+            item.attempted++;
+    });
+
+    return [...map.values()]
+        .map(item => ({
+            ...item,
+
+            deliveryPct:
+                pct(item.delivered,item.total),
+
+            avgAttempts:
+                item.total
+                    ? item.attemptSum/item.total
+                    : 0
+        }))
+        .sort((a,b) => b.total-a.total);
+}
+
+/* =========================================================
+   INSIGHTS
+========================================================= */
+function updateInsights(){
+
+    const eligibleStores =
+        storeAnalytics.filter(x => x.total >= 10);
+
+    const bestStore =
+        [...eligibleStores]
+        .sort((a,b) =>
+            b.deliveryPct - a.deliveryPct ||
+            b.total - a.total
+        )[0];
+
+    const worstRto =
+        [...eligibleStores]
+        .sort((a,b) =>
+            b.rtoPct - a.rtoPct ||
+            b.total - a.total
+        )[0];
+
+    const topBrand =
+        [...brandAnalytics]
+        .sort((a,b) => b.total-a.total)[0];
+
+    const pendingRows =
+        filteredData
+        .filter(isPending)
+        .filter(r => r.__creationDate)
+        .sort((a,b) =>
+            a.__creationDate-b.__creationDate
+        );
+
+    const oldest = pendingRows[0];
+
+    document.getElementById("bestStore").textContent =
+        bestStore
+            ? `${bestStore.name} • ${safeFixed(bestStore.deliveryPct,1)}%`
+            : "-";
+
+    document.getElementById("worstRtoStore").textContent =
+        worstRto
+            ? `${worstRto.name} • ${safeFixed(worstRto.rtoPct,1)}%`
+            : "-";
+
+    document.getElementById("topBrand").textContent =
+        topBrand
+            ? `${topBrand.name} • ${formatNumber(topBrand.total)} orders`
+            : "-";
+
+    document.getElementById("oldestPending").textContent =
+        oldest
+            ? `${oldest.__darkstore} • ${dateKey(oldest.__creationDate)}`
+            : "-";
+}
+
+/* =========================================================
+   CHART COMMON
+========================================================= */
+function destroyChart(name){
+    if(charts[name]){
+        charts[name].destroy();
+        charts[name] = null;
+    }
+}
+
+const commonScales = {
+    x:{
+        ticks:{
+            color:"#91a4b7",
+            maxRotation:45,
+            minRotation:0
+        },
+        grid:{
+            color:"rgba(255,255,255,.05)"
+        }
+    },
+    y:{
+        beginAtZero:true,
+        ticks:{
+            color:"#91a4b7"
+        },
+        grid:{
+            color:"rgba(255,255,255,.05)"
+        }
+    }
+};
+
+/* =========================================================
+   DAILY TREND
+========================================================= */
+function renderDailyTrend(){
+
+    destroyChart("daily");
+
+    const map = new Map();
+
+    filteredData.forEach(row => {
+
+        if(!row.__creationDate) return;
+
+        const key = dateKey(row.__creationDate);
+
+        if(!map.has(key)){
+            map.set(key,{
+                total:0,
+                delivered:0,
+                rto:0
+            });
+        }
+
+        const item = map.get(key);
+
+        item.total++;
+
+        if(isDelivered(row))
+            item.delivered++;
+
+        if(isRTO(row))
+            item.rto++;
+    });
+
+    const labels =
+        [...map.keys()].sort();
+
+    charts.daily = new Chart(
+        document.getElementById("dailyTrendChart"),
+        {
+            type:"line",
+
+            data:{
+                labels:labels.map(formatDateDisplay),
+
+                datasets:[
+                    {
+                        label:"Total Orders",
+                        data:labels.map(k => map.get(k).total),
+                        borderColor:"#38bdf8",
+                        backgroundColor:"rgba(56,189,248,.12)",
+                        tension:.35,
+                        fill:true,
+                        pointRadius:2
+                    },
+                    {
+                        label:"Delivered",
+                        data:labels.map(k => map.get(k).delivered),
+                        borderColor:"#22c55e",
+                        backgroundColor:"rgba(34,197,94,.08)",
+                        tension:.35,
+                        pointRadius:2
+                    },
+                    {
+                        label:"RTO",
+                        data:labels.map(k => map.get(k).rto),
+                        borderColor:"#ef4444",
+                        tension:.35,
+                        pointRadius:2
+                    }
+                ]
+            },
+
+            options:{
+                responsive:true,
+                maintainAspectRatio:false,
+
+                plugins:{
+                    legend:{
+                        labels:{
+                            color:"#dcecff"
+                        }
+                    },
+
+                    datalabels:{
+                        display:false
+                    }
+                },
+
+                scales:commonScales
+            }
+        }
+    );
+}
+
+/* =========================================================
+   STATUS CHART
+========================================================= */
+function renderStatusChart(){
+
+    destroyChart("status");
+
+    const map = new Map();
+
+    filteredData.forEach(row => {
+        const s = row.__status || "UNKNOWN";
+        map.set(s,(map.get(s)||0)+1);
+    });
+
+    const items =
+        [...map.entries()]
+        .sort((a,b) => b[1]-a[1]);
+
+    charts.status = new Chart(
+        document.getElementById("statusChart"),
+        {
+            type:"doughnut",
+
+            data:{
+                labels:items.map(x => x[0]),
+
+                datasets:[{
+                    data:items.map(x => x[1]),
+
+                    backgroundColor:[
+                        "#22c55e",
+                        "#ef4444",
+                        "#f59e0b",
+                        "#38bdf8",
+                        "#a855f7",
+                        "#06b6d4",
+                        "#ec4899",
+                        "#84cc16",
+                        "#f97316",
+                        "#64748b"
+                    ],
+
+                    borderWidth:0
+                }]
+            },
+
+            options:{
+                responsive:true,
+                maintainAspectRatio:false,
+
+                plugins:{
+                    legend:{
+                        position:"bottom",
+                        labels:{
+                            color:"#dcecff",
+                            boxWidth:10
+                        }
+                    },
+
+                    datalabels:{
+                        color:"#fff",
+                        font:{
+                            weight:"bold",
+                            size:10
+                        },
+
+                        formatter:(value,ctx) => {
+                            const total =
+                                ctx.chart.data.datasets[0].data
+                                .reduce((a,b)=>a+b,0);
+
+                            const p =
+                                total ? value/total*100 : 0;
+
+                            return p >= 3
+                                ? p.toFixed(1)+"%"
+                                : "";
+                        }
+                    }
+                }
+            }
+        }
+    );
+}
+
+/* =========================================================
+   STORE CHART
+========================================================= */
+function renderStoreChart(){
+
+    destroyChart("store");
+
+    const items =
+        [...storeAnalytics]
+        .sort((a,b) => b.total-a.total)
+        .slice(0,12);
+
+    charts.store = new Chart(
+        document.getElementById("storeChart"),
+        {
+            type:"bar",
+
+            data:{
+                labels:items.map(x => x.name),
+
+                datasets:[
+                    {
+                        label:"Total Orders",
+                        data:items.map(x => x.total),
+                        backgroundColor:"#38bdf8"
+                    },
+                    {
+                        label:"Delivered",
+                        data:items.map(x => x.delivered),
+                        backgroundColor:"#22c55e"
+                    },
+                    {
+                        label:"RTO",
+                        data:items.map(x => x.rto),
+                        backgroundColor:"#ef4444"
+                    }
+                ]
+            },
+
+            options:{
+                responsive:true,
+                maintainAspectRatio:false,
+
+                plugins:{
+                    legend:{
+                        labels:{
+                            color:"#dcecff"
+                        }
+                    },
+
+                    datalabels:{
+                        display:false
+                    }
+                },
+
+                scales:commonScales
+            }
+        }
+    );
+}
+
+/* =========================================================
+   BRAND CHART
+========================================================= */
+function renderBrandChart(){
+
+    destroyChart("brand");
+
+    const items =
+        [...brandAnalytics]
+        .sort((a,b) => b.total-a.total)
+        .slice(0,12);
+
+    charts.brand = new Chart(
+        document.getElementById("brandChart"),
+        {
+            type:"bar",
+
+            data:{
+                labels:items.map(x => x.name),
+
+                datasets:[
+                    {
+                        label:"Total Orders",
+                        data:items.map(x => x.total),
+                        backgroundColor:"#a855f7"
+                    },
+                    {
+                        label:"Delivered",
+                        data:items.map(x => x.delivered),
+                        backgroundColor:"#22c55e"
+                    }
+                ]
+            },
+
+            options:{
+                responsive:true,
+                maintainAspectRatio:false,
+                indexAxis:"y",
+
+                plugins:{
+                    legend:{
+                        labels:{
+                            color:"#dcecff"
+                        }
+                    },
+
+                    datalabels:{
+                        display:false
+                    }
+                },
+
+                scales:commonScales
+            }
+        }
+    );
+}
+
+/* =========================================================
+   READY PENDENCY BIFURCATION TABLE
+
+   ROWS:
+   Darkstore
+
+   COLUMNS:
+   No. of Attempts = 0, 1, 2, 3, 4
+
+   VALUES:
+   Count of READY Orders
+========================================================= */
+function renderReadyBifurcationTable(){
+
+    const map = new Map();
+
+    // =========================================
+    // STEP 1: COUNT READY ORDERS
+    // Store -> Attempt -> Count
+    // =========================================
+    filteredData.forEach(row => {
+
+        // Only READY orders
+        if(row.__status !== "READY"){
+            return;
+        }
+
+        const store =
+            row.__darkstore ||
+            cleanText(row["Darkstore"]) ||
+            "Unknown";
+
+        const attempts = Number(row.__attempts);
+
+        // Only attempt buckets 0 to 4
+        if(
+            !Number.isInteger(attempts) ||
+            attempts < 0 ||
+            attempts > 4
+        ){
+            return;
+        }
+
+        if(!map.has(store)){
+            map.set(store,{
+                0:0,
+                1:0,
+                2:0,
+                3:0,
+                4:0
+            });
+        }
+
+        map.get(store)[attempts]++;
+    });
+
+    // =========================================
+    // STEP 2: SORT STORES
+    // Highest READY pendency first
+    // =========================================
+    const stores = [...map.keys()]
+        .sort((a,b) => {
+
+            const totalA =
+                map.get(a)[0] +
+                map.get(a)[1] +
+                map.get(a)[2] +
+                map.get(a)[3] +
+                map.get(a)[4];
+
+            const totalB =
+                map.get(b)[0] +
+                map.get(b)[1] +
+                map.get(b)[2] +
+                map.get(b)[3] +
+                map.get(b)[4];
+
+            return totalB - totalA;
+        });
+
+    const thead = document.querySelector(
+        "#readyBifurcationTable thead"
+    );
+
+    const tbody = document.querySelector(
+        "#readyBifurcationTable tbody"
+    );
+
+    // =========================================
+    // STEP 3: NO DATA
+    // =========================================
+    if(!stores.length){
+
+        thead.innerHTML = `
+            <tr>
+                <th>No. of Attempts</th>
+            </tr>
+        `;
+
+        tbody.innerHTML = `
+            <tr>
+                <td class="empty">
+                    No READY orders found
+                </td>
+            </tr>
+        `;
+
+        return;
+    }
+
+    // =========================================
+    // STEP 4: CREATE COLUMN HEADERS
+    // Darkstores become columns
+    // =========================================
+    thead.innerHTML = `
+        <tr>
+            <th>No. of Attempts</th>
+
+            ${stores.map(store => `
+                <th style="text-align:center;">
+                    <button
+                        type="button"
+                        class="ready-store-btn"
+                        data-store="${escapeHtml(store)}"
+                        title="Click to view all READY orders"
+                    >
+                        ${escapeHtml(store)}
+                    </button>
+                </th>
+            `).join("")}
+        </tr>
+    `;
+
+    // =========================================
+    // STEP 5: CREATE ATTEMPT ROWS
+    // 0, 1, 2, 3, 4 become rows
+    // =========================================
+    tbody.innerHTML = [0,1,2,3,4]
+        .map(attempt => `
+
+            <tr>
+
+                <td>
+                    <strong>${attempt}</strong>
+                </td>
+
+                ${stores.map(store => {
+
+                    const count =
+                        map.get(store)[attempt];
+
+                    if(count > 0){
+
+                        return `
+                            <td style="text-align:center;">
+                                <button
+                                    type="button"
+                                    class="ready-drilldown-btn"
+                                    data-store="${escapeHtml(store)}"
+                                    data-attempt="${attempt}"
+                                    title="Click to view Order AWBs"
+                                >
+                                    ${formatNumber(count)}
+                                </button>
+                            </td>
+                        `;
+                    }
+
+                    return `
+                        <td style="text-align:center;">
+                            0
+                        </td>
+                    `;
+
+                }).join("")}
+
+            </tr>
+
+        `).join("");
+
+    // =========================================
+    // STEP 6: ADD CLICK EVENTS
+    // =========================================
+    tbody.querySelectorAll(
+        ".ready-drilldown-btn"
+    ).forEach(button => {
+
+        button.addEventListener("click", () => {
+
+            const store =
+                button.dataset.store;
+
+            const attempt =
+                Number(button.dataset.attempt);
+
+            openReadyAWBDetails(
+                store,
+                attempt
+            );
+        });
+    });
+
+    thead.querySelectorAll(
+        ".ready-store-btn"
+    ).forEach(button => {
+
+        button.addEventListener("click", () => {
+
+            const store =
+                button.dataset.store;
+
+            openReadyStoreDetails(store);
+        });
+    });
+}
+
+/* =========================================================
+   READY PENDENCY AWB DRILLDOWN
+========================================================= */
+function openReadyAWBDetails(store, attempt){
+
+    const orders = filteredData.filter(row => {
+        return (
+            row.__status === "READY" &&
+            row.__darkstore === store &&
+            Number(row.__attempts) === Number(attempt)
+        );
+    });
+
+    if(!orders.length){
+        alert("No matching READY orders found.");
+        return;
+    }
+
+    const awbList = orders.map(row => {
+        return (
+            cleanText(row["Order AWB"]) ||
+            cleanText(row["AWB"]) ||
+            cleanText(row["AWB Number"]) ||
+            cleanText(row["AWB No"]) ||
+            cleanText(row["Shipment AWB"]) ||
+            cleanText(row["Tracking Number"]) ||
+            cleanText(row["Tracking ID"]) ||
+            "-"
+        );
+    });
+
+    const newTab = window.open("", "_blank");
+
+    if(!newTab){
+        alert("Popup blocked. Please allow popups for this page.");
+        return;
+    }
+
+    newTab.document.title = "READY Order AWBs";
+
+    const style = newTab.document.createElement("style");
+
+    style.textContent = `
+        *{
+            box-sizing:border-box;
+            margin:0;
+            padding:0;
+        }
+
+        body{
+            font-family:Inter,Segoe UI,Arial,sans-serif;
+            background:#07111f;
+            color:#eef6ff;
+            min-height:100vh;
+            padding:30px;
+        }
+
+        .container{
+            max-width:1100px;
+            margin:auto;
+        }
+
+        .header{
+            background:#0d1b2a;
+            border:1px solid rgba(255,255,255,.10);
+            border-radius:18px;
+            padding:24px;
+            margin-bottom:20px;
+        }
+
+        .header h1{
+            font-size:24px;
+            margin-bottom:8px;
+        }
+
+        .header h1 span{
+            color:#38bdf8;
+        }
+
+        .meta{
+            color:#91a4b7;
+            font-size:14px;
+        }
+
+        .summary{
+            display:grid;
+            grid-template-columns:repeat(3,1fr);
+            gap:14px;
+            margin-bottom:20px;
+        }
+
+        .card{
+            background:#0d1b2a;
+            border:1px solid rgba(255,255,255,.10);
+            border-radius:14px;
+            padding:18px;
+        }
+
+        .label{
+            color:#91a4b7;
+            font-size:11px;
+            text-transform:uppercase;
+            font-weight:800;
+        }
+
+        .value{
+            font-size:20px;
+            font-weight:900;
+            margin-top:8px;
+        }
+
+        .table-panel{
+            background:#0d1b2a;
+            border:1px solid rgba(255,255,255,.10);
+            border-radius:18px;
+            padding:18px;
+        }
+
+        .table-actions{
+            display:flex;
+            justify-content:flex-end;
+            margin-bottom:16px;
+        }
+
+        .download-btn{
+            border:none;
+            border-radius:10px;
+            padding:11px 18px;
+            background:linear-gradient(135deg,#16a34a,#22c55e);
+            color:#ffffff;
+            font-size:13px;
+            font-weight:800;
+            cursor:pointer;
+            transition:.2s ease;
+        }
+
+        .download-btn:hover{
+            transform:translateY(-1px);
+            box-shadow:0 8px 20px rgba(34,197,94,.20);
+        }
+
+        table{
+            width:100%;
+            border-collapse:collapse;
+        }
+
+        th{
+            background:#10263a;
+            color:#cdefff;
+            text-align:left;
+            padding:12px;
+            font-size:11px;
+            text-transform:uppercase;
+        }
+
+        td{
+            padding:12px;
+            border-bottom:1px solid rgba(255,255,255,.06);
+            font-size:13px;
+        }
+
+        tbody tr:hover{
+            background:rgba(56,189,248,.06);
+        }
+
+        .footer{
+            text-align:center;
+            color:#91a4b7;
+            padding:25px 10px;
+            font-size:12px;
+        }
+
+        @media(max-width:700px){
+            .summary{
+                grid-template-columns:1fr;
+            }
+
+            body{
+                padding:14px;
+            }
+        }
+    `;
+
+    newTab.document.head.appendChild(style);
+
+    const container = newTab.document.createElement("div");
+    container.className = "container";
+
+    const header = newTab.document.createElement("div");
+    header.className = "header";
+
+    const title = newTab.document.createElement("h1");
+
+    const sasaSpan = newTab.document.createElement("span");
+    sasaSpan.textContent = "SASA";
+
+    title.appendChild(sasaSpan);
+    title.appendChild(
+        newTab.document.createTextNode(" READY Order Details")
+    );
+
+    const meta = newTab.document.createElement("div");
+    meta.className = "meta";
+    meta.textContent =
+        "Click result from READY Pendency Bifurcation";
+
+    header.appendChild(title);
+    header.appendChild(meta);
+
+    container.appendChild(header);
+
+    const summary = newTab.document.createElement("div");
+    summary.className = "summary";
+
+    const summaryData = [
+        ["Darkstore", store],
+        ["No. of Attempts", attempt],
+        ["READY Orders", orders.length]
+    ];
+
+    summaryData.forEach(item => {
+
+        const card = newTab.document.createElement("div");
+        card.className = "card";
+
+        const label = newTab.document.createElement("div");
+        label.className = "label";
+        label.textContent = item[0];
+
+        const value = newTab.document.createElement("div");
+        value.className = "value";
+        value.textContent = item[1];
+
+        card.appendChild(label);
+        card.appendChild(value);
+
+        summary.appendChild(card);
+    });
+
+    container.appendChild(summary);
+
+    const tablePanel = newTab.document.createElement("div");
+    tablePanel.className = "table-panel";
+
+    const table = newTab.document.createElement("table");
+
+    const thead = newTab.document.createElement("thead");
+    const headRow = newTab.document.createElement("tr");
+
+    ["#", "Order AWB"].forEach(text => {
+
+        const th = newTab.document.createElement("th");
+        th.textContent = text;
+
+        headRow.appendChild(th);
+    });
+
+    thead.appendChild(headRow);
+    table.appendChild(thead);
+
+    const tbody = newTab.document.createElement("tbody");
+
+    awbList.forEach((awb, index) => {
+
+        const tr = newTab.document.createElement("tr");
+
+        const tdIndex = newTab.document.createElement("td");
+        tdIndex.textContent = index + 1;
+
+        const tdAwb = newTab.document.createElement("td");
+        tdAwb.textContent = awb;
+
+        tr.appendChild(tdIndex);
+        tr.appendChild(tdAwb);
+
+        tbody.appendChild(tr);
+    });
+
+    table.appendChild(tbody);
+    tablePanel.appendChild(table);
+    container.appendChild(tablePanel);
+
+    const footer = newTab.document.createElement("div");
+    footer.className = "footer";
+    footer.textContent =
+        "Powered by SASA Automation | Harshit Saini – Data Analyst, Zippee";
+
+    container.appendChild(footer);
+
+    newTab.document.body.appendChild(container);
+}
+
+/* =========================================================
+   READY STORE ALL ATTEMPTS DRILLDOWN
+========================================================= */
+function openReadyStoreDetails(store){
+
+    const orders = filteredData
+        .filter(row => {
+            return (
+                row.__status === "READY" &&
+                row.__darkstore === store
+            );
+        })
+        .sort((a,b) =>
+            Number(a.__attempts) -
+            Number(b.__attempts)
+        );
+
+    if(!orders.length){
+        alert("No READY orders found for this darkstore.");
+        return;
+    }
+
+    function getOrderAWB(row){
+        return (
+            cleanText(row["Order AWB"]) ||
+            cleanText(row["AWB"]) ||
+            cleanText(row["AWB Number"]) ||
+            cleanText(row["AWB No"]) ||
+            cleanText(row["Shipment AWB"]) ||
+            cleanText(row["Tracking Number"]) ||
+            cleanText(row["Tracking ID"]) ||
+            "-"
+        );
+    }
+
+    const attemptCounts = {
+        0:0,
+        1:0,
+        2:0,
+        3:0,
+        4:0
+    };
+
+    orders.forEach(row => {
+
+        const attempt = Number(row.__attempts);
+
+        if(
+            Number.isInteger(attempt) &&
+            attempt >= 0 &&
+            attempt <= 4
+        ){
+            attemptCounts[attempt]++;
+        }
+    });
+
+    const newTab = window.open("", "_blank");
+
+    if(!newTab){
+        alert("Popup blocked. Please allow popups for this page.");
+        return;
+    }
+
+    newTab.document.title =
+        store + " - READY Orders";
+
+    const style =
+        newTab.document.createElement("style");
+
+    style.textContent = `
+        *{
+            box-sizing:border-box;
+            margin:0;
+            padding:0;
+        }
+
+        body{
+            font-family:Inter,Segoe UI,Arial,sans-serif;
+            background:#07111f;
+            color:#eef6ff;
+            min-height:100vh;
+            padding:30px;
+        }
+
+        .container{
+            max-width:1200px;
+            margin:auto;
+        }
+
+        .header{
+            background:#0d1b2a;
+            border:1px solid rgba(255,255,255,.10);
+            border-radius:18px;
+            padding:24px;
+            margin-bottom:20px;
+        }
+
+        .header h1{
+            font-size:24px;
+            margin-bottom:8px;
+        }
+
+        .header h1 span{
+            color:#38bdf8;
+        }
+
+        .meta{
+            color:#91a4b7;
+            font-size:14px;
+        }
+
+        .summary{
+            display:grid;
+            grid-template-columns:repeat(6,1fr);
+            gap:12px;
+            margin-bottom:20px;
+        }
+
+        .card{
+            background:#0d1b2a;
+            border:1px solid rgba(255,255,255,.10);
+            border-radius:14px;
+            padding:16px;
+        }
+
+        .label{
+            color:#91a4b7;
+            font-size:10px;
+            text-transform:uppercase;
+            font-weight:800;
+        }
+
+        .value{
+            font-size:20px;
+            font-weight:900;
+            margin-top:8px;
+        }
+
+        .table-panel{
+            background:#0d1b2a;
+            border:1px solid rgba(255,255,255,.10);
+            border-radius:18px;
+            padding:18px;
+        }
+
+        table{
+            width:100%;
+            border-collapse:collapse;
+        }
+
+        th{
+            background:#10263a;
+            color:#cdefff;
+            text-align:left;
+            padding:12px;
+            font-size:11px;
+            text-transform:uppercase;
+        }
+
+        td{
+            padding:12px;
+            border-bottom:1px solid rgba(255,255,255,.06);
+            font-size:13px;
+        }
+
+        tbody tr:hover{
+            background:rgba(56,189,248,.06);
+        }
+
+        .attempt-badge{
+            display:inline-flex;
+            align-items:center;
+            justify-content:center;
+            min-width:34px;
+            padding:5px 9px;
+            background:rgba(56,189,248,.14);
+            color:#7dd3fc;
+            border:1px solid rgba(56,189,248,.25);
+            border-radius:20px;
+            font-size:11px;
+            font-weight:900;
+        }
+
+        .footer{
+            text-align:center;
+            color:#91a4b7;
+            padding:25px 10px;
+            font-size:12px;
+        }
+
+        @media(max-width:900px){
+            .summary{
+                grid-template-columns:repeat(2,1fr);
+            }
+        }
+
+        @media(max-width:600px){
+            body{
+                padding:14px;
+            }
+
+            .summary{
+                grid-template-columns:1fr;
+            }
+        }
+    `;
+
+    newTab.document.head.appendChild(style);
+
+    const container =
+        newTab.document.createElement("div");
+
+    container.className = "container";
+
+    const header =
+        newTab.document.createElement("div");
+
+    header.className = "header";
+
+    const title =
+        newTab.document.createElement("h1");
+
+    const sasaSpan =
+        newTab.document.createElement("span");
+
+    sasaSpan.textContent = "SASA";
+
+    title.appendChild(sasaSpan);
+
+    title.appendChild(
+        newTab.document.createTextNode(
+            " READY Store Order Details"
+        )
+    );
+
+    const meta =
+        newTab.document.createElement("div");
+
+    meta.className = "meta";
+
+    meta.textContent =
+        "All READY orders for " + store;
+
+    header.appendChild(title);
+    header.appendChild(meta);
+
+    container.appendChild(header);
+
+    const summary =
+        newTab.document.createElement("div");
+
+    summary.className = "summary";
+
+    const summaryData = [
+        ["Total READY", orders.length],
+        ["0 Attempts", attemptCounts[0]],
+        ["1 Attempt", attemptCounts[1]],
+        ["2 Attempts", attemptCounts[2]],
+        ["3 Attempts", attemptCounts[3]],
+        ["4 Attempts", attemptCounts[4]]
+    ];
+
+    summaryData.forEach(item => {
+
+        const card =
+            newTab.document.createElement("div");
+
+        card.className = "card";
+
+        const label =
+            newTab.document.createElement("div");
+
+        label.className = "label";
+        label.textContent = item[0];
+
+        const value =
+            newTab.document.createElement("div");
+
+        value.className = "value";
+        value.textContent = item[1];
+
+        card.appendChild(label);
+        card.appendChild(value);
+
+        summary.appendChild(card);
+    });
+
+    container.appendChild(summary);
+
+    const tablePanel =
+        newTab.document.createElement("div");
+
+    tablePanel.className = "table-panel";
+
+    const tableActions =
+        newTab.document.createElement("div");
+
+    tableActions.className = "table-actions";
+
+    const downloadButton =
+        newTab.document.createElement("button");
+
+    downloadButton.type = "button";
+    downloadButton.className = "download-btn";
+    downloadButton.textContent = "Download Excel";
+
+    tableActions.appendChild(downloadButton);
+    tablePanel.appendChild(tableActions);
+
+    const table =
+        newTab.document.createElement("table");
+
+    const thead =
+        newTab.document.createElement("thead");
+
+    const headRow =
+        newTab.document.createElement("tr");
+
+    [
+        "#",
+        "Order AWB",
+        "No. of Attempts"
+    ].forEach(text => {
+
+        const th =
+            newTab.document.createElement("th");
+
+        th.textContent = text;
+
+        headRow.appendChild(th);
+    });
+
+    thead.appendChild(headRow);
+    table.appendChild(thead);
+
+    const tbody =
+        newTab.document.createElement("tbody");
+
+    orders.forEach((row,index) => {
+
+        const tr =
+            newTab.document.createElement("tr");
+
+        const tdIndex =
+            newTab.document.createElement("td");
+
+        tdIndex.textContent = index + 1;
+
+        const tdAwb =
+            newTab.document.createElement("td");
+
+        tdAwb.textContent =
+            getOrderAWB(row);
+
+        const tdAttempt =
+            newTab.document.createElement("td");
+
+        const badge =
+            newTab.document.createElement("span");
+
+        badge.className = "attempt-badge";
+
+        badge.textContent =
+            Number(row.__attempts);
+
+        tdAttempt.appendChild(badge);
+
+        tr.appendChild(tdIndex);
+        tr.appendChild(tdAwb);
+        tr.appendChild(tdAttempt);
+
+        tbody.appendChild(tr);
+    });
+
+    table.appendChild(tbody);
+    tablePanel.appendChild(table);
+    container.appendChild(tablePanel);
+
+    downloadButton.addEventListener("click", () => {
+
+        const excelRows = orders.map((row,index) => ({
+            "S.No.": index + 1,
+            "Darkstore": store,
+            "Order AWB": getOrderAWB(row),
+            "No. of Attempts": Number(row.__attempts)
+        }));
+
+        let csvContent =
+            "\uFEFF" +
+            [
+                [
+                    "S.No.",
+                    "Darkstore",
+                    "Order AWB",
+                    "No. of Attempts"
+                ],
+
+                ...excelRows.map(item => [
+                    item["S.No."],
+                    item["Darkstore"],
+                    item["Order AWB"],
+                    item["No. of Attempts"]
+                ])
+
+            ]
+            .map(row =>
+                row.map(value =>
+                    `"${String(value ?? "")
+                        .replace(/"/g,'""')}"`
+                ).join(",")
+            )
+            .join("\n");
+
+        const blob = new Blob(
+            [csvContent],
+            {
+                type:"text/csv;charset=utf-8;"
+            }
+        );
+
+        const url =
+            URL.createObjectURL(blob);
+
+        const link =
+            newTab.document.createElement("a");
+
+        link.href = url;
+
+        link.download =
+            `${store}_READY_Orders.csv`;
+
+        newTab.document.body.appendChild(link);
+
+        link.click();
+
+        link.remove();
+
+        URL.revokeObjectURL(url);
+    });
+
+    const footer =
+        newTab.document.createElement("div");
+
+    footer.className = "footer";
+
+    footer.textContent =
+        "Powered by SASA Automation | Harshit Saini – Data Analyst, Zippee";
+
+    container.appendChild(footer);
+
+    newTab.document.body.appendChild(container);
+}
+
+/* =========================================================
+   PENDING AGING CHART
+========================================================= */
+function renderAgingChart(){
+
+    destroyChart("aging");
+
+    const buckets = {
+        "0-1 Day":0,
+        "1-2 Days":0,
+        "2-3 Days":0,
+        "3-5 Days":0,
+        "5+ Days":0
+    };
+
+    const now = new Date();
+
+    filteredData
+        .filter(isPending)
+        .forEach(row => {
+
+            if(!row.__creationDate) return;
+
+            const days =
+                (now-row.__creationDate)/86400000;
+
+            if(days < 1)
+                buckets["0-1 Day"]++;
+
+            else if(days < 2)
+                buckets["1-2 Days"]++;
+
+            else if(days < 3)
+                buckets["2-3 Days"]++;
+
+            else if(days < 5)
+                buckets["3-5 Days"]++;
+
+            else
+                buckets["5+ Days"]++;
+        });
+
+    charts.aging = new Chart(
+        document.getElementById("agingChart"),
+        {
+            type:"bar",
+
+            data:{
+                labels:Object.keys(buckets),
+
+                datasets:[{
+                    label:"Pending Orders",
+                    data:Object.values(buckets),
+
+                    backgroundColor:[
+                        "#22c55e",
+                        "#84cc16",
+                        "#f59e0b",
+                        "#f97316",
+                        "#ef4444"
+                    ]
+                }]
+            },
+
+            options:{
+                responsive:true,
+                maintainAspectRatio:false,
+
+                plugins:{
+                    legend:{
+                        display:false
+                    },
+
+                    datalabels:{
+                        color:"#fff",
+                        anchor:"end",
+                        align:"top",
+                        font:{
+                            weight:"bold"
+                        }
+                    }
+                },
+
+                scales:commonScales
+            }
+        }
+    );
+}
+
+/* =========================================================
+   TAT CHART
+========================================================= */
+function renderTatChart(){
+
+    destroyChart("tat");
+
+    const buckets = {
+        "0-6h":0,
+        "6-12h":0,
+        "12-24h":0,
+        "1-2 Days":0,
+        "2-3 Days":0,
+        "3+ Days":0
+    };
+
+    filteredData
+        .filter(isDelivered)
+        .forEach(row => {
+
+            const h = row.__tat;
+
+            if(h === null) return;
+
+            if(h < 6)
+                buckets["0-6h"]++;
+
+            else if(h < 12)
+                buckets["6-12h"]++;
+
+            else if(h < 24)
+                buckets["12-24h"]++;
+
+            else if(h < 48)
+                buckets["1-2 Days"]++;
+
+            else if(h < 72)
+                buckets["2-3 Days"]++;
+
+            else
+                buckets["3+ Days"]++;
+        });
+
+    charts.tat = new Chart(
+        document.getElementById("tatChart"),
+        {
+            type:"bar",
+
+            data:{
+                labels:Object.keys(buckets),
+
+                datasets:[{
+                    label:"Delivered Orders",
+                    data:Object.values(buckets),
+                    backgroundColor:"#06b6d4"
+                }]
+            },
+
+            options:{
+                responsive:true,
+                maintainAspectRatio:false,
+
+                plugins:{
+                    legend:{
+                        display:false
+                    },
+
+                    datalabels:{
+                        color:"#fff",
+                        anchor:"end",
+                        align:"top",
+                        font:{
+                            weight:"bold"
+                        }
+                    }
+                },
+
+                scales:commonScales
+            }
+        }
+    );
+}
+
+/* =========================================================
+   TABLE RENDERING
+========================================================= */
+function performanceBadge(value){
+
+    if(value >= 90)
+        return `<span class="badge badge-green">${safeFixed(value,1)}%</span>`;
+
+    if(value >= 75)
+        return `<span class="badge badge-orange">${safeFixed(value,1)}%</span>`;
+
+    return `<span class="badge badge-red">${safeFixed(value,1)}%</span>`;
+}
+
+function rtoBadge(value){
+
+    if(value <= 5)
+        return `<span class="badge badge-green">${safeFixed(value,1)}%</span>`;
+
+    if(value <= 10)
+        return `<span class="badge badge-orange">${safeFixed(value,1)}%</span>`;
+
+    return `<span class="badge badge-red">${safeFixed(value,1)}%</span>`;
+}
+
+function renderStoreTable(){
+
+    const query =
+        document.getElementById("storeSearch")
+        .value.toLowerCase();
+
+    const data =
+        [...storeAnalytics]
+        .filter(x =>
+            x.name.toLowerCase().includes(query)
+        )
+        .sort((a,b) => b.total-a.total);
+
+    const tbody =
+        document.querySelector("#storeTable tbody");
+
+    tbody.innerHTML = data.map(x => `
+        <tr>
+            <td><strong>${escapeHtml(x.name)}</strong></td>
+            <td>${formatNumber(x.total)}</td>
+            <td>${formatNumber(x.delivered)}</td>
+            <td>${performanceBadge(x.deliveryPct)}</td>
+            <td>${formatNumber(x.rto)}</td>
+            <td>${rtoBadge(x.rtoPct)}</td>
+            <td>${formatNumber(x.pending)}</td>
+            <td>${formatNumber(x.attempted)}</td>
+            <td>${safeFixed(x.avgTat,1)}h</td>
+        </tr>
+    `).join("");
+}
+
+function renderBrandTable(){
+
+    const query =
+        document.getElementById("brandSearch")
+        .value.toLowerCase();
+
+    const data =
+        [...brandAnalytics]
+        .filter(x =>
+            x.name.toLowerCase().includes(query)
+        )
+        .sort((a,b) => b.total-a.total);
+
+    const tbody =
+        document.querySelector("#brandTable tbody");
+
+    tbody.innerHTML = data.map(x => `
+        <tr>
+            <td><strong>${escapeHtml(x.name)}</strong></td>
+            <td>${formatNumber(x.total)}</td>
+            <td>${formatNumber(x.delivered)}</td>
+            <td>${performanceBadge(x.deliveryPct)}</td>
+            <td>${formatNumber(x.rto)}</td>
+            <td>${rtoBadge(x.rtoPct)}</td>
+            <td>${formatNumber(x.pending)}</td>
+            <td>${formatNumber(x.attempted)}</td>
+            <td>${safeFixed(x.avgTat,1)}h</td>
+        </tr>
+    `).join("");
+}
+
+function renderRiderTable(){
+
+    const query =
+        document.getElementById("riderSearch")
+        .value.toLowerCase();
+
+    const data =
+        riderAnalytics.filter(x =>
+            x.name.toLowerCase().includes(query) ||
+            x.riderId.toLowerCase().includes(query)
+        );
+
+    const tbody =
+        document.querySelector("#riderTable tbody");
+
+    tbody.innerHTML = data.map(x => `
+        <tr>
+            <td><strong>${escapeHtml(x.name)}</strong></td>
+            <td>${escapeHtml(x.riderId)}</td>
+            <td>${formatNumber(x.total)}</td>
+            <td>${formatNumber(x.delivered)}</td>
+            <td>${performanceBadge(x.deliveryPct)}</td>
+            <td>${formatNumber(x.rto)}</td>
+            <td>${formatNumber(x.attempted)}</td>
+            <td>${safeFixed(x.avgAttempts,2)}</td>
+        </tr>
+    `).join("");
+}
+
+function escapeHtml(value){
+
+    return String(value ?? "")
+        .replace(/&/g,"&amp;")
+        .replace(/</g,"&lt;")
+        .replace(/>/g,"&gt;")
+        .replace(/"/g,"&quot;")
+        .replace(/'/g,"&#039;");
+}
+
+/* =========================================================
+   SEARCH
+========================================================= */
+document.getElementById("storeSearch")
+.addEventListener("input",renderStoreTable);
+
+document.getElementById("brandSearch")
+.addEventListener("input",renderBrandTable);
+
+document.getElementById("riderSearch")
+.addEventListener("input",renderRiderTable);
+
+/* =========================================================
+   TABLE SORTING
+========================================================= */
+document.querySelectorAll(
+    "#storeTable th[data-key], #brandTable th[data-key]"
+).forEach(th => {
+
+    th.addEventListener("click", () => {
+
+        const tableId =
+            th.closest("table").id;
+
+        const key =
+            th.dataset.key;
+
+        const source =
+            tableId === "storeTable"
+                ? storeAnalytics
+                : brandAnalytics;
+
+        source.sort((a,b) => {
+
+            if(typeof a[key] === "number")
+                return b[key]-a[key];
+
+            return String(a[key])
+                .localeCompare(String(b[key]));
+        });
+
+        if(tableId === "storeTable")
+            renderStoreTable();
+
+        else
+            renderBrandTable();
+    });
+});
+
+/* =========================================================
+   DOWNLOAD FILTERED CSV
+========================================================= */
+function downloadFilteredCSV(){
+
+    if(!filteredData.length){
+        alert("No filtered data available.");
+        return;
+    }
+
+    const cleaned = filteredData.map(row => {
+
+        const obj = {};
+
+        Object.keys(row).forEach(key => {
+            if(!key.startsWith("__")){
+                obj[key] = row[key];
+            }
+        });
+
+        return obj;
+    });
+
+    const csv = Papa.unparse(cleaned);
+
+    const blob = new Blob(
+        [csv],
+        {type:"text/csv;charset=utf-8;"}
+    );
+
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+
+    a.href = url;
+    a.download =
+        `SASA_Filtered_Shipments_${Date.now()}.csv`;
+
+    a.click();
+
+    URL.revokeObjectURL(url);
+}
+
+/* =========================================================
+   DOWNLOAD PNG
+========================================================= */
+async function downloadDashboardPNG(){
+
+    if(!rawData.length){
+        alert("Please upload a CSV file first.");
+        return;
+    }
+
+    showLoader("Creating dashboard PNG...");
+
+    try{
+
+        const canvas = await html2canvas(
+            document.getElementById("dashboard"),
+            {
+                scale:1.5,
+                backgroundColor:"#07111f",
+                useCORS:true
+            }
+        );
+
+        const link = document.createElement("a");
+
+        link.download =
+            `SASA_Shipment_Dashboard_${Date.now()}.png`;
+
+        link.href = canvas.toDataURL("image/png");
+
+        link.click();
+
+    }catch(error){
+
+        console.error(error);
+
+        alert("PNG generation failed.");
+
+    }finally{
+
+        hideLoader();
+    }
+}
+</script>
+
+</body>
+</html>
