@@ -23,26 +23,29 @@
 }
 
 :root{
-    --bg:#07111f;
-    --panel:#0d1b2a;
-    --panel2:#102235;
-    --border:rgba(255,255,255,.10);
-    --text:#eef6ff;
-    --muted:#91a4b7;
-    --blue:#38bdf8;
-    --green:#22c55e;
-    --red:#ef4444;
-    --orange:#f59e0b;
-    --purple:#a855f7;
-    --cyan:#06b6d4;
+    --bg:#F5F7FA;
+    --panel:#FFFFFF;
+    --panel2:#F8FAFC;
+
+    --border:#E5E7EB;
+
+    --text:#1F2937;
+    --muted:#64748B;
+
+    --blue:#2563EB;
+    --green:#16A34A;
+    --red:#DC2626;
+    --orange:#F59E0B;
+    --purple:#7C3AED;
+    --cyan:#0891B2;
 }
 
 body{
     font-family:Inter,Segoe UI,Arial,sans-serif;
     background:
-        radial-gradient(circle at 15% 20%, rgba(56,189,248,.12), transparent 25%),
-        radial-gradient(circle at 85% 10%, rgba(168,85,247,.10), transparent 25%),
-        linear-gradient(135deg,#050b14,#081421 45%,#07111f);
+    radial-gradient(circle at 15% 20%, rgba(56,189,248,.08), transparent 25%),
+    radial-gradient(circle at 85% 10%, rgba(168,85,247,.06), transparent 25%),
+    linear-gradient(135deg,#F4F6F1,#D9DFC9 45%,#B9BEAA);
     color:var(--text);
     min-height:100vh;
 }
@@ -52,9 +55,9 @@ body{
 ========================================================= */
 .header{
     padding:24px 28px;
-    border-bottom:1px solid var(--border);
-    background:rgba(5,11,20,.82);
-    backdrop-filter:blur(16px);
+    border-bottom:1px solid #E5E7EB;
+    background:#FFFFFF;
+    box-shadow:0 2px 12px rgba(0,0,0,.06);
     position:sticky;
     top:0;
     z-index:50;
@@ -121,15 +124,15 @@ button:hover,
 }
 
 .secondary{
-    background:#16283b;
-    color:white;
-    border:1px solid var(--border);
+background:#FFFFFF;
+    color:#374151;
+    border:1px solid #D1D5DB;
 }
 
 .danger{
-    background:#3b1720;
-    color:#fecaca;
-    border:1px solid rgba(239,68,68,.25);
+    background:#EF4444;
+    color:white;
+    border:none;
 }
 
 input[type=file]{
@@ -149,13 +152,14 @@ input[type=file]{
    UPLOAD
 ========================================================= */
 .upload-zone{
-    border:1.5px dashed rgba(56,189,248,.45);
-    background:rgba(13,27,42,.75);
+    border:1.5px dashed #C9D0BF;
+    background:#F8F9F4;
     border-radius:18px;
     padding:28px;
     text-align:center;
     margin-bottom:22px;
     transition:.2s;
+    box-shadow:0 8px 24px rgba(0,0,0,.08);
 }
 
 .upload-zone.dragover{
@@ -187,11 +191,12 @@ input[type=file]{
     display:grid;
     grid-template-columns:repeat(6,minmax(150px,1fr));
     gap:12px;
-    background:rgba(13,27,42,.82);
-    border:1px solid var(--border);
+    background:#F8F9F4;
+    border:1px solid #D8DDCE;
     padding:16px;
     border-radius:16px;
     margin-bottom:20px;
+    box-shadow:0 8px 24px rgba(0,0,0,.08);
 }
 
 .filter-group label{
@@ -207,13 +212,9 @@ input[type=file]{
 select,
 input[type=date],
 input[type=text]{
-    width:100%;
-    background:#081522;
-    color:white;
-    border:1px solid var(--border);
-    border-radius:9px;
-    padding:10px 11px;
-    outline:none;
+    background:#FFFFFF;
+    color:#111827;
+    border:1px solid #D1D5DB;
 }
 
 select:focus,
@@ -234,11 +235,12 @@ input:focus{
 .kpi{
     position:relative;
     overflow:hidden;
-    background:linear-gradient(145deg,rgba(16,34,53,.95),rgba(9,24,38,.95));
-    border:1px solid var(--border);
+    background:linear-gradient(145deg,#FFFFFF,#F4F6F0);
+    border:1px solid #D9DDCF;
     border-radius:16px;
     padding:17px;
     min-height:112px;
+    box-shadow:0 6px 18px rgba(0,0,0,.08);
 }
 
 .kpi::after{
@@ -299,11 +301,12 @@ input:focus{
 }
 
 .panel{
-    background:rgba(13,27,42,.88);
-    border:1px solid var(--border);
+    background:#F8F9F4;
+    border:1px solid #D8DDCE;
     border-radius:17px;
     padding:18px;
     overflow:hidden;
+    box-shadow:0 8px 24px rgba(0,0,0,.08);
 }
 
 .panel-title{
@@ -339,8 +342,9 @@ input:focus{
 
 .insight{
     padding:15px;
-    background:#091827;
-    border:1px solid var(--border);
+    background:#FFFFFF;
+    border:1px solid #E5E7EB;
+    box-shadow:0 6px 16px rgba(0,0,0,.06);
     border-radius:12px;
 }
 
@@ -411,14 +415,15 @@ table{
     padding:12px 16px;
 }
 
-#readyBifurcationTable th:first-child,
+#readyBifurcationTable th:first-child{
+    background:#F3F4F6;
+}
+
 #readyBifurcationTable td:first-child{
-    position:sticky;
-    left:0;
-    z-index:5;
-    background:#10263a;
-    text-align:left;
-    min-width:140px;
+    background:#FFFFFF;
+    color:#374151;
+    border-right:1px solid #E5E7EB;
+    font-weight:600;
 }
 
 #readyBifurcationTable thead th{
@@ -432,8 +437,8 @@ thead{
 }
 
 th{
-    background:#10263a;
-    color:#cdefff;
+    background:#F3F4F6;
+    color:#374151;
     text-align:left;
     padding:12px 10px;
     font-size:11px;
@@ -444,13 +449,14 @@ th{
 
 td{
     padding:11px 10px;
-    border-bottom:1px solid rgba(255,255,255,.06);
+    border-bottom:1px solid #E5E7EB;
+    color:#374151;
     font-size:12px;
     white-space:nowrap;
 }
 
 tbody tr:hover{
-    background:rgba(56,189,248,.06);
+    background:#F8FAFC;
 }
 
 .badge{
@@ -600,7 +606,7 @@ tbody tr:hover{
 <header class="header">
     <div class="header-inner">
         <div class="brand">
-            <h1><span>SASA</span> Shipment Analytics Control Tower</h1>
+            <h1><span>SASA</span> Strategic Analytical Suite For Analytics</h1>
             <p>Darkstore • Brand • Delivery • RTO • Rider • Aging Analytics</p>
         </div>
 
@@ -723,11 +729,10 @@ tbody tr:hover{
     <div class="kpi-sub">Pending to Dispatch</div>
 </div>
         <div class="kpi purple">
-            <div class="kpi-label">Attempted</div>
-            <div class="kpi-value" id="kpiAttempted">0</div>
-            <div class="kpi-sub">Delivery attempted</div>
-        </div>
-
+    <div class="kpi-label">FASR %</div>
+    <div class="kpi-value" id="kpiFASR">0%</div>
+    <div class="kpi-sub">Delivered in 0 Attempts</div>
+</div>
         <div class="kpi cyan">
             <div class="kpi-label">Avg Delivery TAT</div>
             <div class="kpi-value" id="kpiTat">0h</div>
@@ -1036,7 +1041,19 @@ function cleanText(value){
 }
 function formatStoreName(value){
 
-    const store = cleanText(value);
+    const store = cleanText(value).toLowerCase();
+
+    const delhiHubStores = [
+        "zippee_okhla_sdd",
+        "zippee_gurugram_sdd",
+        "zippee_wazirpur_sdd",
+        "zippee_dwarka_sdd",
+        "zippee_ghaziabad_sdd"
+    ];
+
+    if(delhiHubStores.includes(store)){
+        return "Delhi_Hub";
+    }
 
     return store.replace(/^zippee_/i, "");
 }
@@ -1114,6 +1131,21 @@ function parseDate(value){
     return isNaN(fallback.getTime())
         ? null
         : fallback;
+}
+function getPerformanceDate(date){
+
+    if(!date) return null;
+
+    const d = new Date(date);
+
+    // 3:00 PM cutoff
+    if(d.getHours() >= 15){
+        d.setDate(d.getDate() + 1);
+    }
+
+    d.setHours(0,0,0,0);
+
+    return d;
 }
 
 function dateKey(date){
@@ -1230,10 +1262,26 @@ function loadCSV(file){
 
         complete:function(results){
 
-            rawData = results.data.filter(row =>
-                Object.values(row).some(v => cleanText(v) !== "")
-            );
+            const excludedDarkstores = new Set([
+    "partnr_bommasandra",
+    "partnr_badshapur",
+    "partnr_yeshwantpur",
+    "partnr_frazertown",
+    "ugaoo ggn warehouse",
+    "expresshub_testing"
+]);
 
+rawData = results.data.filter(row => {
+
+    if (!Object.values(row).some(v => cleanText(v) !== "")) {
+        return false;
+    }
+
+    const store = formatStoreName(row["Darkstore"]).toLowerCase();
+
+    return !excludedDarkstores.has(store);
+
+});
             prepareRows();
 
             document.getElementById("fileInfo").textContent =
@@ -1266,7 +1314,10 @@ function prepareRows(){
     rawData.forEach(row => {
 
         row.__creationDate =
-            parseDate(row["Creation Date"]);
+    parseDate(row["Creation Date"]);
+
+row.__performanceDate =
+    getPerformanceDate(row.__creationDate);
 
         row.__marketplaceDate =
             parseDate(row["Marketplace Order Date"]);
@@ -1349,7 +1400,7 @@ function fillSelect(select, values, firstLabel){
 function setDateRange(){
 
     const dates = rawData
-        .map(r => r.__creationDate)
+        .map(r => r.__performanceDate)
         .filter(Boolean)
         .sort((a,b) => a-b);
 
@@ -1398,7 +1449,7 @@ const to = toDate.value
 
         filteredData = rawData.filter(row => {
 
-            const d = row.__creationDate;
+            const d = row.__performanceDate;
 
         if(specific && dateKey(d) !== specific)
     return false;
@@ -1487,9 +1538,10 @@ function updateKPIs(){
     const pending =
     filteredData.filter(isNotDispatched).length;
 
-    const attempted =
-        filteredData.filter(isAttempted).length;
-
+    const fasrDelivered = filteredData.filter(row =>
+    isDelivered(row) &&
+    Number(row.__attempts) === 0
+).length;
     const tats = filteredData
         .filter(isDelivered)
         .map(r => r.__tat)
@@ -1517,8 +1569,8 @@ function updateKPIs(){
     document.getElementById("kpiPending").textContent =
         formatNumber(pending);
 
-    document.getElementById("kpiAttempted").textContent =
-        formatNumber(attempted);
+    document.getElementById("kpiFASR").textContent =
+    safeFixed(pct(fasrDelivered, delivered), 1) + "%";
 
     document.getElementById("kpiTat").textContent =
         safeFixed(avgTat,1) + "h";
@@ -1674,11 +1726,10 @@ function updateInsights(){
     const pendingRows =
         filteredData
         .filter(isPending)
-        .filter(r => r.__creationDate)
-        .sort((a,b) =>
-            a.__creationDate-b.__creationDate
-        );
-
+        .filter(r => r.__performanceDate)
+.sort((a,b)=>
+    a.__performanceDate-b.__performanceDate
+);
     const oldest = pendingRows[0];
 
     document.getElementById("bestStore").textContent =
@@ -1698,7 +1749,7 @@ function updateInsights(){
 
     document.getElementById("oldestPending").textContent =
         oldest
-            ? `${oldest.__darkstore} • ${dateKey(oldest.__creationDate)}`
+            ? `${oldest.__darkstore} • ${dateKey(oldest.__performanceDate)}`
             : "-";
 }
 
@@ -1715,21 +1766,21 @@ function destroyChart(name){
 const commonScales = {
     x:{
         ticks:{
-            color:"#91a4b7",
+            color:"#6B7280",
             maxRotation:45,
             minRotation:0
         },
         grid:{
-            color:"rgba(255,255,255,.05)"
+            color:"#E5E7EB"
         }
     },
     y:{
         beginAtZero:true,
         ticks:{
-            color:"#91a4b7"
+            color:"#6B7280"
         },
         grid:{
-            color:"rgba(255,255,255,.05)"
+            color:"#E5E7EB"
         }
     }
 };
@@ -1745,10 +1796,9 @@ function renderDailyTrend(){
 
     filteredData.forEach(row => {
 
-        if(!row.__creationDate) return;
+        if(!row.__performanceDate) return;
 
-        const key = dateKey(row.__creationDate);
-
+const key = dateKey(row.__performanceDate);
         if(!map.has(key)){
             map.set(key,{
                 total:0,
@@ -1814,7 +1864,7 @@ function renderDailyTrend(){
                 plugins:{
                     legend:{
                         labels:{
-                            color:"#dcecff"
+                            color:"#374151"
                         }
                     },
 
@@ -1883,7 +1933,7 @@ function renderStatusChart(){
                     legend:{
                         position:"bottom",
                         labels:{
-                            color:"#dcecff",
+                            color:"#374151",
                             boxWidth:10
                         }
                     },
@@ -1960,7 +2010,7 @@ function renderStoreChart(){
                 plugins:{
                     legend:{
                         labels:{
-                            color:"#dcecff"
+                            color:"#374151"
                         }
                     },
 
@@ -2017,7 +2067,7 @@ function renderBrandChart(){
                 plugins:{
                     legend:{
                         labels:{
-                            color:"#dcecff"
+                            color:"#374151"
                         }
                     },
 
