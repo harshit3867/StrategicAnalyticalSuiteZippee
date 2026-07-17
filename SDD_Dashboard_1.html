@@ -11,6 +11,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 
 <style>
 /* =========================================================
@@ -412,7 +413,7 @@ table{
 #readyBifurcationTable td{
     white-space:nowrap;
     text-align:center;
-    padding:12px 16px;
+    padding:2px 16px;
 }
 
 #readyBifurcationTable th:first-child{
@@ -439,7 +440,7 @@ thead{
 th{
     background:#F3F4F6;
     color:#374151;
-    text-align:left;
+    text-align:center;
     padding:12px 10px;
     font-size:11px;
     text-transform:uppercase;
@@ -453,6 +454,7 @@ td{
     color:#374151;
     font-size:12px;
     white-space:nowrap;
+    text-align:center;
 }
 
 tbody tr:hover{
@@ -461,7 +463,7 @@ tbody tr:hover{
 
 .badge{
     display:inline-block;
-    padding:5px 8px;
+    padding:2px 8px;
     border-radius:20px;
     font-size:10px;
     font-weight:800;
@@ -725,9 +727,9 @@ tbody tr:hover{
         </div>
 
         <div class="kpi orange">
-    <div class="kpi-label">Not Dispatched</div>
-    <div class="kpi-value" id="kpiPending">0</div>
-    <div class="kpi-sub">Pending to Dispatch</div>
+    <div class="kpi-label">Ready</div>
+<div class="kpi-value" id="kpiPending">0</div>
+<div class="kpi-sub">Current READY Orders</div>
 </div>
         <div class="kpi purple">
     <div class="kpi-label">FASR %</div>
@@ -777,8 +779,8 @@ tbody tr:hover{
 
         <div class="panel">
             <div class="panel-title">
-                <h3>Daily Shipment Trend</h3>
-                <span>Orders vs Delivered vs RTO</span>
+                <h3>COD vs PREPAID (Darkstore Wise)</h3>
+                <span>Payment Mode Distribution</span>
             </div>
 
             <div class="chart-wrap">
@@ -826,44 +828,22 @@ tbody tr:hover{
 
     </section>
 
-    <!-- CHART ROW 3 -->
-    <section class="grid-equal">
-
-        <!-- DELIVERY TAT DISTRIBUTION -->
-        <div class="panel">
-            <div class="panel-title">
-                <h3>Delivery TAT Distribution</h3>
-                <span>Marketplace order to actual delivery</span>
-            </div>
-
-            <div class="chart-wrap">
-                <canvas id="tatChart"></canvas>
-            </div>
-        </div>
-
-        <!-- PENDING AGING -->
-        <div class="panel">
-            <div class="panel-title">
-                <h3>Pending Aging</h3>
-                <span>Open shipment aging</span>
-            </div>
-
-            <div class="chart-wrap">
-                <canvas id="agingChart"></canvas>
-            </div>
-        </div>
-
-    </section>
 
     <!-- READY PENDENCY BIFURCATION - FULL WIDTH -->
     <section class="panel table-panel">
 
-        <div class="panel-title">
-            <div>
-                <h3>READY Pendency Bifurcation</h3>
-                <span>Darkstore-wise READY orders by No. of Attempts</span>
-            </div>
-        </div>
+<div class="panel-title">
+    <div>
+        <h3>READY Pendency Bifurcation</h3>
+        <span>Darkstore-wise READY orders by No. of Attempts</span>
+    </div>
+
+    <button
+        class="success"
+        onclick="downloadReadyOrdersExcel()">
+        Download READY Orders Excel
+    </button>
+</div>
 
         <div class="table-wrap ready-bifurcation-wrap">
             <table id="readyBifurcationTable">
@@ -876,11 +856,17 @@ tbody tr:hover{
 <section class="panel table-panel">
 
     <div class="panel-title">
-        <div>
-            <h3>Order Ageing</h3>
-            <span>Darkstore-wise READY Orders by Ageing</span>
-        </div>
+    <div>
+        <h3>Order Ageing</h3>
+        <span>Darkstore-wise READY Orders by Ageing</span>
     </div>
+
+    <button
+        class="success"
+        onclick="downloadOrderAgeingExcel()">
+        Download Order Ageing Excel
+    </button>
+</div>
 
     <div class="table-wrap ready-bifurcation-wrap">
         <table id="orderAgeingTable">
@@ -919,8 +905,8 @@ tbody tr:hover{
                         <th data-key="deliveryPct">Delivery %</th>
                         <th data-key="rto">RTO</th>
                         <th data-key="rtoPct">RTO %</th>
-                        <th data-key="pending">Pending</th>
-                        <th data-key="attempted">Attempted</th>
+                        <th data-key="pending">Ready</th>
+                        
                         <th data-key="avgTat">Avg TAT</th>
                     </tr>
                 </thead>
@@ -958,8 +944,8 @@ tbody tr:hover{
                         <th data-key="deliveryPct">Delivery %</th>
                         <th data-key="rto">RTO</th>
                         <th data-key="rtoPct">RTO %</th>
-                        <th data-key="pending">Pending</th>
-                        <th data-key="attempted">Attempted</th>
+                        <th data-key="pending">Ready</th>
+                        
                         <th data-key="avgTat">Avg TAT</th>
                     </tr>
                 </thead>
@@ -1540,8 +1526,6 @@ renderStoreChart();
 renderBrandChart();
 renderReadyBifurcationTable();
 renderOrderAgeingTable();
-renderAgingChart();
-renderTatChart();
 
     renderStoreTable();
     renderBrandTable();
@@ -1561,7 +1545,7 @@ function updateKPIs(){
     const rto =
         filteredData.filter(isRTO).length;
 
-    const pending =
+    const ready =
     filteredData.filter(isNotDispatched).length;
 
     const fasrDelivered = filteredData.filter(row =>
@@ -1593,7 +1577,7 @@ function updateKPIs(){
         safeFixed(pct(rto,total),1) + "%";
 
     document.getElementById("kpiPending").textContent =
-        formatNumber(pending);
+        formatNumber(ready);
 
     document.getElementById("kpiFASR").textContent =
     safeFixed(pct(fasrDelivered, delivered), 1) + "%";
@@ -1615,15 +1599,15 @@ function buildGroupAnalytics(data, key){
 
         if(!map.has(name)){
             map.set(name,{
-                name,
-                total:0,
-                delivered:0,
-                rto:0,
-                pending:0,
-                attempted:0,
-                tatSum:0,
-                tatCount:0
-            });
+    name,
+    total:0,
+    delivered:0,
+    rto:0,
+    ready:0,
+    attempted:0,
+    tatSum:0,
+    tatCount:0
+});
         }
 
         const item = map.get(name);
@@ -1636,9 +1620,8 @@ function buildGroupAnalytics(data, key){
         if(isRTO(row))
             item.rto++;
 
-        if(isPending(row))
-            item.pending++;
-
+        if(isNotDispatched(row))
+    item.ready++;
         if(isAttempted(row))
             item.attempted++;
 
@@ -1822,63 +1805,47 @@ function renderDailyTrend(){
 
     filteredData.forEach(row => {
 
-        if(!row.__performanceDate) return;
+        const store = row.__darkstore || "Unknown";
+        const payment = cleanText(row["Payment Mode"]).toUpperCase();
 
-const key = dateKey(row.__performanceDate);
-        if(!map.has(key)){
-            map.set(key,{
-                total:0,
-                delivered:0,
-                rto:0
+        if(!map.has(store)){
+            map.set(store,{
+                cod:0,
+                prepaid:0
             });
         }
 
-        const item = map.get(key);
+        const item = map.get(store);
 
-        item.total++;
+        if(payment === "COD"){
+            item.cod++;
+        }
+        else if(payment === "PREPAID"){
+            item.prepaid++;
+        }
 
-        if(isDelivered(row))
-            item.delivered++;
-
-        if(isRTO(row))
-            item.rto++;
     });
 
-    const labels =
-        [...map.keys()].sort();
+    const labels = [...map.keys()];
 
     charts.daily = new Chart(
         document.getElementById("dailyTrendChart"),
         {
-            type:"line",
+            type:"bar",
 
             data:{
-                labels:labels.map(formatDateDisplay),
+                labels:labels,
 
                 datasets:[
                     {
-                        label:"Total Orders",
-                        data:labels.map(k => map.get(k).total),
-                        borderColor:"#38bdf8",
-                        backgroundColor:"rgba(56,189,248,.12)",
-                        tension:.35,
-                        fill:true,
-                        pointRadius:2
+                        label:"COD",
+                        data:labels.map(x => map.get(x).cod),
+                        backgroundColor:"#22c55e"
                     },
                     {
-                        label:"Delivered",
-                        data:labels.map(k => map.get(k).delivered),
-                        borderColor:"#22c55e",
-                        backgroundColor:"rgba(34,197,94,.08)",
-                        tension:.35,
-                        pointRadius:2
-                    },
-                    {
-                        label:"RTO",
-                        data:labels.map(k => map.get(k).rto),
-                        borderColor:"#ef4444",
-                        tension:.35,
-                        pointRadius:2
+                        label:"PREPAID",
+                        data:labels.map(x => map.get(x).prepaid),
+                        backgroundColor:"#3b82f6"
                     }
                 ]
             },
@@ -1893,7 +1860,6 @@ const key = dateKey(row.__performanceDate);
                             color:"#374151"
                         }
                     },
-
                     datalabels:{
                         display:false
                     }
@@ -2246,7 +2212,10 @@ function renderReadyBifurcationTable(){
     // 0, 1, 2, 3, 4 become rows
     // =========================================
     tbody.innerHTML = [0,1,2,3,4]
-        .map(attempt => `
+    .filter(attempt =>
+        stores.some(store => map.get(store)[attempt] > 0)
+    )
+    .map(attempt => `
 
             <tr>
 
@@ -3509,8 +3478,8 @@ function renderStoreTable(){
             <td>${performanceBadge(x.deliveryPct)}</td>
             <td>${formatNumber(x.rto)}</td>
             <td>${rtoBadge(x.rtoPct)}</td>
-            <td>${formatNumber(x.pending)}</td>
-            <td>${formatNumber(x.attempted)}</td>
+            <td>${formatNumber(x.ready)}</td>
+            
             <td>${safeFixed(x.avgTat,1)}h</td>
         </tr>
     `).join("");
@@ -3540,8 +3509,8 @@ function renderBrandTable(){
             <td>${performanceBadge(x.deliveryPct)}</td>
             <td>${formatNumber(x.rto)}</td>
             <td>${rtoBadge(x.rtoPct)}</td>
-            <td>${formatNumber(x.pending)}</td>
-            <td>${formatNumber(x.attempted)}</td>
+            <td>${formatNumber(x.ready)}</td>
+            
             <td>${safeFixed(x.avgTat,1)}h</td>
         </tr>
     `).join("");
@@ -3570,7 +3539,7 @@ function renderRiderTable(){
             <td>${formatNumber(x.delivered)}</td>
             <td>${performanceBadge(x.deliveryPct)}</td>
             <td>${formatNumber(x.rto)}</td>
-            <td>${formatNumber(x.attempted)}</td>
+            
             <td>${safeFixed(x.avgAttempts,2)}</td>
         </tr>
     `).join("");
@@ -3677,7 +3646,82 @@ function downloadFilteredCSV(){
 
     URL.revokeObjectURL(url);
 }
+function downloadReadyOrdersExcel(){
 
+    const readyRows = filteredData.filter(row =>
+        row.__status === "READY"
+    );
+
+    if(!readyRows.length){
+        alert("No READY orders found.");
+        return;
+    }
+
+    // Remove helper (__...) columns
+    const exportRows = readyRows.map(row => {
+
+        const obj = {};
+
+        Object.keys(row).forEach(key => {
+
+            if(!key.startsWith("__")){
+                obj[key] = row[key];
+            }
+
+        });
+
+        return obj;
+    });
+
+    const ws = XLSX.utils.json_to_sheet(exportRows);
+    const wb = XLSX.utils.book_new();
+
+    XLSX.utils.book_append_sheet(
+        wb,
+        ws,
+        "READY Orders"
+    );
+
+    XLSX.writeFile(
+        wb,
+        "READY_Orders.xlsx"
+    );
+}
+function downloadOrderAgeingExcel(){
+
+    const exportRows = filteredData
+        .filter(row =>
+            row.__status === "READY" &&
+            row.__ageing !== null
+        )
+        .map(row => {
+
+            const obj = {};
+
+            Object.keys(row).forEach(key => {
+                if(!key.startsWith("__")){
+                    obj[key] = row[key];
+                }
+            });
+
+            return obj;
+        });
+
+    if(!exportRows.length){
+        alert("No READY ageing orders found.");
+        return;
+    }
+
+    const ws = XLSX.utils.json_to_sheet(exportRows);
+    const wb = XLSX.utils.book_new();
+
+    XLSX.utils.book_append_sheet(wb, ws, "Order Ageing Raw");
+
+    XLSX.writeFile(
+        wb,
+        "Order_Ageing_Raw.xlsx"
+    );
+}
 /* =========================================================
    DOWNLOAD PNG
 ========================================================= */
