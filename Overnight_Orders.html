@@ -198,13 +198,12 @@ rows.forEach(r=>{map[r]={};cols.forEach(c=>map[r][c]=0);});
 data.forEach(d=>{
 
     // Get Order Status
-    let status = (d["Order Status"] || "").trim().toLowerCase();
+let status = (d["Order Status"] || "").trim().toLowerCase();
 
-    // Skip Cancelled & Delivered orders
-    if(status === "cancelled" || status === "delivered" || "attempted"){
-        return;
-    }
-
+// Skip Attempted, Cancelled and Delivered orders
+if (["attempted", "cancelled", "delivered"].includes(status)) {
+    return;
+}
     let r = d[rowsKey] || "Blank";
     let c = (d[colKey] || "").trim();
 
