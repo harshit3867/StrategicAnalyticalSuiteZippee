@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CSV Pivot - Store vs Order Tags</title>
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+body{
+    font-family:Arial,sans-serif;
+    background:#f4f6f9;
+    margin:20px;
+}
+
+.header{
+    background:#1976d2;
+    color:#fff;
+    padding:15px 25px;
+    border-radius:12px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:20px;
+}
+
+.logo{
+    height:55px;
+}
+
+.card{
+    background:#fff;
+    padding:20px;
+    border-radius:10px;
+    box-shadow:0 2px 8px rgba(0,0,0,.15);
+}
+
+.title{
+    font-size:22px;
+    font-weight:bold;
+    margin-bottom:15px;
+}
+
+.controls{
+    display:flex;
+    gap:10px;
+    align-items:center;
+    flex-wrap:wrap;
+}
+
+.button{
+    padding:10px 18px;
+    border:none;
+    border-radius:6px;
+    background:#1976d2;
+    color:#fff;
+    cursor:pointer;
+}
+
+input[type=file]{
+    margin:10px 0;
+}
+
+#search{
+    padding:8px;
+    width:300px;
+}
+
+.tableWrap{
+    max-height:75vh;
+    overflow:auto;
+    border:1px solid #ccc;
+    margin-top:15px;
+}
+
+table{
+    border-collapse:collapse;
+    width:max-content;
+    min-width:100%;
+}
+
+th,td{
+    border:1px solid #ccc;
+    padding:6px 10px;
+    text-align:center;
+}
+
+th{
+    background:#ffe082;
+    position:sticky;
+    top:0;
+    z-index:2;
+}
+
+td:first-child,
+th:first-child{
+    position:sticky;
+    left:0;
+    background:#fff59d;
+    font-weight:bold;
+    z-index:1;
+}
+
+tfoot td{
+    font-weight:bold;
+    background:#e3f2fd;
+}
+
+.footer-watermark{
+    text-align:center;
+    margin-top:15px;
+    margin-bottom:10px;   /* Increase this value as needed */
+    color:#666;
+    font-size:12px;
+    font-style:italic;
+}
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+    <h1>Mnow – Overnight Order Pendency</h1>
+    <img class="logo" src="SASA.png">
+</div>
+
+<!-- Main Card -->
+<div class="card">
+
+    <div class="title">Upload Dataset</div>
+
+    <input type="file" id="file" accept=".csv">
+
+    <div class="controls">
+        <input id="search" placeholder="Search Store...">
+        <button class="button" onclick="downloadPNG()">Download PNG</button>
+    </div>
+
+    <div id="reportContainer" style="display:none;margin-top:20px;">
+
+        <div id="reportArea" style="position:relative;display:inline-block;width:fit-content;margin:auto;">
+
+            <div style="text-align:center;margin-bottom:15px;">
+
+                <div style="font-size:18px;font-weight:800;">
+                    MNOW &lt;&gt; Overnight Order Pendency
+                </div>
+
+                <div style="font-size:13px;">
+                    Date :
+                    <span id="autoDate"></span>
+
+                    &nbsp;&nbsp;
+
+                    Time :
+                    <span id="autoTime"></span>
+                </div>
+
+            </div>
+
+            <div class="tableWrap">
+                <div id="pivot"></div>
+            </div>
+
+            <div class="footer-watermark">
+                Powered by SASA Automation | Zippee
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+<script>
+let pivotTable;
+
+document.getElementById("file").addEventListener("change",e=>{
+const f=e.target.files[0];
+Papa.parse(f,{header:true,skipEmptyLines:true,complete:r=>build(r.data)});
+});
+
+document.getElementById("search").addEventListener("input",function(){
+let t=this.value.toLowerCase();
+document.querySelectorAll("#pivot tbody tr").forEach(r=>{
+r.style.display=r.cells[0].innerText.toLowerCase().includes(t)?"":"none";
+});
+});
+
+function build(data){
+const rowsKey="Store Name";
+const colKey="Order Tags";
+let rows=[...new Set(data.map(x=>x[rowsKey]||"Blank"))];
+// Only keep the OVERNIGHT tag as the pivot column
+let cols = ['["OVERNIGHT"]'];
+let map={};
+rows.forEach(r=>{map[r]={};cols.forEach(c=>map[r][c]=0);});
+data.forEach(d=>{
+
+    // Get Order Status
+    let status = (d["Order Status"] || "").trim().toLowerCase();
+
+    // Skip Cancelled & Delivered orders
+    if(status === "cancelled" || status === "delivered"){
+        return;
+    }
+
+    let r = d[rowsKey] || "Blank";
+    let c = (d[colKey] || "").trim();
+
+    // Count only OVERNIGHT orders
+    if(c === '["OVERNIGHT"]'){
+        map[r]['["OVERNIGHT"]']++;
+    }
+
+});// Sort stores by highest OVERNIGHT count
+rows.sort((a, b) => {
+    return map[b]['["OVERNIGHT"]'] - map[a]['["OVERNIGHT"]'];
+});
+let html = `
+<table id="tbl">
+<thead>
+<tr>
+<th>Store Name</th>
+`;
+cols.forEach(c=>html+="<th>OVERNIGHT</th>");
+html+="<th>Total</th></tr></thead><tbody>";
+let colTotals={};cols.forEach(c=>colTotals[c]=0);
+rows.forEach(r=>{
+let rt=0;
+html+="<tr><td>"+r+"</td>";
+cols.forEach(c=>{
+let v=map[r][c];
+rt+=v; colTotals[c]+=v;
+let color = "";
+
+if(v >= 20)
+    color = "#ff5252";
+else if(v >= 10)
+    color = "#ffd54f";
+else
+    color = "#81c784";
+
+html += `<td style="background:${color};font-weight:bold">${v}</td>`;
+});
+html+="<td><b>"+rt+"</b></td></tr>";
+});
+html+="</tbody><tfoot><tr><td>Grand Total</td>";
+let gt=0;
+cols.forEach(c=>{gt+=colTotals[c];html+="<td>"+colTotals[c]+"</td>";});
+html+="<td>"+gt+"</td></tr></tfoot></table>";
+document.getElementById("pivot").innerHTML = html;
+pivotTable = document.getElementById("tbl");
+
+document.getElementById("reportContainer").style.display = "block";
+
+const now = new Date();
+
+document.getElementById("autoDate").innerText =
+now.toLocaleDateString("en-GB");
+
+document.getElementById("autoTime").innerText =
+now.toLocaleTimeString("en-IN");
+}
+
+function downloadPNG(){
+
+    if(!pivotTable){
+        alert("Generate pivot first");
+        return;
+    }
+
+    const report = document.getElementById("reportArea");
+
+    html2canvas(report,{
+        scale:3,
+        useCORS:true,
+        backgroundColor:"#ffffff"
+    }).then(canvas=>{
+
+        const link=document.createElement("a");
+        link.download="Mnow_Overnight_Order_Pendency.png";
+        link.href=canvas.toDataURL("image/png");
+        link.click();
+
+    });
+
+}
+</script>
+</body>
+</html>
