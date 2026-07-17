@@ -201,7 +201,7 @@ data.forEach(d=>{
     let status = (d["Order Status"] || "").trim().toLowerCase();
 
     // Skip Cancelled & Delivered orders
-    if(status === "cancelled" || status === "delivered"){
+    if(status === "cancelled" || status === "delivered" || "attempted"){
         return;
     }
 
