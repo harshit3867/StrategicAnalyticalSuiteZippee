@@ -224,26 +224,17 @@ body::before {
    TABLE
 ================================ */
 
-.table-wrapper {
-    max-width: 100%;
-
-    overflow-x: auto;
+.table-wrapper{
+    display:inline-block;
+    overflow:visible;
 }
 
 table {
     border-collapse: collapse;
-
     background: white;
-
-    border-radius: 12px;
-
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
-
-    margin: 0 auto;
-
     table-layout: auto;
-
-    width: auto;
+    width: fit-content;
+    margin: 0 auto;
 }
 
 th {
@@ -263,43 +254,18 @@ td {
 }
 
 
-/* COLUMN WIDTHS */
+/* AUTO COLUMN WIDTH */
 
-th:nth-child(1),
-td:nth-child(1) {
-    width: 55px;
+th,
+td {
+    padding: 4px 10px;
+    white-space: nowrap;
 }
 
-th:nth-child(2),
-td:nth-child(2) {
-    width: 145px;
-}
-
-th:nth-child(3),
-td:nth-child(3) {
-    width: 80px;
-}
-
-th:nth-child(4),
-td:nth-child(4) {
-    width: 75px;
-}
-
-th:nth-child(5),
-td:nth-child(5),
-th:nth-child(6),
-td:nth-child(6) {
-    width: 130px;
-}
-
-th:nth-child(7),
-td:nth-child(7) {
-    width: 75px;
-}
-
-th:nth-child(8),
-td:nth-child(8) {
-    width: 65px;
+th:first-child,
+td:first-child {
+    width: 90px;
+    font-weight: 700;
 }
 tbody tr:hover {
     background: #eefaff;
@@ -505,11 +471,20 @@ tbody tr:hover {
 
         <button
     class="button download-button"
-    id="downloadButton"
-    onclick="downloadPNG()"
+    id="downloadSummaryButton"
+    onclick="downloadSummaryPNG()"
     style="display:none;"
 >
-    Download PNG Report
+    Download Summary
+</button>
+
+<button
+    class="button download-button"
+    id="downloadOutsideButton"
+    onclick="downloadOutsidePNG()"
+    style="display:none;"
+>
+    Download Outside Shift
 </button>
 
     </div>
@@ -522,7 +497,13 @@ tbody tr:hover {
 
     <div id="reportContainer">
 
-        <div id="captureBox">
+        <div id="summaryCapture"
+     style="
+        display:inline-block;
+        background:#fff;
+        width:auto;
+        margin:auto;
+     ">
 
 
             <!-- REPORT HEADING -->
@@ -546,57 +527,96 @@ tbody tr:hover {
 
             <div class="table-wrapper">
 
-                <table>
+    <table>
 
-                    <thead>
+        <thead>
 
-                        <tr>
+            <tr>
+                <th colspan="9"
+                    style="
+background:#0A66C2;
+color:#ffffff;
+font-size:18px;
+text-align:center;
+padding:10px;
+font-weight:bold;
+">
+                    OZI &lt;&gt; Active Rider Report
+                </th>
+            </tr>
 
-                            <th>Rider ID</th>
+        </thead>
 
-                            <th>Rider Name</th>
+        <tbody id="reportBody"></tbody>
 
-                            <th>Phone</th>
-
-                            <th>Status</th>
-
-                            <th>Punch In (IST)</th>
-
-                            <th>Punch Out (IST)</th>
-
-                            <th>Active Hour</th>
-                            <th>Shift</th>
-                            
-
-                        </tr>
-
-                    </thead>
-
-
-                    <tbody id="reportBody"></tbody>
-
-                </table>
-
-            </div>
-
-
-
-            <!-- FOOTER -->
-
-            <div class="footer-watermark">
-
-                Powered by SASA Automation | Zippee
-
-            </div>
-
-
-        </div>
-
-    </div>
-
+    </table>
 
 </div>
+</div>
 
+
+<!-- ===========================
+     OUTSIDE SHIFT TABLE
+=========================== -->
+
+<div id="outsideCapture"
+     style="
+        display:inline-block;
+        background:#fff;
+        width:auto;
+        margin:auto;
+     ">
+
+<div class="table-wrapper" style="margin-top:20px;">
+
+    <table>
+
+        <thead>
+
+            <tr>
+                <th colspan="6"
+                    style="
+background:#0A66C2;
+color:white;
+font-size:16px;
+text-align:center;
+padding:8px;
+font-weight:bold;
+">
+                    Outside Shift Riders
+                </th>
+            </tr>
+
+            <tr>
+
+                <th>Rider ID</th>
+                <th>Rider Name</th>
+                <th>Phone</th>
+                <th>Shift</th>
+                <th>Punch In</th>
+                <th>Active Hour</th>
+
+            </tr>
+
+        </thead>
+
+        <tbody id="outsideShiftBody">
+
+        </tbody>
+
+    </table>
+
+</div>
+</div>
+
+
+<!-- FOOTER -->
+
+<div class="footer-watermark">
+
+    Powered by SASA Automation | Zippee
+
+</div>
 
 
 <script>
@@ -606,6 +626,44 @@ const fileInput = document.getElementById("fileInput");
 let uploadedRows = [];
 
 let reportData = [];
+let reportDateKey = "";
+
+    const plannedRiders = {
+
+    "19/07/26": { "5 AM":3, "6 AM":11, "8 AM":14, "10 AM":14, "3 PM":34, "5 PM":5 },
+
+    "20/07/26": { "5 AM":3, "6 AM":9,  "8 AM":11, "10 AM":11, "3 PM":27, "5 PM":4 },
+
+    "21/07/26": { "5 AM":3, "6 AM":9,  "8 AM":11, "10 AM":11, "3 PM":28, "5 PM":4 },
+
+    "22/07/26": { "5 AM":3, "6 AM":10, "8 AM":12, "10 AM":12, "3 PM":30, "5 PM":4 },
+
+    "23/07/26": { "5 AM":3, "6 AM":11, "8 AM":13, "10 AM":13, "3 PM":32, "5 PM":4 },
+
+    "24/07/26": { "5 AM":3, "6 AM":11, "8 AM":13, "10 AM":13, "3 PM":32, "5 PM":4 },
+
+    "25/07/26": { "5 AM":3, "6 AM":12, "8 AM":14, "10 AM":14, "3 PM":36, "5 PM":5 },
+
+    "26/07/26": { "5 AM":3, "6 AM":12, "8 AM":14, "10 AM":14, "3 PM":35, "5 PM":5 },
+
+    "27/07/26": { "5 AM":3, "6 AM":9,  "8 AM":11, "10 AM":11, "3 PM":27, "5 PM":4 },
+
+    "28/07/26": { "5 AM":3, "6 AM":10, "8 AM":12, "10 AM":12, "3 PM":30, "5 PM":4 },
+
+    "29/07/26": { "5 AM":3, "6 AM":10, "8 AM":13, "10 AM":13, "3 PM":31, "5 PM":4 },
+
+    "30/07/26": { "5 AM":3, "6 AM":11, "8 AM":14, "10 AM":14, "3 PM":34, "5 PM":5 }
+
+};
+let shiftSummary = {
+    "5 AM": 0,
+    "6 AM": 0,
+    "8 AM": 0,
+    "10 AM": 0,
+    "3 PM": 0,
+    "5 PM": 0,
+    "Outside Shift": 0
+};
 
 
 /* ===============================
@@ -737,10 +795,13 @@ function generateReport() {
     ).style.display = "block";
 
 
-    document.getElementById(
-        "downloadButton"
-    ).style.display = "inline-block";
+document.getElementById(
+    "downloadSummaryButton"
+).style.display = "inline-block";
 
+document.getElementById(
+    "downloadOutsideButton"
+).style.display = "inline-block";
 }
 
 
@@ -752,6 +813,16 @@ function generateReport() {
 function processData(rows) {
 
     reportData = [];
+    reportDateKey = "";
+    shiftSummary = {
+    "5 AM": 0,
+    "6 AM": 0,
+    "8 AM": 0,
+    "10 AM": 0,
+    "3 PM": 0,
+    "5 PM": 0,
+    "Outside Shift": 0
+};
 
 
     for (let i = 1; i < rows.length; i++) {
@@ -780,6 +851,19 @@ function processData(rows) {
         const status = row[4];
 
         const punchIn = row[5];
+        if (!reportDateKey && punchIn) {
+
+    const d = parseExcelDate(punchIn);
+
+    if (d) {
+
+        reportDateKey =
+            String(d.getDate()).padStart(2,"0") + "/" +
+            String(d.getMonth()+1).padStart(2,"0") + "/" +
+            String(d.getFullYear()).slice(-2);
+
+    }
+}
 
 
         const punchOut =
@@ -804,6 +888,7 @@ function processData(rows) {
             punchOut
         );
 const shift = calculateShift(punchIn);
+shiftSummary[shift]++;
 
         reportData.push({
 
@@ -956,6 +1041,10 @@ function calculateActiveHour(
    SHIFT CALCULATION
 ================================ */
 
+/* ===============================
+   SHIFT CALCULATION
+================================ */
+
 function calculateShift(punchIn) {
 
     const date = parseExcelDate(punchIn);
@@ -966,31 +1055,88 @@ function calculateShift(punchIn) {
 
     const minutes = date.getHours() * 60 + date.getMinutes();
 
-    // 5 AM : 04:30 - 05:30
-    if (minutes >= 270 && minutes <= 330)
+    // 5 AM Shift : After 4:15 AM and Before 5:30 AM
+    if (minutes >= 255 && minutes <= 330)
         return "5 AM";
 
-    // 6 AM : 05:30 - 06:30
+    // 6 AM Shift : After 5:30 AM and Before 6:30 AM
     if (minutes >= 330 && minutes <= 390)
         return "6 AM";
 
-    // 8 AM : 07:30 - 08:30
+    // 8 AM Shift : After 7:30 AM and Before 8:30 AM
     if (minutes >= 450 && minutes <= 510)
         return "8 AM";
 
-    // 10 AM : 09:30 - 10:30
+    // 10 AM Shift : After 9:30 AM and Before 10:30 AM
     if (minutes >= 570 && minutes <= 630)
         return "10 AM";
 
-    // 3 PM : 02:30 PM - 03:30 PM
+    // 3 PM Shift : After 2:30 PM and Before 3:30 PM
     if (minutes >= 870 && minutes <= 930)
         return "3 PM";
 
-    // 5 PM : 04:30 PM - 05:30 PM
+    // 5 PM Shift : After 4:30 PM and Before 5:30 PM
     if (minutes >= 990 && minutes <= 1050)
         return "5 PM";
 
     return "Outside Shift";
+}
+/* ===============================
+   SHIFT VISIBILITY
+================================ */
+
+function isShiftCompleted(shift) {
+
+    const now = getCurrentISTDate();
+
+    const minutes = now.getHours() * 60 + now.getMinutes();
+
+    switch (shift) {
+
+        case "5 AM":
+            return minutes >= 330;   // 5:30 AM
+
+        case "6 AM":
+            return minutes >= 390;   // 6:30 AM
+
+        case "8 AM":
+            return minutes >= 510;   // 8:30 AM
+
+        case "10 AM":
+            return minutes >= 630;   // 10:30 AM
+
+        case "3 PM":
+            return minutes >= 930;   // 3:30 PM
+
+        case "5 PM":
+            return minutes >= 1050;  // 5:30 PM
+
+        case "Outside Shift":
+            return true;
+
+        default:
+            return false;
+    }
+
+}
+function getVisibleShifts() {
+
+    const now = getCurrentISTDate();
+
+    const minutes = now.getHours() * 60 + now.getMinutes();
+
+    const shifts = [];
+
+    if (minutes >= 330) shifts.push("5 AM");          // 5:30 AM
+    if (minutes >= 390) shifts.push("6 AM");          // 6:30 AM
+    if (minutes >= 510) shifts.push("8 AM");          // 8:30 AM
+    if (minutes >= 630) shifts.push("10 AM");         // 10:30 AM
+    if (minutes >= 930) shifts.push("3 PM");          // 3:30 PM
+    if (minutes >= 1050) shifts.push("5 PM");         // 5:30 PM
+
+    // Always show Outside Shift column
+shifts.push("Outside Shift");
+    return shifts;
 }
 /* ===============================
    CURRENT IST
@@ -1127,91 +1273,269 @@ function parseExcelDate(value) {
 
 
 
-/* ===============================
-   GENERATE TABLE
-================================ */
-
 function generateTable() {
 
-    const tbody = document.getElementById(
-        "reportBody"
-    );
+    const tbody = document.getElementById("reportBody");
+
+    const visibleShifts = getVisibleShifts();
+
+    let html = "";
+
+    // ===========================
+    // Planned Rider
+    // ===========================
+
+    html += `<tr>
+        <td style="background:#0A66C2;color:white;font-weight:bold;">
+            Planned Rider
+        </td>`;
+
+    visibleShifts.forEach(shift => {
+
+        const id = {
+            "5 AM":"plan5",
+            "6 AM":"plan6",
+            "8 AM":"plan8",
+            "10 AM":"plan10",
+            "3 PM":"plan3",
+            "5 PM":"plan5pm",
+            "Outside Shift":"planOutsideShift"
+        }[shift];
+
+        html += `<td id="${id}"></td>`;
+
+    });
+
+    html += `<td id="plannedTotal"></td></tr>`;
 
 
-    tbody.innerHTML = "";
+    // ===========================
+    // Shift Row
+    // ===========================
+
+    html += `<tr>
+        <td style="background:#0A66C2;color:white;font-weight:bold;">
+            Shift
+        </td>`;
+
+    visibleShifts.forEach(shift => {
+
+        html += `<td>${shift}</td>`;
+
+    });
+
+    html += `<td>Total Riders</td></tr>`;
 
 
-    reportData.forEach(
-        (item, index) => {
+    // ===========================
+    // Active Rider
+    // ===========================
 
+    html += `<tr>
+        <td style="background:#0A66C2;color:white;font-weight:bold;">
+            Active Riders
+        </td>`;
 
-            const tr = document.createElement(
-                "tr"
-            );
+    const totalActive = reportData.length;
 
+let shownShiftTotal = 0;
 
-            const statusClass =
+visibleShifts.forEach(shift => {
 
-                getStatusClass(
-                    item.status
-                );
+    let value;
 
+    if (shift === "Outside Shift") {
 
-            tr.innerHTML = `
+        value = totalActive - shownShiftTotal;
 
-                <td>
-                    ${escapeHTML(item.riderID)}
-                </td>
+    } else {
 
-                <td>
-                    ${escapeHTML(item.riderName)}
-                </td>
+        value = shiftSummary[shift];
+        shownShiftTotal += value;
 
-               <td>
-    <div class="phone-cell">
+    }
 
-        <span>
-            ${escapeHTML(item.phone)}
-        </span>
+    html += `<td>${value}</td>`;
 
-        <button
-            class="copy-phone-btn"
-            onclick="copyPhone('${escapeHTML(item.phone)}', this)"
-        >
-            Copy
-        </button>
+});
 
-    </div>
-</td>
-                <td class="${statusClass}">
-                    ${escapeHTML(item.status)}
-                </td>
+html += `<td>${totalActive}</td></tr>`;
 
-                <td>
-                    ${escapeHTML(item.punchIn)}
-                </td>
+    // ===========================
+    // Difference
+    // ===========================
 
-                <td>
-                    ${escapeHTML(item.punchOut)}
-                </td>
+    html += `<tr>
+        <td style="background:#0A66C2;color:white;font-weight:bold;">
+            Difference
+        </td>`;
 
-                <td>
-    ${escapeHTML(item.activeHour)}
-</td>
+    visibleShifts.forEach(shift => {
 
-<td>
-    ${escapeHTML(item.shift)}
-</td>
-            `;
+        const id = {
+            "5 AM":"diff5",
+            "6 AM":"diff6",
+            "8 AM":"diff8",
+            "10 AM":"diff10",
+            "3 PM":"diff3",
+            "5 PM":"diff5pm",
+            "Outside Shift":"diffOutsideShift"
+        }[shift];
 
+        html += `<td id="${id}"></td>`;
 
-            tbody.appendChild(tr);
+    });
 
+    html += `<td id="diffTotal"></td></tr>`;
+
+    tbody.innerHTML = html;
+
+calculateDifference();
+
+generateOutsideShiftTable();}   
+function generateOutsideShiftTable() {
+
+    const tbody = document.getElementById("outsideShiftBody");
+
+    const visibleShifts = getVisibleShifts();
+
+    const outsideShiftRiders = reportData.filter(rider => {
+
+    if (rider.shift === "Outside Shift") {
+        return true;
+    }
+
+    return !visibleShifts.includes(rider.shift);
+
+});
+    let html = "";
+
+    outsideShiftRiders.forEach(rider => {
+
+        html += `
+        <tr>
+            <td>${rider.riderID}</td>
+            <td>${rider.riderName}</td>
+            <td>${rider.phone}</td>
+            <td>${rider.shift}</td>
+            <td>${rider.punchIn}</td>
+            <td>${rider.activeHour}</td>
+        </tr>`;
+
+    });
+
+    if (outsideShiftRiders.length === 0) {
+
+        html = `
+        <tr>
+            <td colspan="6">
+                No Outside Shift Riders
+            </td>
+        </tr>`;
+
+    }
+
+    tbody.innerHTML = html;
+
+}
+function calculateDifference() {
+
+    const planned = plannedRiders[reportDateKey] || {
+
+        "5 AM": 0,
+        "6 AM": 0,
+        "8 AM": 0,
+        "10 AM": 0,
+        "3 PM": 0,
+        "5 PM": 0
+
+    };
+
+    const visibleShifts = getVisibleShifts();
+
+    let plannedTotal = 0;
+    let activeTotal = 0;
+    let diffTotal = 0;
+
+    visibleShifts.forEach(shift => {
+
+        const planId = {
+            "5 AM": "plan5",
+            "6 AM": "plan6",
+            "8 AM": "plan8",
+            "10 AM": "plan10",
+            "3 PM": "plan3",
+            "5 PM": "plan5pm",
+            "Outside Shift": "planOutsideShift"
+        }[shift];
+
+        const diffId = {
+            "5 AM": "diff5",
+            "6 AM": "diff6",
+            "8 AM": "diff8",
+            "10 AM": "diff10",
+            "3 PM": "diff3",
+            "5 PM": "diff5pm",
+            "Outside Shift": "diffOutsideShift"
+        }[shift];
+
+        const plannedValue =
+            shift === "Outside Shift"
+                ? 0
+                : planned[shift];
+
+        let activeValue;
+
+if (shift === "Outside Shift") {
+
+    let shownShiftTotal = 0;
+
+    visibleShifts.forEach(s => {
+
+        if (s !== "Outside Shift") {
+            shownShiftTotal += shiftSummary[s];
         }
-    );
+
+    });
+
+    activeValue = reportData.length - shownShiftTotal;
+
+}
+else {
+
+    activeValue = shiftSummary[shift];
 
 }
 
+        document.getElementById(planId).innerText = plannedValue;
+
+        if (shift === "Outside Shift") {
+
+    document.getElementById(diffId).innerText = activeValue;
+
+} else {
+
+    const difference = activeValue - plannedValue;
+
+document.getElementById(diffId).innerText =
+    difference > 0
+        ? `+${difference}`
+        : difference;
+}
+
+        plannedTotal += plannedValue;
+        activeTotal += activeValue;
+        diffTotal += (activeValue - plannedValue);
+
+    });
+
+    document.getElementById("plannedTotal").innerText = plannedTotal;
+    document.getElementById("diffTotal").innerText =
+    diffTotal > 0
+        ? `+${diffTotal}`
+        : diffTotal;
+
+}
 
 /* ===============================
    COPY PHONE NUMBER
@@ -1340,106 +1664,92 @@ function updateReportDate() {
 
 
 
-/* ===============================
-   DOWNLOAD PNG
-================================ */
-
-async function downloadPNG() {
+async function downloadCapture(elementId, fileName) {
 
     if (reportData.length === 0) {
         alert("No report data available.");
         return;
     }
 
-    // Recalculate Active Hours
     reportData.forEach(item => {
-
-        item.activeHour = calculateActiveHour(
-            item.punchIn,
-            item.punchOut
-        );
-
+        item.activeHour = calculateActiveHour(item.punchIn, item.punchOut);
     });
 
-    generateTable();
+    calculateDifference();
     updateReportDate();
 
-    await new Promise(resolve =>
-        setTimeout(resolve, 150)
+    await new Promise(r => setTimeout(r,150));
+
+    const element = document.getElementById(elementId);
+
+    // Save current styles
+    const oldStyle = element.style.cssText;
+
+    // Force element to shrink to content
+    element.style.display = "inline-block";
+    element.style.position = "absolute";
+    element.style.left = "0";
+    element.style.top = "0";
+    element.style.margin = "0";
+    element.style.padding = "0";
+
+    const canvas = await html2canvas(element,{
+        scale:3,
+        backgroundColor:"#ffffff",
+        useCORS:true,
+        logging:false
+    });
+    // Create a new canvas with extra space at the bottom
+const finalCanvas = document.createElement("canvas");
+
+finalCanvas.width = canvas.width;
+finalCanvas.height = canvas.height + 80;
+
+const ctx = finalCanvas.getContext("2d");
+
+// White background
+ctx.fillStyle = "#ffffff";
+ctx.fillRect(0, 0, finalCanvas.width, finalCanvas.height);
+
+// Draw original image
+ctx.drawImage(canvas, 0, 0);
+
+// Watermark
+ctx.font = "bold 30px Segoe UI";
+ctx.fillStyle = "#000000";
+ctx.textAlign = "center";
+ctx.textBaseline = "middle";
+
+ctx.fillText(
+    "POWERED BY SASA AUTOMATION | ZIPPEE",
+    finalCanvas.width / 2,
+    canvas.height + 40
+);
+
+    // Restore original styles
+    element.style.cssText = oldStyle;
+
+    const link = document.createElement("a");
+    link.href = finalCanvas.toDataURL("image/png");
+    link.download = fileName;
+    link.click();
+}
+function downloadSummaryPNG(){
+
+    downloadCapture(
+        "summaryCapture",
+        "Summary_Report.png"
     );
 
-    const captureBox =
-        document.getElementById("captureBox");
+}
+function downloadOutsidePNG(){
 
-    const copyButtons =
-        document.querySelectorAll(".copy-phone-btn");
-
-
-    try {
-
-        // Hide Copy Buttons
-        copyButtons.forEach(button => {
-            button.style.display = "none";
-        });
-
-
-
-        await new Promise(resolve =>
-            setTimeout(resolve, 100)
-        );
-
-
-        const canvas = await html2canvas(
-            captureBox,
-            {
-                scale: 3,
-                backgroundColor: "#ffffff",
-                useCORS: true,
-                logging: false
-            }
-        );
-
-
-        const image =
-            canvas.toDataURL("image/png");
-
-
-        const link =
-            document.createElement("a");
-
-        link.href = image;
-
-        link.download =
-            "Zippee_OZI_Rider_Report.png";
-
-        document.body.appendChild(link);
-
-        link.click();
-
-        document.body.removeChild(link);
-
-    }
-
-    catch (error) {
-
-        console.error(error);
-
-        alert("Unable to generate PNG report.");
-
-    }
-
-    finally {
-
-        // Show Copy Buttons Again
-        copyButtons.forEach(button => {
-            button.style.display = "";
-        });
-
-
-    }
+    downloadCapture(
+        "outsideCapture",
+        "Outside_Shift_Riders.png"
+    );
 
 }
-
 
 
 /* ===============================
@@ -1480,9 +1790,13 @@ function showError(message) {
     ).style.display = "none";
 
 
-    document.getElementById(
-        "downloadButton"
-    ).style.display = "none";
+   document.getElementById(
+    "downloadSummaryButton"
+).style.display = "none";
+
+document.getElementById(
+    "downloadOutsideButton"
+).style.display = "none";
 
 }
 
