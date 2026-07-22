@@ -566,7 +566,6 @@ tbody tr:hover {
 
                             <th>Active Hour</th>
                             <th>Shift</th>
-                            <th>Order</th>
                             
 
                         </tr>
@@ -775,23 +774,6 @@ function processData(rows) {
         const riderName = row[1];
 
 
-        /*
-        ONLY RIDER NAME ENDING WITH ZIPPEE
-        */
-
-        const riderNameText = String(
-            riderName
-        ).trim();
-
-
-        if (
-            !/zippee$/i.test(riderNameText)
-        ) {
-
-            continue;
-
-        }
-
 
         const phone = row[2];
 
@@ -840,8 +822,6 @@ const shift = calculateShift(punchIn);
     activeHour: activeHour,
 
     shift: shift,
-
-    order: ""
 
 });
     }
@@ -981,37 +961,36 @@ function calculateShift(punchIn) {
     const date = parseExcelDate(punchIn);
 
     if (!date) {
-        return "Others";
+        return "Outside Shift";
     }
 
     const minutes = date.getHours() * 60 + date.getMinutes();
 
-    // 5 AM : 04:45 - 05:14
-    if (minutes >= 285 && minutes < 315)
+    // 5 AM : 04:30 - 05:30
+    if (minutes >= 270 && minutes <= 330)
         return "5 AM";
 
-    // 6 AM : 05:45 - 06:14
-    if (minutes >= 345 && minutes < 375)
+    // 6 AM : 05:30 - 06:30
+    if (minutes >= 330 && minutes <= 390)
         return "6 AM";
 
-    // 8 AM : 07:45 - 08:14
-    if (minutes >= 465 && minutes < 495)
+    // 8 AM : 07:30 - 08:30
+    if (minutes >= 450 && minutes <= 510)
         return "8 AM";
 
-    // 10 AM : 09:45 - 10:14
-    if (minutes >= 585 && minutes < 615)
+    // 10 AM : 09:30 - 10:30
+    if (minutes >= 570 && minutes <= 630)
         return "10 AM";
 
-    // 3 PM : 02:45 - 03:14 PM
-    if (minutes >= 885 && minutes < 915)
+    // 3 PM : 02:30 PM - 03:30 PM
+    if (minutes >= 870 && minutes <= 930)
         return "3 PM";
 
-    // 5 PM : 04:45 - 05:14 PM
-    if (minutes >= 1005 && minutes < 1035)
+    // 5 PM : 04:30 PM - 05:30 PM
+    if (minutes >= 990 && minutes <= 1050)
         return "5 PM";
 
-    return "Others";
-
+    return "Outside Shift";
 }
 /* ===============================
    CURRENT IST
@@ -1223,27 +1202,6 @@ function generateTable() {
 <td>
     ${escapeHTML(item.shift)}
 </td>
-
-<td>
-
-    <input
-
-        class="order-input"
-
-        type="number"
-
-        min="0"
-
-        step="1"
-
-        value="${escapeHTML(item.order)}"
-
-        oninput="updateOrder(${index}, this.value)"
-        onkeydown="handleOrderKey(event, ${index})"
-
-    >
-
-</td>
             `;
 
 
@@ -1255,45 +1213,6 @@ function generateTable() {
 }
 
 
-
-/* ===============================
-   UPDATE ORDER
-================================ */
-
-function updateOrder(index, value) {
-
-    reportData[index].order = value;
-
-}
-/* ===============================
-   ORDER KEY NAVIGATION
-================================ */
-
-function handleOrderKey(event, index) {
-
-    if (
-        event.key === "Enter" ||
-        event.key === "Tab"
-    ) {
-
-        event.preventDefault();
-
-        const orderInputs =
-            document.querySelectorAll(".order-input");
-
-        const nextInput = orderInputs[index + 1];
-
-        if (nextInput) {
-
-            nextInput.focus();
-
-            nextInput.select();
-
-        }
-
-    }
-
-}
 /* ===============================
    COPY PHONE NUMBER
 ================================ */
@@ -1455,10 +1374,6 @@ async function downloadPNG() {
     const copyButtons =
         document.querySelectorAll(".copy-phone-btn");
 
-    const orderInputs =
-        document.querySelectorAll(".order-input");
-
-    const orderReplacements = [];
 
     try {
 
@@ -1467,26 +1382,6 @@ async function downloadPNG() {
             button.style.display = "none";
         });
 
-
-        // Replace Order Inputs with Plain Text
-        orderInputs.forEach(input => {
-
-            const span = document.createElement("span");
-
-            span.className = "png-order-value";
-
-            span.innerText = input.value || "";
-
-            input.style.display = "none";
-
-            input.parentNode.appendChild(span);
-
-            orderReplacements.push({
-                input: input,
-                span: span
-            });
-
-        });
 
 
         await new Promise(resolve =>
@@ -1540,15 +1435,6 @@ async function downloadPNG() {
             button.style.display = "";
         });
 
-
-        // Restore Order Inputs
-        orderReplacements.forEach(item => {
-
-            item.span.remove();
-
-            item.input.style.display = "";
-
-        });
 
     }
 
