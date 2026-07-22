@@ -1109,7 +1109,7 @@ function isShiftCompleted(shift) {
             return minutes >= 930;   // 3:30 PM
 
         case "5 PM":
-            return minutes >= 1050;  // 5:30 PM
+            return minutes >= 1020;  // 5:30 PM
 
         case "Outside Shift":
             return true;
@@ -1132,7 +1132,7 @@ function getVisibleShifts() {
     if (minutes >= 510) shifts.push("8 AM");          // 8:30 AM
     if (minutes >= 630) shifts.push("10 AM");         // 10:30 AM
     if (minutes >= 930) shifts.push("3 PM");          // 3:30 PM
-    if (minutes >= 1050) shifts.push("5 PM");         // 5:30 PM
+    if (minutes >= 1020) shifts.push("5 PM");         // 5:30 PM
 
     // Always show Outside Shift column
 shifts.push("Outside Shift");
