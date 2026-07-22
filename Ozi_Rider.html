@@ -565,8 +565,9 @@ tbody tr:hover {
                             <th>Punch Out (IST)</th>
 
                             <th>Active Hour</th>
-
+                            <th>Shift</th>
                             <th>Order</th>
+                            
 
                         </tr>
 
@@ -820,28 +821,29 @@ function processData(rows) {
             punchIn,
             punchOut
         );
-
+const shift = calculateShift(punchIn);
 
         reportData.push({
 
-            riderID: riderID,
+    riderID: riderID,
 
-            riderName: riderName,
+    riderName: riderName,
 
-            phone: phone,
+    phone: phone,
 
-            status: status,
+    status: status,
 
-            punchIn: punchIn,
+    punchIn: punchIn,
 
-            punchOut: punchOut,
+    punchOut: punchOut,
 
-            activeHour: activeHour,
+    activeHour: activeHour,
 
-            order: ""
+    shift: shift,
 
-        });
+    order: ""
 
+});
     }
 
 
@@ -970,7 +972,47 @@ function calculateActiveHour(
 }
 
 
+/* ===============================
+   SHIFT CALCULATION
+================================ */
 
+function calculateShift(punchIn) {
+
+    const date = parseExcelDate(punchIn);
+
+    if (!date) {
+        return "Others";
+    }
+
+    const minutes = date.getHours() * 60 + date.getMinutes();
+
+    // 5 AM : 04:45 - 05:14
+    if (minutes >= 285 && minutes < 315)
+        return "5 AM";
+
+    // 6 AM : 05:45 - 06:14
+    if (minutes >= 345 && minutes < 375)
+        return "6 AM";
+
+    // 8 AM : 07:45 - 08:14
+    if (minutes >= 465 && minutes < 495)
+        return "8 AM";
+
+    // 10 AM : 09:45 - 10:14
+    if (minutes >= 585 && minutes < 615)
+        return "10 AM";
+
+    // 3 PM : 02:45 - 03:14 PM
+    if (minutes >= 885 && minutes < 915)
+        return "3 PM";
+
+    // 5 PM : 04:45 - 05:14 PM
+    if (minutes >= 1005 && minutes < 1035)
+        return "5 PM";
+
+    return "Others";
+
+}
 /* ===============================
    CURRENT IST
 ================================ */
@@ -1175,29 +1217,33 @@ function generateTable() {
                 </td>
 
                 <td>
-                    ${escapeHTML(item.activeHour)}
-                </td>
+    ${escapeHTML(item.activeHour)}
+</td>
 
-                <td>
+<td>
+    ${escapeHTML(item.shift)}
+</td>
 
-                    <input
+<td>
 
-                        class="order-input"
+    <input
 
-                        type="number"
+        class="order-input"
 
-                        min="0"
+        type="number"
 
-                        step="1"
+        min="0"
 
-                        value="${escapeHTML(item.order)}"
+        step="1"
 
-                        oninput="updateOrder(${index}, this.value)"
-onkeydown="handleOrderKey(event, ${index})"
-                    >
+        value="${escapeHTML(item.order)}"
 
-                </td>
+        oninput="updateOrder(${index}, this.value)"
+        onkeydown="handleOrderKey(event, ${index})"
 
+    >
+
+</td>
             `;
 
 
