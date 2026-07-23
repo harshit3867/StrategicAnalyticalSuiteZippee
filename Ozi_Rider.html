@@ -484,7 +484,7 @@ tbody tr:hover {
     onclick="downloadOutsidePNG()"
     style="display:none;"
 >
-    Download Outside Shift
+    Download Night Shift
 </button>
 
     </div>
@@ -556,7 +556,7 @@ font-weight:bold;
 
 
 <!-- ===========================
-     OUTSIDE SHIFT TABLE
+     Night Shift TABLE
 =========================== -->
 
 <div id="outsideCapture"
@@ -583,7 +583,7 @@ text-align:center;
 padding:8px;
 font-weight:bold;
 ">
-                    Outside Shift Riders
+                    Night Shift Riders
                 </th>
             </tr>
 
@@ -662,7 +662,7 @@ let shiftSummary = {
     "10 AM": 0,
     "3 PM": 0,
     "5 PM": 0,
-    "Outside Shift": 0
+    "Night Shift": 0
 };
 
 
@@ -821,7 +821,7 @@ function processData(rows) {
     "10 AM": 0,
     "3 PM": 0,
     "5 PM": 0,
-    "Outside Shift": 0
+    "Night Shift": 0
 };
 
 
@@ -1050,7 +1050,7 @@ function calculateShift(punchIn) {
     const date = parseExcelDate(punchIn);
 
     if (!date) {
-        return "Outside Shift";
+        return "Night Shift";
     }
 
     const minutes = date.getHours() * 60 + date.getMinutes();
@@ -1079,7 +1079,7 @@ function calculateShift(punchIn) {
     if (minutes >= 990 && minutes <= 1050)
         return "5 PM";
 
-    return "Outside Shift";
+    return "Night Shift";
 }
 /* ===============================
    SHIFT VISIBILITY
@@ -1111,7 +1111,7 @@ function isShiftCompleted(shift) {
         case "5 PM":
             return minutes >= 1020;  // 5:30 PM
 
-        case "Outside Shift":
+        case "Night Shift":
             return true;
 
         default:
@@ -1134,8 +1134,8 @@ function getVisibleShifts() {
     if (minutes >= 930) shifts.push("3 PM");          // 3:30 PM
     if (minutes >= 1020) shifts.push("5 PM");         // 5:30 PM
 
-    // Always show Outside Shift column
-shifts.push("Outside Shift");
+    // Always show Night Shift column
+shifts.push("Night Shift");
     return shifts;
 }
 /* ===============================
@@ -1299,7 +1299,7 @@ function generateTable() {
             "10 AM":"plan10",
             "3 PM":"plan3",
             "5 PM":"plan5pm",
-            "Outside Shift":"planOutsideShift"
+            "Night Shift":"planOutsideShift"
         }[shift];
 
         html += `<td id="${id}"></td>`;
@@ -1344,7 +1344,7 @@ visibleShifts.forEach(shift => {
 
     let value;
 
-    if (shift === "Outside Shift") {
+    if (shift === "Night Shift") {
 
         value = totalActive - shownShiftTotal;
 
@@ -1379,7 +1379,7 @@ html += `<td>${totalActive}</td></tr>`;
             "10 AM":"diff10",
             "3 PM":"diff3",
             "5 PM":"diff5pm",
-            "Outside Shift":"diffOutsideShift"
+            "Night Shift":"diffOutsideShift"
         }[shift];
 
         html += `<td id="${id}"></td>`;
@@ -1401,7 +1401,7 @@ function generateOutsideShiftTable() {
 
     const outsideShiftRiders = reportData.filter(rider => {
 
-    if (rider.shift === "Outside Shift") {
+    if (rider.shift === "Night Shift") {
         return true;
     }
 
@@ -1429,7 +1429,7 @@ function generateOutsideShiftTable() {
         html = `
         <tr>
             <td colspan="6">
-                No Outside Shift Riders
+                No Night Shift Riders
             </td>
         </tr>`;
 
@@ -1466,7 +1466,7 @@ function calculateDifference() {
             "10 AM": "plan10",
             "3 PM": "plan3",
             "5 PM": "plan5pm",
-            "Outside Shift": "planOutsideShift"
+            "Night Shift": "planOutsideShift"
         }[shift];
 
         const diffId = {
@@ -1476,23 +1476,23 @@ function calculateDifference() {
             "10 AM": "diff10",
             "3 PM": "diff3",
             "5 PM": "diff5pm",
-            "Outside Shift": "diffOutsideShift"
+            "Night Shift": "diffOutsideShift"
         }[shift];
 
         const plannedValue =
-            shift === "Outside Shift"
+            shift === "Night Shift"
                 ? 0
                 : planned[shift];
 
         let activeValue;
 
-if (shift === "Outside Shift") {
+if (shift === "Night Shift") {
 
     let shownShiftTotal = 0;
 
     visibleShifts.forEach(s => {
 
-        if (s !== "Outside Shift") {
+        if (s !== "Night Shift") {
             shownShiftTotal += shiftSummary[s];
         }
 
@@ -1509,7 +1509,7 @@ else {
 
         document.getElementById(planId).innerText = plannedValue;
 
-        if (shift === "Outside Shift") {
+        if (shift === "Night Shift") {
 
     document.getElementById(diffId).innerText = activeValue;
 
