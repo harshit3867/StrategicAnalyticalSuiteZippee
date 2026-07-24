@@ -228,7 +228,7 @@ input:focus{
 ========================================================= */
 .kpi-grid{
     display:grid;
-    grid-template-columns:repeat(8,1fr);
+    grid-template-columns:repeat(9,1fr);
     gap:13px;
     margin-bottom:20px;
 }
@@ -726,12 +726,18 @@ tbody tr:hover{
             <div class="kpi-sub">RTO / Total</div>
         </div>
 
+        <div class="kpi red">
+            <div class="kpi-label">Cancelled Orders</div>
+            <div class="kpi-value" id="kpiCancelled">0</div>
+            <div class="kpi-sub">Current CANCELLED Orders</div>
+        </div>
+
         <div class="kpi orange">
-    <div class="kpi-label">Ready</div>
-<div class="kpi-value" id="kpiPending">0</div>
-<div class="kpi-sub">Current READY Orders</div>
-</div>
-        <div class="kpi purple">
+            <div class="kpi-label">Ready</div>
+            <div class="kpi-value" id="kpiPending">0</div>
+            <div class="kpi-sub">Current READY Orders</div>
+        </div>
+                <div class="kpi purple">
     <div class="kpi-label">FASR %</div>
     <div class="kpi-value" id="kpiFASR">0%</div>
     <div class="kpi-sub">Delivered in 0 Attempts</div>
@@ -1545,14 +1551,16 @@ function updateKPIs(){
     const rto =
         filteredData.filter(isRTO).length;
 
+    const cancelled =
+        filteredData.filter(isCancelled).length;
+
     const ready =
-    filteredData.filter(isNotDispatched).length;
+        filteredData.filter(isNotDispatched).length;
 
     const fasrDelivered = filteredData.filter(row =>
-    isDelivered(row) &&
-    Number(row.__attempts) === 0
-).length;
-    const tats = filteredData
+        isDelivered(row) &&
+        Number(row.__attempts) === 0
+    ).length;    const tats = filteredData
         .filter(isDelivered)
         .map(r => r.__tat)
         .filter(v => v !== null);
@@ -1576,12 +1584,14 @@ function updateKPIs(){
     document.getElementById("kpiRTOPct").textContent =
         safeFixed(pct(rto,total),1) + "%";
 
+    document.getElementById("kpiCancelled").textContent =
+        formatNumber(cancelled);
+
     document.getElementById("kpiPending").textContent =
         formatNumber(ready);
 
     document.getElementById("kpiFASR").textContent =
-    safeFixed(pct(fasrDelivered, delivered), 1) + "%";
-
+        safeFixed(pct(fasrDelivered, delivered), 1) + "%";
     document.getElementById("kpiTat").textContent =
         safeFixed(avgTat,1) + "h";
 }
