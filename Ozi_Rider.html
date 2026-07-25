@@ -1127,13 +1127,12 @@ function getVisibleShifts() {
 
     const shifts = [];
 
-    if (minutes >= 330) shifts.push("5 AM");          // 5:30 AM
-    if (minutes >= 390) shifts.push("6 AM");          // 6:30 AM
-    if (minutes >= 510) shifts.push("8 AM");          // 8:30 AM
-    if (minutes >= 630) shifts.push("10 AM");         // 10:30 AM
-    if (minutes >= 930) shifts.push("3 PM");          // 3:30 PM
-    if (minutes >= 1020) shifts.push("5 PM");         // 5:30 PM
-
+    if (minutes >= 300) shifts.push("5 AM");     // 5:00 AM
+if (minutes >= 360) shifts.push("6 AM");     // 6:00 AM
+if (minutes >= 480) shifts.push("8 AM");     // 8:00 AM
+if (minutes >= 600) shifts.push("10 AM");    // 10:00 AM
+if (minutes >= 900) shifts.push("3 PM");     // 3:00 PM
+if (minutes >= 1020) shifts.push("5 PM");    // 5:00 PM
     // Always show Night Shift column
 shifts.push("Night Shift");
     return shifts;
