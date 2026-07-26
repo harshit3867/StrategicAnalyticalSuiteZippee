@@ -347,7 +347,7 @@ tr:hover td{
 
             <b>Not_D0_Dispatched Orders</b> = Current Status = READY<br>
 
-            <b>D0_Dispatched Orders</b> = Total Orders - READY Orders<br>
+            <b>D0_Dispatched Orders</b> = Total Orders - (READY Orders with 0 attempt) <br>
 
             <b>Cancelled Orders</b> = Current Status = CANCELLED<br>
 
@@ -431,14 +431,12 @@ function processData(data){
     
     const allowedBrands = [
     "GIVA",
-    "Kapiva",
     "Traya Health",
     "Clinikally",
     "The Whole Truth",
     "NeOwn",
+    "Aashirvaad",
     "Ugaoo",
-    "Nicobar",
-    "SANDIPANI HEALTHCARE"
 ];
     data.forEach(row => {
 
@@ -533,6 +531,7 @@ const attempts = String(
     "0"
 ).trim();
 
+
 let darkstore =
 String(row["Darkstore"] || "").trim();
 
@@ -554,18 +553,17 @@ if(!brandStats[brand]){
 if(!brandStats[brand][darkstore]){
 
     brandStats[brand][darkstore] = {
-        total:0,
-        ready:0,
-        cancelled:0,
-        fasrDelivered:0
-    };
+    total:0,
+    readyZeroAttempt:0,
+    cancelled:0,
+    fasrDelivered:0
+};
 }
 
 brandStats[brand][darkstore].total++;
-    if(status === "READY"){
-        brandStats[brand][darkstore].ready++;
-    }
-
+    if(status === "READY" && attempts === "0"){
+    brandStats[brand][darkstore].readyZeroAttempt++;
+}
     if(status === "CANCELLED"){
         brandStats[brand][darkstore].cancelled++;
     }
@@ -677,10 +675,9 @@ darkstores.forEach(ds => {
     const s = brandStats[brand][ds];
 
     const pct =
-        s.total > 0
-        ? (((s.total - s.ready) / s.total) * 100).toFixed(0)
-        : 0;
-
+    s.total > 0
+    ? (((s.total - s.readyZeroAttempt) / s.total) * 100).toFixed(0)
+    : 0;
     let bgColor = "";
 
 if(pct > 85){
@@ -707,7 +704,7 @@ darkstores.forEach(ds => {
 
     const s = brandStats[brand][ds];
 
-    html += `<td>${s.total - s.ready}</td>`;
+    html += `<td>${s.total - s.readyZeroAttempt}</td>`;
 });
 
 html += `</tr>`;
