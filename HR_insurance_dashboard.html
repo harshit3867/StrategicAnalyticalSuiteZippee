@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>SASA Insurance Dashboard</title>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+    <style>
+        :root{
+    --primary:#003f8c;
+    --primary-light:#0059b3;
+
+    --success:#00a651;
+    --danger:#e53935;
+    --warning:#ff9800;
+
+    --glass:rgba(255,255,255,.18);
+    --card:rgba(255,255,255,.82);
+
+    --radius:20px;
+
+    --shadow:0 12px 35px rgba(0,0,0,.18);
+
+    --transition:.3s ease;
+}
+
+        body{
+    margin:0;
+    padding:30px;
+    font-family:"Segoe UI",Arial,sans-serif;
+    background:url('https://images.unsplash.com/photo-1557683316-973673baf926?q=80&w=1920&auto=format&fit=crop') center/cover fixed no-repeat;
+    min-height:100vh;
+}
+
+body::before{
+    content:"";
+    position:fixed;
+    inset:0;
+    background:rgba(255,255,255,.22);
+    backdrop-filter:blur(8px);
+    z-index:-1;
+}
+.header{
+    max-width:1500px;
+    width:95%;
+    margin:auto;
+    margin-bottom:30px;
+
+    background:linear-gradient(135deg,var(--primary),var(--primary-light));
+
+    color:white;
+
+    border-radius:var(--radius);
+
+    padding:30px 40px;
+
+    display:flex;
+
+    justify-content:space-between;
+
+    align-items:center;
+
+    box-shadow:var(--shadow);
+}
+
+.header h1{
+    margin:0;
+    color:white;
+    font-size:34px;
+}
+
+.header p{
+    margin-top:10px;
+    color:rgba(255,255,255,.9);
+}
+        .box{
+    max-width:1500px;
+    width:95%;
+
+    margin:auto;
+
+    background:rgba(255,255,255,.22);
+
+    backdrop-filter:blur(18px);
+
+    border:1px solid rgba(255,255,255,.3);
+
+    padding:35px;
+
+    border-radius:var(--radius);
+
+    box-shadow:var(--shadow);
+}
+.upload-box{
+
+    margin:30px 0;
+
+    padding:30px;
+
+    border-radius:var(--radius);
+
+    background:rgba(255,255,255,.25);
+
+    backdrop-filter:blur(12px);
+
+    border:2px dashed var(--primary);
+
+    text-align:center;
+
+}
+.cards{
+
+    display:grid;
+
+    grid-template-columns:repeat(4,250px);
+
+    justify-content:center;
+
+    gap:25px;
+
+    margin:30px auto;
+
+}
+
+.card{
+    background:var(--card);
+
+    backdrop-filter:blur(12px);
+
+    border:1px solid rgba(255,255,255,.35);
+
+    border-radius:var(--radius);
+
+    padding:30px;
+
+    min-height:50px;
+
+    box-shadow:var(--shadow);
+
+    transition:var(--transition);
+}
+
+.card:hover{
+    transform:translateY(-8px);
+
+    box-shadow:0 18px 35px rgba(0,63,140,.25);
+}
+.footer{
+
+    max-width:1500px;
+
+    width:95%;
+
+    margin:30px auto;
+
+    text-align:center;
+
+    color:white;
+
+    font-size:14px;
+
+    font-weight:600;
+
+}
+.title{
+    font-size:16px;
+    color:#555;
+}
+.table-container{
+
+    width:95%;
+
+    max-width:1300px;
+
+    margin:25px auto;
+
+    max-height:500px;
+
+    overflow-y:auto;
+
+    overflow-x:auto;
+
+    border:1px solid #ddd;
+
+    border-radius:18px;
+
+    background:white;
+
+}
+
+#missingTable{
+
+    width:100%;
+
+    border-collapse:collapse;
+
+}
+
+#missingTable thead{
+
+    position:sticky;
+
+    top:0;
+
+    background:var(--primary);
+
+    color:white;
+
+    text-align:center;
+
+}
+
+#missingTable th,
+#missingTable td{
+    #missingTable tbody tr:nth-child(even){
+
+    background:#f7f9fc;
+    text-align:center;
+
+    vertical-align:middle;
+
+}
+
+#missingTable tbody tr:hover{
+
+    background:#eaf3ff;
+
+}
+
+    padding:12px;
+
+    border:1px solid #ddd;
+
+}
+.value{
+    margin-top:10px;
+    font-size:32px;
+    font-weight:bold;
+    color:var(--primary);
+}
+
+        input{
+            input[type=file]{
+
+    width:100%;
+
+    padding:16px;
+
+    border:2px dashed var(--primary);
+
+    border-radius:18px;
+
+    background:rgba(255,255,255,.6);
+
+    cursor:pointer;
+
+    box-sizing:border-box;
+
+}
+    margin:10px 0;
+}
+
+button{
+
+    background:linear-gradient(135deg,var(--primary),var(--primary-light));
+
+    color:white;
+
+    border:none;
+
+    padding:14px 28px;
+
+    border-radius:12px;
+
+    font-size:15px;
+
+    font-weight:bold;
+
+    cursor:pointer;
+
+    transition:var(--transition);
+
+}
+
+button:hover{
+
+    transform:translateY(-2px);
+
+    box-shadow:0 10px 20px rgba(0,63,140,.35);
+
+}
+        h3{
+            color:var(--primary);
+        }
+    </style>
+</head>
+
+<body>
+<div class="header">
+
+    <div>
+        <h1>SASA Strategic Analytical Suite</h1>
+        <p>Insurance • Employee • HR Analytics</p>
+    </div>
+
+</div>
+<div class="box">
+
+    <h2>Employee Counter</h2>
+
+<div class="upload-box">
+
+    <input type="file" id="files" multiple accept=".xlsx,.xls,.csv">
+
+    <br><br>
+
+    <button onclick="countEmployees()">Generate</button>
+
+</div>
+
+    <div class="cards">
+
+    <div class="card">
+        <div class="title">Insurance Employees</div>
+        <div class="value" id="insuranceCount">0</div>
+    </div>
+
+    <div class="card">
+        <div class="title">iSource Employees</div>
+        <div class="value" id="isourceCount">0</div>
+    </div>
+
+    <div class="card">
+        <div class="title">Active Employees</div>
+        <div class="value" id="activeCount">0</div>
+    </div>
+
+    <div class="card">
+        <div class="title">Inactive Employees</div>
+        <div class="value" id="inactiveCount">0</div>
+    </div>
+
+</div>
+<h2 style="margin-top:40px;text-align:center;">
+    Employees Missing in Insurance
+</h2>
+
+<div style="display:flex;
+            justify-content:center;
+            align-items:center;
+            flex-wrap:wrap;
+            gap:80px;
+            margin-bottom:20px;">
+
+    <div style="display:flex;align-items:center;gap:10px;">
+
+        <label><b>Status :</b></label>
+
+        <select id="statusFilter" onchange="applyStatusFilter()">
+
+            <option value="ALL">All</option>
+
+            <option value="ACTIVE">Active</option>
+
+            <option value="INACTIVE">Inactive</option>
+
+        </select>
+
+    </div>
+
+    <div>
+        <b>Total Missing Employees : </b>
+        <span id="missingCount">0</span>
+    </div>
+
+    <button onclick="downloadMissingCSV()">
+        Download Complete CSV
+    </button>
+
+</div>
+
+<div class="table-container">
+
+<table id="missingTable">
+
+<thead>
+
+<tr>
+    <th>Employee ID</th>
+    <th>Employee Name</th>
+    <th>Mobile No.</th>
+</tr>
+
+</thead>
+
+<tbody></tbody>
+
+</table>
+
+</div>
+
+</div>
+
+<script>
+
+let missingEmployees = [];
+let filteredEmployees = [];
+
+let isourceHeaders = [];
+async function readExcel(file){
+
+    return new Promise(resolve=>{
+
+        const reader = new FileReader();
+
+        reader.onload = e=>{
+
+            const wb = XLSX.read(e.target.result,{type:"array"});
+
+            const sheet = wb.Sheets[wb.SheetNames[0]];
+
+            const rows = XLSX.utils.sheet_to_json(sheet,{
+    header:1,
+    defval:""
+});
+
+const headers = rows.shift();
+
+resolve({
+    headers: headers,
+    data: rows
+});
+
+        };
+
+        reader.readAsArrayBuffer(file);
+
+    });
+
+}
+
+async function countEmployees(){
+
+    const files = document.getElementById("files").files;
+
+if(files.length !== 2){
+    alert("Please select exactly 2 files.");
+    return;
+}
+let insuranceFile = files[0];
+let isourceFile = files[1];
+
+const firstFile = await readExcel(files[0]);
+const secondFile = await readExcel(files[1]);
+
+const firstHeaders = firstFile.headers.map(h => String(h).toLowerCase());
+const secondHeaders = secondFile.headers.map(h => String(h).toLowerCase());
+
+if(firstHeaders.includes("mobile number")){
+
+    insuranceFile = files[0];
+    isourceFile = files[1];
+
+}
+else{
+
+    insuranceFile = files[1];
+    isourceFile = files[0];
+
+}
+    const insurance = firstHeaders.includes("mobile number")
+    ? firstFile
+    : secondFile;
+
+const isource = firstHeaders.includes("mobile number")
+    ? secondFile
+    : firstFile;
+
+const insuranceData = insurance.data;
+const isourceData = isource.data;
+
+isourceHeaders = isource.headers;
+
+const insuranceCount = insuranceData.length;
+const isourceCount = isourceData.length;
+let activeCount = 0;
+let inactiveCount = 0;
+
+isourceData.forEach(row=>{
+
+    const status = String(row[53] || "").trim().toUpperCase();
+
+    if(status === "ACTIVE"){
+        activeCount++;
+    }
+    else if(status === "IN-ACTIVE" || status === "INACTIVE"){
+        inactiveCount++;
+    }
+
+});
+    
+    document.getElementById("insuranceCount").innerText = insuranceCount;
+
+document.getElementById("isourceCount").innerText = isourceCount;
+document.getElementById("activeCount").innerText = activeCount;
+
+document.getElementById("inactiveCount").innerText = inactiveCount;
+// Create Insurance Mobile Set
+
+const insuranceMobiles = new Set();
+
+insuranceData.forEach(row=>{
+
+    const mobile = String(row[1] || "")
+    .replace(/\s+/g, "")
+    .trim();
+
+    if(mobile){
+        insuranceMobiles.add(mobile);
+    }
+
+});
+missingEmployees = [];
+
+isourceData.forEach(row=>{
+
+    const mobile = String(row[5] || "")
+    .replace(/\s+/g, "")
+    .trim();
+
+    if(!insuranceMobiles.has(mobile)){
+
+        missingEmployees.push(row);
+
+    }
+
+});
+filteredEmployees = [...missingEmployees];
+
+renderTable(filteredEmployees);}
+function renderTable(data){
+
+    const tbody = document.querySelector("#missingTable tbody");
+
+    tbody.innerHTML = "";
+
+    data.forEach(emp=>{
+
+        tbody.innerHTML += `
+        <tr>
+            <td style="padding:12px;border:1px solid #ddd;text-align:center;vertical-align:middle;">
+                ${emp[0] || ""}
+            </td>
+
+            <td style="padding:12px;border:1px solid #ddd;text-align:center;vertical-align:middle;">
+                ${emp[1] || ""}
+            </td>
+
+            <td style="padding:12px;border:1px solid #ddd;text-align:center;vertical-align:middle;">
+                ${emp[5] || ""}
+            </td>
+        </tr>
+        `;
+
+    });
+
+    document.getElementById("missingCount").innerText = data.length;
+
+}
+function applyStatusFilter(){
+
+    const filter = document.getElementById("statusFilter").value;
+
+    if(filter === "ALL"){
+
+        renderTable(filteredEmployees);
+
+        return;
+
+    }
+
+    const filtered = filteredEmployees.filter(emp=>{
+
+        const status = String(emp[53] || "").trim().toUpperCase();
+
+        if(filter === "ACTIVE")
+            return status === "ACTIVE";
+
+        if(filter === "INACTIVE")
+            return status === "IN-ACTIVE" || status === "INACTIVE";
+
+    });
+
+    renderTable(filtered);
+
+}
+function downloadMissingCSV(){
+
+    if(missingEmployees.length===0){
+
+        alert("No data available.");
+
+        return;
+
+    }
+
+    const worksheet = XLSX.utils.aoa_to_sheet([
+    isourceHeaders,
+    ...missingEmployees
+]);
+
+    const workbook = XLSX.utils.book_new();
+
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Missing Employees");
+
+    XLSX.writeFile(workbook,"Employees_Missing_Insurance.csv");
+
+}
+</script>
+<footer class="footer">
+
+    Powered by SASA Automation | Harshit Saini
+
+</footer>
+</body>
+</html>
