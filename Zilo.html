@@ -5,6 +5,7 @@
 <title>Zippee KPI Report</title>
 
 <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 
 <style>
 :root{
@@ -33,15 +34,25 @@ body::before{
 .card{
     background:var(--glass-bg);
     backdrop-filter:blur(10px);
-    margin:30px auto;
     width:fit-content;
-    padding:25px;
+    max-width:none;
+    margin:40px auto;
+    padding:30px;
     border-radius:18px;
     box-shadow:var(--card-shadow);
 }
+#reportCard{
+    display:inline-block;
+    width:fit-content;
+    margin:auto;
+}
 .controls{
-    text-align:center;
-    margin-bottom:15px;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    gap:12px;
+    flex-wrap:wrap;
+    margin:20px 0;
 }
 button{
     padding:8px 16px;
@@ -52,17 +63,26 @@ button{
     cursor:pointer;
 }
 table{
+    width:auto;
     border-collapse:collapse;
     background:white;
+    margin:auto;
 }
-th,td{
+th,
+td{
     border:1px solid #ddd;
-    padding:6px 12px;
+    padding:6px 8px;
     font-size:13px;
     text-align:center;
+    white-space:nowrap;
 }
 th{background:#e6e6e6;}
 .left{text-align:left;}
+.left{
+    text-align:left;
+    white-space:normal;
+    font-weight:600;
+}
 .footer{
     text-align:center;
     margin-top:10px;
@@ -79,70 +99,222 @@ th{background:#e6e6e6;}
 
 <div class="card">
 
-<div style="text-align:center;font-weight:800;margin-bottom:10px;">
-Report: Zippee Performance Dashboard
-</div>
 
-<div style="text-align:center;margin-bottom:10px;">
-Date: <span id="date"></span> | Time: <span id="time"></span>
-</div>
 
 <div class="controls">
-  <input type="file" id="fileInput" multiple accept=".csv,.xlsx">
-  <br><br>
-  <button onclick="generateReport()">Generate Report</button>
+    <input type="file" id="fileInput" multiple accept=".csv,.xlsx">
+
+    <button onclick="generateReport()">
+        Generate Report
+    </button>
+
+    <button onclick="downloadReport()">
+        Download Report
+    </button>
 </div>
 
+<div id="reportCard">
+
+    <div style="text-align:center;font-weight:800;margin-bottom:10px;">
+        Zippee <> Zilo SLA Report
+    </div>
+
+    <div style="text-align:center;margin-bottom:10px;">
+        Date: <span id="date"></span> |
+        Time: <span id="time"></span>
+    </div>
+
 <table>
-<tr>
-<th>S. No.</th>
+
+<tr><th>S. No.</th>
 <th>Key Parameters</th>
 <th>Ghatkopar</th>
 <th>Malad</th>
+<th>Vashi</th>
 </tr>
 
-<tr><td>1</td><td class="left">SLA Target</td><td id="gSLA">--</td><td id="mSLA">--</td></tr>
-<tr><td>2</td><td class="left">Delay Target</td><td id="gDelay">--</td><td id="mDelay">--</td></tr>
-<tr><td>3</td><td class="left">Projected Order</td><td id="gProjOrder">--</td><td id="mProjOrder">--</td></tr>
+<tr><td>1</td><td class="left">SLA Target</td><td id="gSLA">--</td><td id="mSLA">--</td><td id="vSLA">--</td></tr>
+<tr><td>2</td><td class="left">Delay Target</td><td id="gDelay">--</td><td id="mDelay">--</td><td id="vDelay">--</td></tr>
+<tr><td>3</td><td class="left">Projected Order</td><td id="gProjOrder">--</td><td id="mProjOrder">--</td><td id="vProjOrder">--</td></tr>
 
-<tr><td>4</td><td class="left">Actual Order</td><td id="gOrders">--</td><td id="mOrders">--</td></tr>
-<tr><td>4.1</td><td class="left">Attainment%</td><td>--</td><td>--</td></tr>
+<tr>
+    <td>4</td>
+    <td class="left">Actual Order</td>
+    <td id="gOrders">--</td>
+    <td id="mOrders">--</td>
+    <td id="vOrders">--</td>
+</tr>
+<tr>
+    <td>4.1</td>
+    <td class="left">Attainment%</td>
+    <td>--</td>
+    <td>--</td>
+    <td>--</td>
+</tr>
 
-<tr><td>5</td><td class="left">Delivered Order</td><td id="gDelivered">--</td><td id="mDelivered">--</td></tr>
+<tr>
+    <td>5</td>
+    <td class="left">Delivered Order</td>
+    <td id="gDelivered">--</td>
+    <td id="mDelivered">--</td>
+    <td id="vDelivered">--</td>
+</tr>
 
-<tr><td>6</td><td class="left">SLA + 15 min</td><td>--</td><td>--</td></tr>
+<tr>
+    <td>6</td>
+    <td class="left">RTO Orders</td>
+    <td id="gRTO">--</td>
+    <td id="mRTO">--</td>
+    <td id="vRTO">--</td>
+</tr>
 
-<tr><td>6.1</td><td class="left">SLA %</td><td>--</td><td>--</td></tr>
-<tr><td>6.2</td><td class="left">30 min</td><td>--</td><td>--</td></tr>
-<tr><td>6.3</td><td class="left">60 Min</td><td>--</td><td>--</td></tr>
-<tr><td>6.4</td><td class="left">90 Min</td><td>--</td><td>--</td></tr>
-<tr><td>6.5</td><td class="left">120 Min</td><td>--</td><td>--</td></tr>
-<tr><td>6.6</td><td class="left">Others</td><td>--</td><td>--</td></tr>
+<tr>
+    <td>7</td>
+    <td class="left">SLA + 15 min</td>
+    <td>--</td>
+    <td>--</td>
+    <td>--</td>
+</tr>
+<tr>
+    <td>7.1</td>
+    <td class="left">SLA %</td>
+    <td>--</td>
+    <td>--</td>
+    <td>--</td>
+</tr>
+<tr>
+    <td>7.2</td>
+    <td class="left">60 Min</td>
+    <td>--</td>
+    <td>--</td>
+    <td>--</td>
+</tr>
+<tr>
+    <td>7.3</td>
+    <td class="left">90 Min</td>
+    <td>--</td>
+    <td>--</td>
+    <td>--</td>
+</tr>
+<tr>
+    <td>7.4</td>
+    <td class="left">120 Min</td>
+    <td>--</td>
+    <td>--</td>
+    <td>--</td>
+</tr>
+<tr>
+    <td>7.5</td>
+    <td class="left">Others</td>
+    <td>--</td>
+    <td>--</td>
+    <td>--</td>
+</tr>
 
-<tr><td>7</td><td class="left">Breach order / %</td><td>--</td><td>--</td></tr>
-<tr><td>8</td><td class="left">Delay Order/%</td><td>--</td><td>--</td></tr>
 
-<tr><td>9</td><td class="left">Projected Rider</td><td id="gProjRider">--</td><td id="mProjRider">--</td></tr>
-<tr><td>10</td><td class="left">Actual Rider</td><td id="gRiders">--</td><td id="mRiders">--</td></tr>
-<tr><td>10.1</td><td class="left">Rider attainment</td><td>--</td><td>--</td></tr>
+<tr>
+    <td>8</td>
+    <td class="left">Breach order / %</td>
+    <td id="gBreach">--</td>
+    <td id="mBreach">--</td>
+    <td id="vBreach">--</td>
+</tr>
+<tr>
+    <td>9</td>
+    <td class="left">Delay Order/%</td>
+    <td id="gDelayOrder">--</td>
+    <td id="mDelayOrder">--</td>
+    <td id="vDelayOrder">--</td>
+</tr>
+<tr>
+    <td>10</td>
+    <td class="left">Deep Pain Order</td>
+    <td id="gDeepPain">--</td>
+    <td id="mDeepPain">--</td>
+    <td id="vDeepPain">--</td>
+</tr>
 
-<tr><td>11</td><td class="left">Pickup Orders</td><td>--</td><td>--</td></tr>
+<tr>
+    <td>11</td>
+    <td class="left">Projected Forward Rider</td>
+    <td id="gProjRider">--</td>
+    <td id="mProjRider">--</td>
+    <td id="vProjRider">--</td>
+</tr>
+<tr>
+    <td>12</td>
+    <td class="left">Actual Forward Rider</td>
+    <td><input type="number" id="gRiders" style="width:60px;text-align:center;"></td>
+    <td><input type="number" id="mRiders" style="width:60px;text-align:center;"></td>
+    <td><input type="number" id="vRiders" style="width:60px;text-align:center;"></td>
+</tr>
+<tr>
+    <td>12.1</td>
+    <td class="left">Rider attainment</td>
+    <td>--</td>
+    <td>--</td>
+    <td>--</td>
+</tr>
+<tr>
+    <td>12.2</td>
+    <td class="left">Projected Pickup Rider</td>
+    <td><input type="number" id="gProjPickupRider" style="width:60px;text-align:center;"></td>
+    <td><input type="number" id="mProjPickupRider" style="width:60px;text-align:center;"></td>
+    <td><input type="number" id="vProjPickupRider" style="width:60px;text-align:center;"></td>
+</tr>
+
+<tr>
+    <td>12.3</td>
+    <td class="left">Pickup Rider</td>
+    <td><input type="number" id="gPickupRider" style="width:60px;text-align:center;"></td>
+    <td><input type="number" id="mPickupRider" style="width:60px;text-align:center;"></td>
+    <td><input type="number" id="vPickupRider" style="width:60px;text-align:center;"></td>
+</tr>
+
+<tr>
+    <td>12.4</td>
+    <td class="left">Projected Omni Rider</td>
+    <td><input type="number" id="gProjOmniRider" style="width:60px;text-align:center;"></td>
+    <td><input type="number" id="mProjOmniRider" style="width:60px;text-align:center;"></td>
+    <td><input type="number" id="vProjOmniRider" style="width:60px;text-align:center;"></td>
+</tr>
+
+<tr>
+    <td>12.5</td>
+    <td class="left">Omni Rider</td>
+    <td><input type="number" id="gOmniRider" style="width:60px;text-align:center;"></td>
+    <td><input type="number" id="mOmniRider" style="width:60px;text-align:center;"></td>
+    <td><input type="number" id="vOmniRider" style="width:60px;text-align:center;"></td>
+</tr>
+<tr>
+    <td>13</td>
+    <td class="left">Pickup Orders</td>
+    <td>--</td>
+    <td>--</td>
+    <td>--</td>
+</tr>
 
 </table>
 
 <div class="footer">
-Powered by SASA Automation | Harshit Saini – Data Analyst, Zippee
+    Powered by SASA Automation | Zippee
 </div>
 
-</div>
+</div> <!-- reportCard -->
+
+</div> <!-- card -->
 
 <script>
-const ORDER_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTrMqyjsRwFS-6MJlJv_5QKC2CUo1dmSZWDGtDGs8Vg_vCuNbuqPYDfWy4MWDmFcVAaR2Bitv7V2Gqz/pub?gid=0&single=true&output=csv";
-const RIDER_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTrMqyjsRwFS-6MJlJv_5QKC2CUo1dmSZWDGtDGs8Vg_vCuNbuqPYDfWy4MWDmFcVAaR2Bitv7V2Gqz/pub?gid=1859816926&single=true&output=csv";
-const SLA_URL   = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTrMqyjsRwFS-6MJlJv_5QKC2CUo1dmSZWDGtDGs8Vg_vCuNbuqPYDfWy4MWDmFcVAaR2Bitv7V2Gqz/pub?gid=2057620290&single=true&output=csv";
+const ORDER_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQHEGv04UcbZtiL2_vsy5G2zxbG-AljveWcJfPQ2Mod1a9XuiUhARYDR4v83yc2FSawTcmdHR04Z0ES/pub?gid=0&single=true&output=csv";
+const RIDER_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQHEGv04UcbZtiL2_vsy5G2zxbG-AljveWcJfPQ2Mod1a9XuiUhARYDR4v83yc2FSawTcmdHR04Z0ES/pub?gid=775811107&single=true&output=csv";
+const SLA_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQHEGv04UcbZtiL2_vsy5G2zxbG-AljveWcJfPQ2Mod1a9XuiUhARYDR4v83yc2FSawTcmdHR04Z0ES/pub?gid=1169651333&single=true&output=csv";
+const DELAY_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQHEGv04UcbZtiL2_vsy5G2zxbG-AljveWcJfPQ2Mod1a9XuiUhARYDR4v83yc2FSawTcmdHR04Z0ES/pub?gid=319008300&single=true&output=csv";
 
 function formatDate(d){
-    return d.toLocaleDateString('en-GB',{day:"numeric",month:"short"}).replace(" ","-");
+    return d.toLocaleDateString('en-GB',{
+        day:"2-digit",
+        month:"short"
+    }).replace(" ","-");
 }
 
 function updateDateTime(){
@@ -173,38 +345,121 @@ async function generateReport(){
     updateDateTime();
     const today = formatDate(new Date());
 
-    const [orderData, riderData, slaData] = await Promise.all([
-        fetchSheet(ORDER_URL),
-        fetchSheet(RIDER_URL),
-        fetchSheet(SLA_URL)
-    ]);
+    const [orderData, riderData, slaData, delayData] = await Promise.all([
+    fetchSheet(ORDER_URL),
+    fetchSheet(RIDER_URL),
+    fetchSheet(SLA_URL),
+    fetchSheet(DELAY_URL)
+]);
+    const orderRow = orderData.find(r => r.Date === today) || {};
 
-    const orderRow = orderData.find(r=>r.Date===today) || {};
-    document.getElementById("mProjOrder").innerText = orderRow.Malad || "--";
-    document.getElementById("gProjOrder").innerText = orderRow.Ghatkopar || "--";
+document.getElementById("gProjOrder").innerText =
+    orderRow["GHATKOPAR"] || "--";
 
-    const riderRow = riderData.find(r=>r.Date===today) || {};
-    document.getElementById("mProjRider").innerText = riderRow["DAU Malad"] || "--";
-    document.getElementById("gProjRider").innerText = riderRow["DAU GHT"] || "--";
+document.getElementById("mProjOrder").innerText =
+    orderRow["MALAD"] || "--";
 
-    const slaRow = slaData.find(r=>r.Date===today) || {};
-    document.getElementById("gSLA").innerText = slaRow["SLA Target"] || "--";
-    document.getElementById("mSLA").innerText = slaRow["SLA Target"] || "--";
+document.getElementById("vProjOrder").innerText =
+    orderRow["VASHI"] || "--";
 
-    document.getElementById("gDelay").innerText = slaRow["Delay Target %"] || "--";
-    document.getElementById("mDelay").innerText = slaRow["Delay Target %"] || "--";
+    const riderRow = riderData.find(r => r.Date === today) || {};
 
+document.getElementById("gProjRider").innerText =
+    riderRow["Ghatkopar"] || "--";
+
+document.getElementById("mProjRider").innerText =
+    riderRow["Malad"] || "--";
+
+document.getElementById("vProjRider").innerText =
+    riderRow["Vashi"] || "--";
+
+    const slaRow = slaData.find(r => r.Date === today) || {};
+
+document.getElementById("gSLA").innerText =
+    slaRow["Target"] || "--";
+
+document.getElementById("mSLA").innerText =
+    slaRow["Target"] || "--";
+
+document.getElementById("vSLA").innerText =
+    slaRow["Target"] || "--";
+    const delayRow = delayData.find(r => r.Date === today) || {};
+
+document.getElementById("gDelay").innerText =
+    delayRow["Target"] || "--";
+
+document.getElementById("mDelay").innerText =
+    delayRow["Target"] || "--";
+
+document.getElementById("vDelay").innerText =
+    delayRow["Target"] || "--";
     const files = Array.from(document.getElementById("fileInput").files);
 
-    let storeOrders = {Ghatkopar:0, Malad:0};
-    let storeDelivered = {Ghatkopar:0, Malad:0};
-    let storeRiders = {Ghatkopar:new Set(), Malad:new Set()};
-    let storePickup = {Ghatkopar:0, Malad:0};
+    let storeOrders = {
+    Ghatkopar: 0,
+    Malad: 0,
+    Vashi: 0
+};
 
-    let storeBuckets = {
-        Ghatkopar:{30:0,60:0,90:0,120:0,others:0},
-        Malad:{30:0,60:0,90:0,120:0,others:0}
-    };
+let storeDelivered = {
+    Ghatkopar: 0,
+    Malad: 0,
+    Vashi: 0
+};
+
+let storeRTO = {
+    Ghatkopar: 0,
+    Malad: 0,
+    Vashi: 0
+};
+
+let storeBreach = {
+    Ghatkopar: 0,
+    Malad: 0,
+    Vashi: 0
+};
+
+let storeDelay = {
+    Ghatkopar: 0,
+    Malad: 0,
+    Vashi: 0
+};
+
+let storeDeepPain = {
+    Ghatkopar: 0,
+    Malad: 0,
+    Vashi: 0
+};
+
+let storePickup = {
+    Ghatkopar: 0,
+    Malad: 0,
+    Vashi: 0
+};
+
+let storeBuckets = {
+    Ghatkopar: {
+        30: 0,
+        60: 0,
+        90: 0,
+        120: 0,
+        others: 0
+    },
+    Malad: {
+        30: 0,
+        60: 0,
+        90: 0,
+        120: 0,
+        others: 0
+    },
+    Vashi: {
+        30: 0,
+        60: 0,
+        90: 0,
+        120: 0,
+        others: 0
+    }
+};
 
     for (let file of files){
         const data = await file.arrayBuffer();
@@ -224,94 +479,380 @@ if(s.includes("malad") || s.includes("mld")){
     detected = "Malad";
     break;
 }
+if(s.includes("vashi") || s.includes("vsh")){
+    detected = "Vashi";
+    break;
+}
         }
 
         if(!detected) continue;
 
-        storeOrders[detected]+=json.length;
+        json.forEach(row => {
+
+    // Reference ID / Order ID
+    let orderId = (row["Reference ID"] || "")
+        .toString()
+        .trim()
+        .toLowerCase();
+
+    // NONE Logic (Actual Orders)
+    const isActualOrder =
+        !orderId.startsWith("return") &&
+        !orderId.startsWith("f-") &&
+        !orderId.endsWith("-pd") &&
+        !orderId.startsWith("rtv-");
+
+    if (isActualOrder) {
+        storeOrders[detected]++;
+    }
+
+});
 
         json.forEach(row=>{
-            let rider=row["Rider Name"];
-            if(rider) storeRiders[detected].add(rider.toLowerCase());
+            
+            let status = (row["Fulfillment Status"] || "").toUpperCase().trim();
+            if (status === "RTO_DELIVERED") {
+    storeRTO[detected]++;
+}
 
-            let status=(row["Fulfillment Status"]||"").toUpperCase().trim();
+let orderId = (row["Reference ID"] || "")
+    .toString()
+    .trim()
+    .toLowerCase();
 
-// ✅ ONLY PURE DELIVERED
-if(status === "DELIVERED") storeDelivered[detected]++;
+const isActualOrder =
+    !orderId.startsWith("return") &&
+    !orderId.startsWith("f-") &&
+    !orderId.endsWith("-pd") &&
+    !orderId.startsWith("rtv-");
 
-            let ref = (row["Reference ID"] || "").toString().trim().toLowerCase();
-            if(ref.slice(-2) === "pd") storePickup[detected]++;
+// Delivered Orders should be counted only from Actual Orders
+if (isActualOrder && status === "DELIVERED") {
+    storeDelivered[detected]++;
+}
+            // -------------------------
+// PICKUP ORDER
+// -------------------------
 
-            if(status !== "DELIVERED") return;
+let ref = (row["Reference ID"] || "")
+    .toString()
+    .trim()
+    .toLowerCase();
 
-let slot = (row["Delivery Slot"] || "").toString().trim();
-if(!slot) return;
+if (ref.startsWith("return")) {
+    storePickup[detected]++;
+}
+// Only Delivered Actual Orders are eligible
+if (!(isActualOrder && status === "DELIVERED")) return;
 
-let slotMatch = slot.match(/(\d{1,2}:\d{2})-(\d{1,2}:\d{2})/);
-if(!slotMatch) return;
+// -------------------------
+// SERVICE DURATION
+// -------------------------
 
-let start = new Date("1970-01-01 " + slotMatch[1] + ":00");
-let end   = new Date("1970-01-01 " + slotMatch[2] + ":00");
+const address = String(row["Customer Address"] || "").trim();
+const pincode = address.slice(-6);
 
-if(isNaN(start) || isNaN(end)) return;
+let serviceDuration = "NA";
 
-let diff = (end - start) / (1000 * 60);
+if (detected === "Malad") {
 
-// ✅ EXACT BUCKET (no ranges)
-let bucket = "others";
+    // ---------- 120 MIN ----------
+    if ([
+        "400068","401105","401107","401101"
+    ].includes(pincode)) {
 
-if(diff === 30) bucket = 30;
-else if(diff === 60) bucket = 60;
-else if(diff === 90) bucket = 90;
-else if(diff === 120) bucket = 120;
+        serviceDuration = 120;
 
-// ✅ COUNT ALL DELIVERED ORDERS (NO SLA CHECK)
-if(bucket === "others") storeBuckets[detected].others++;
-else storeBuckets[detected][bucket]++;
-            console.log({
-    slot,
-    diff,
-    store:detected
-});
+    }
+
+    // ---------- 60 MIN ----------
+    else if ([
+        "400047","400053","400058","400060",
+        "400062","400063","400064","400066",
+        "400067","400069","400090","400091",
+        "400092","400093","400095","400097",
+        "400101","400102","400103","400104"
+    ].includes(pincode)) {
+
+        serviceDuration = 60;
+
+    }
+
+    // ---------- 90 MIN ----------
+    else if ([
+        "400049","400054","400056","400061","400065"
+    ].includes(pincode)) {
+
+        serviceDuration = 90;
+
+    }
+
+    else {
+
+        serviceDuration = "others";
+
+    }
+
+}
+
+else if (detected === "Ghatkopar") {
+
+    // ---------- 60 MIN ----------
+    if ([
+        "400024","400042","400043","400059",
+        "400070","400071","400072","400075",
+        "400076","400077","400078","400079",
+        "400083","400084","400086","400087",
+        "400089","400096"
+    ].includes(pincode)) {
+
+        serviceDuration = 60;
+
+    }
+
+    // ---------- 90 MIN ----------
+    else if ([
+        "400051","400055","400057","400074",
+        "400085","400088","400094","400098",
+        "400099","400029"
+    ].includes(pincode)) {
+
+        serviceDuration = 90;
+
+    }
+
+    else {
+
+        serviceDuration = "others";
+
+    }
+
+}
+else if (detected === "Vashi") {
+
+    // ---------- 120 MIN ----------
+    if ([
+        "400068","401105","401107"
+    ].includes(pincode)) {
+
+        serviceDuration = 120;
+
+    }
+
+    // ---------- 60 MIN ----------
+    else if ([
+        "400047","400053","400058","400060",
+        "400062","400063","400064","400066",
+        "400067","400069","400090","400091",
+        "400092","400093","400095","400097",
+        "400101","400102","400103","400104",
+        "400614","400701","400703","400705",
+        "400706","400709","400710"
+    ].includes(pincode)) {
+
+        serviceDuration = 60;
+
+    }
+
+    // ---------- 90 MIN ----------
+    else if ([
+        "400049","400054","400056",
+        "400061","400065","400708"
+    ].includes(pincode)) {
+
+        serviceDuration = 90;
+
+    }
+
+    else {
+
+        serviceDuration = "others";
+
+    }
+
+}
+
+// -------------------------
+// PROMISE TIME
+// -------------------------
+
+const slot = String(row["Delivery Slot"] || "").trim();
+const slotMatch = slot.match(/(\d{1,2}):(\d{2})-(\d{1,2}):(\d{2})/);
+
+if (!slotMatch) return;
+
+const start = new Date(
+    `1970-01-01 ${slotMatch[1]}:${slotMatch[2]}:00`
+);
+
+const end = new Date(
+    `1970-01-01 ${slotMatch[3]}:${slotMatch[4]}:00`
+);
+
+const actualPromise =
+    (end - start) / 60000;
+const endMinute = parseInt(slotMatch[4], 10);
+
+const orderType =
+    endMinute === 0
+        ? "SLOTTED"
+        : "INSTANT";
+
+// -------------------------
+// DELAY DURATION (BJ)
+// -------------------------
+
+let delayDuration = "NA";
+
+if (
+    typeof serviceDuration === "number" &&
+    !isNaN(actualPromise)
+) {
+    delayDuration = actualPromise - serviceDuration;
+}
+
+const match = slot.match(/(\d{1,2}:\d{2})$/);
+
+if(!match) return;
+
+const promise = new Date("1970-01-01 " + match[1] + ":00");
+
+// SLA +15
+const sla15 = new Date(promise);
+sla15.setMinutes(sla15.getMinutes() + 15);
+
+// Deep Pain Slot (+1 Hour)
+const dpSlot = new Date(promise);
+dpSlot.setHours(dpSlot.getHours() + 1);
+
+
+// -------------------------
+// ACTUAL DELIVERY TIME
+// -------------------------
+
+const actualDate = new Date(row["ADT(Actual Delivery Time)"]);
+
+if (isNaN(actualDate)) return;
+
+// HH:MM from Actual Delivery Time
+const actualTime =
+    actualDate.getHours() * 60 +
+    actualDate.getMinutes();
+
+// HH:MM from Promise +15
+const promiseTime =
+    sla15.getHours() * 60 +
+    sla15.getMinutes();
+
+const dpTime =
+    dpSlot.getHours() * 60 +
+    dpSlot.getMinutes();
+
+const isBreach = actualTime > promiseTime;
+// -------------------------
+// DEEP PAIN ORDER
+// -------------------------
+
+const isDeepPain = actualTime > dpTime;
+
+if (
+    status === "DELIVERED" &&
+    isDeepPain
+) {
+    storeDeepPain[detected]++;
+}
+// -------------------------
+// DELAY ORDER
+// -------------------------
+
+if (
+    status === "DELIVERED" &&
+    orderType === "INSTANT" &&
+    typeof delayDuration === "number" &&
+    delayDuration > 0
+) {
+    storeDelay[detected]++;
+}
+if (isBreach) {
+
+    storeBreach[detected]++;
+
+    return;
+
+}
+
+// -------------------------
+// COUNT
+// -------------------------
+
+if(serviceDuration===60)
+    storeBuckets[detected][60]++;
+
+else if(serviceDuration===90)
+    storeBuckets[detected][90]++;
+
+else if(serviceDuration===120)
+    storeBuckets[detected][120]++;
+
+else if(serviceDuration==="others")
+    storeBuckets[detected].others++;
         });
     }
 
     document.getElementById("gOrders").innerText = storeOrders.Ghatkopar;
     document.getElementById("mOrders").innerText = storeOrders.Malad;
+    document.getElementById("vOrders").innerText = storeOrders.Vashi;
 
     document.getElementById("gDelivered").innerText = storeDelivered.Ghatkopar;
-    document.getElementById("mDelivered").innerText = storeDelivered.Malad;
+document.getElementById("mDelivered").innerText = storeDelivered.Malad;
+document.getElementById("vDelivered").innerText = storeDelivered.Vashi;
+    document.getElementById("gRTO").innerText = storeRTO.Ghatkopar;
+document.getElementById("mRTO").innerText = storeRTO.Malad;
+document.getElementById("vRTO").innerText = storeRTO.Vashi;
+document.getElementById("gBreach").innerText = storeBreach.Ghatkopar;
+document.getElementById("mBreach").innerText = storeBreach.Malad;
+document.getElementById("vBreach").innerText = storeBreach.Vashi;
+document.getElementById("gDelayOrder").innerText =
+    storeDelay.Ghatkopar;
 
-    document.getElementById("gRiders").innerText = storeRiders.Ghatkopar.size;
-    document.getElementById("mRiders").innerText = storeRiders.Malad.size;
+document.getElementById("mDelayOrder").innerText =
+    storeDelay.Malad;
+
+document.getElementById("vDelayOrder").innerText =
+    storeDelay.Vashi;
+    document.getElementById("gDeepPain").innerText =
+    storeDeepPain.Ghatkopar;
+
+document.getElementById("mDeepPain").innerText =
+    storeDeepPain.Malad;
+document.getElementById("vDeepPain").innerText =
+    storeDeepPain.Vashi;
 
     document.querySelectorAll("table tr").forEach(row=>{
         let label=row.cells[1]?.innerText;
 
         if(label==="Pickup Orders"){
-            row.cells[2].innerText = storePickup.Ghatkopar;
-            row.cells[3].innerText = storePickup.Malad;
-        }
-
-        if(label==="30 min"){
-            row.cells[2].innerText = storeBuckets.Ghatkopar[30];
-            row.cells[3].innerText = storeBuckets.Malad[30];
-        }
-        if(label==="60 Min"){
-            row.cells[2].innerText = storeBuckets.Ghatkopar[60];
-            row.cells[3].innerText = storeBuckets.Malad[60];
-        }
-        if(label==="90 Min"){
-            row.cells[2].innerText = storeBuckets.Ghatkopar[90];
-            row.cells[3].innerText = storeBuckets.Malad[90];
-        }
-        if(label==="120 Min"){
+    row.cells[2].innerText = storePickup.Ghatkopar;
+    row.cells[3].innerText = storePickup.Malad;
+    row.cells[4].innerText = storePickup.Vashi;
+}
+       if(label==="60 Min"){
+    row.cells[2].innerText = storeBuckets.Ghatkopar[60];
+    row.cells[3].innerText = storeBuckets.Malad[60];
+    row.cells[4].innerText = storeBuckets.Vashi[60];
+}if(label==="90 Min"){
+    row.cells[2].innerText = storeBuckets.Ghatkopar[90];
+    row.cells[3].innerText = storeBuckets.Malad[90];
+    row.cells[4].innerText = storeBuckets.Vashi[90];
+}       if(label==="120 Min"){
             row.cells[2].innerText = storeBuckets.Ghatkopar[120];
             row.cells[3].innerText = storeBuckets.Malad[120];
+            row.cells[4].innerText = storeBuckets.Vashi[120];
         }
         if(label==="Others"){
             row.cells[2].innerText = storeBuckets.Ghatkopar.others;
             row.cells[3].innerText = storeBuckets.Malad.others;
+            row.cells[4].innerText = storeBuckets.Vashi.others;
         }
 if(label==="SLA + 15 min"){
 
@@ -328,9 +869,16 @@ if(label==="SLA + 15 min"){
         storeBuckets.Malad[90] +
         storeBuckets.Malad[120] +
         storeBuckets.Malad.others;
+        let vTotal =
+    storeBuckets.Vashi[30] +
+    storeBuckets.Vashi[60] +
+    storeBuckets.Vashi[90] +
+    storeBuckets.Vashi[120] +
+    storeBuckets.Vashi.others;
 
     row.cells[2].innerText = gTotal;
-    row.cells[3].innerText = mTotal;
+row.cells[3].innerText = mTotal;
+row.cells[4].innerText = vTotal;
 }
         if(label==="SLA %"){
 
@@ -355,9 +903,21 @@ if(label==="SLA + 15 min"){
     let m = storeDelivered.Malad
         ? ((mTotal / storeDelivered.Malad) * 100).toFixed(0) + "%"
         : "--";
+    
+        let vTotal =
+    storeBuckets.Vashi[30] +
+    storeBuckets.Vashi[60] +
+    storeBuckets.Vashi[90] +
+    storeBuckets.Vashi[120] +
+    storeBuckets.Vashi.others;
+
+let v = storeDelivered.Vashi
+    ? ((vTotal / storeDelivered.Vashi) * 100).toFixed(0) + "%"
+    : "--";
 
     row.cells[2].innerText = g;
     row.cells[3].innerText = m;
+    row.cells[4].innerText = v;
 }    });
 
     function calcRiderAttainment(actual, projected){
@@ -366,21 +926,24 @@ if(label==="SLA + 15 min"){
         return val.toFixed(0) + "%";
     }
 
-    let gActualRider = parseFloat(document.getElementById("gRiders").innerText) || 0;
-    let mActualRider = parseFloat(document.getElementById("mRiders").innerText) || 0;
+    let gActualRider = parseFloat(document.getElementById("gRiders").value) || 0;
+let mActualRider = parseFloat(document.getElementById("mRiders").value) || 0;
+let vActualRider = parseFloat(document.getElementById("vRiders").value) || 0;
 
     let gProjRider = parseFloat(document.getElementById("gProjRider").innerText);
     let mProjRider = parseFloat(document.getElementById("mProjRider").innerText);
-
+let vProjRider = parseFloat(document.getElementById("vProjRider").innerText);
     let gRiderAttain = calcRiderAttainment(gActualRider, gProjRider);
     let mRiderAttain = calcRiderAttainment(mActualRider, mProjRider);
+    let vRiderAttain = calcRiderAttainment(vActualRider, vProjRider);
+
 
     document.querySelectorAll("table tr").forEach(row=>{
         if(row.cells[1]?.innerText === "Rider attainment"){
-            row.cells[2].innerText = gRiderAttain;
-            row.cells[3].innerText = mRiderAttain;
-        }
-    });
+    row.cells[2].innerText = gRiderAttain;
+    row.cells[3].innerText = mRiderAttain;
+    row.cells[4].innerText = vRiderAttain;
+}    });
 
     function calcAttainment(actual, projected){
         if(isNaN(projected) || projected === 0) return "--";
@@ -390,19 +953,76 @@ if(label==="SLA + 15 min"){
 
     let gActual = parseFloat(document.getElementById("gOrders").innerText) || 0;
     let mActual = parseFloat(document.getElementById("mOrders").innerText) || 0;
+    let vActual = parseFloat(document.getElementById("vOrders").innerText) || 0;
 
     let gProjected = parseFloat(document.getElementById("gProjOrder").innerText);
     let mProjected = parseFloat(document.getElementById("mProjOrder").innerText);
+    let vProjected = parseFloat(document.getElementById("vProjOrder").innerText);
 
     let gAttain = calcAttainment(gActual, gProjected);
     let mAttain = calcAttainment(mActual, mProjected);
+    let vAttain = calcAttainment(vActual, vProjected);
 
     document.querySelectorAll("table tr").forEach(row=>{
         if(row.cells[1]?.innerText === "Attainment%"){
             row.cells[2].innerText = gAttain;
             row.cells[3].innerText = mAttain;
+            row.cells[4].innerText = vAttain;
         }
     });
+}
+function downloadReport() {
+
+    // Hide rider input boxes
+    const inputs = document.querySelectorAll(
+"#gRiders,#mRiders,#vRiders," +
+"#gProjPickupRider,#mProjPickupRider,#vProjPickupRider," +
+"#gPickupRider,#mPickupRider,#vPickupRider," +
+"#gProjOmniRider,#mProjOmniRider,#vProjOmniRider," +
+"#gOmniRider,#mOmniRider,#vOmniRider"
+);
+
+    inputs.forEach(input => {
+
+        const span = document.createElement("span");
+        span.className = "download-value";
+        span.innerText = input.value || "--";
+
+        input.style.display = "none";
+        input.parentNode.appendChild(span);
+
+    });
+
+    const report = document.getElementById("reportCard");
+
+const oldWidth = report.style.width;
+const oldDisplay = report.style.display;
+
+report.style.display = "inline-block";
+report.style.width = "fit-content";
+
+    html2canvas(report,{
+        scale:3,
+        useCORS:true,
+        backgroundColor:"#ffffff"
+    }).then(canvas=>{
+
+        const link=document.createElement("a");
+        link.download="Zippee_Report.png";
+        link.href=canvas.toDataURL("image/png");
+        link.click();
+
+        // Restore input boxes
+        document.querySelectorAll(".download-value").forEach(span => span.remove());
+
+        inputs.forEach(input=>{
+            input.style.display="";
+        });
+        report.style.width = oldWidth;
+report.style.display = oldDisplay;
+
+    });
+
 }
 </script>
 
