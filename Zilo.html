@@ -340,7 +340,29 @@ async function fetchSheet(url){
     const text = await res.text();
     return parseCSV(text);
 }
+function isTodayOrBlank(value) {
 
+    if (value == null || value === "")
+        return true;
+
+    // Excel serial number
+    if (typeof value === "number") {
+        const d = XLSX.SSF.parse_date_code(value);
+        value = new Date(d.y, d.m - 1, d.d);
+    } else {
+        value = new Date(value);
+    }
+
+    if (isNaN(value)) return false;
+
+    const today = new Date();
+
+    return (
+        value.getDate() === today.getDate() &&
+        value.getMonth() === today.getMonth() &&
+        value.getFullYear() === today.getFullYear()
+    );
+}
 async function generateReport(){
     updateDateTime();
     const today = formatDate(new Date());
@@ -465,7 +487,36 @@ let storeBuckets = {
         const data = await file.arrayBuffer();
         const wb = XLSX.read(data);
         const sheet = wb.Sheets[wb.SheetNames[0]];
-        const json = XLSX.utils.sheet_to_json(sheet);
+        let json = XLSX.utils.sheet_to_json(sheet);
+        console.log(Object.keys(json[0]));
+
+// Today's date (dd/mm/yyyy)
+const today = new Date();
+const todayStr = today.toLocaleDateString("en-GB");
+json = json.filter(row => {
+
+    const channel = String(row["Channel"] || "")
+        .trim()
+        .toUpperCase();
+
+    const status = String(row["Status"] || "")
+        .trim()
+        .toUpperCase();
+
+    const fulfillment = String(row["Fulfillment Status"] || "")
+        .trim()
+        .toUpperCase();
+
+    return (
+        channel === "ZILO" &&
+        status === "COMPLETED" &&
+        (fulfillment === "DELIVERED" ||
+         fulfillment === "RTO_DELIVERED") &&
+        isTodayOrBlank(row["Delivery Date"])
+    );
+
+});
+console.log("Rows after filter:", json.length);
 
         let detected=null;
 
@@ -486,7 +537,8 @@ if(s.includes("vashi") || s.includes("vsh")){
         }
 
         if(!detected) continue;
-
+        
+let deliveredCount = 0;
         json.forEach(row => {
 
     // Reference ID / Order ID
@@ -519,6 +571,10 @@ let orderId = (row["Reference ID"] || "")
     .toString()
     .trim()
     .toLowerCase();
+    // Pickup Orders
+if (orderId.startsWith("return")) {
+    storePickup[detected]++;
+}
 
 const isActualOrder =
     !orderId.startsWith("return") &&
@@ -527,21 +583,16 @@ const isActualOrder =
     !orderId.startsWith("rtv-");
 
 // Delivered Orders should be counted only from Actual Orders
-if (isActualOrder && status === "DELIVERED") {
-    storeDelivered[detected]++;
-}
-            // -------------------------
-// PICKUP ORDER
-// -------------------------
+if (status === "DELIVERED") {
 
-let ref = (row["Reference ID"] || "")
-    .toString()
-    .trim()
-    .toLowerCase();
+    deliveredCount++;
 
-if (ref.startsWith("return")) {
-    storePickup[detected]++;
+    if (isActualOrder) {
+        storeDelivered[detected]++;
+    }
+
 }
+ 
 // Only Delivered Actual Orders are eligible
 if (!(isActualOrder && status === "DELIVERED")) return;
 
@@ -729,15 +780,48 @@ dpSlot.setHours(dpSlot.getHours() + 1);
 // -------------------------
 // ACTUAL DELIVERY TIME
 // -------------------------
+if (detected === "Malad") {
+    console.log(
+        "Reached Delivery Raw:",
+        row["Reached Delivery Time"],
+        "| Fulfillment:",
+        row["Fulfillment Status"],
+        "| Ref:",
+        row["Reference ID"]
+    );
+}
+const reachedDelivery = row["Reached Delivery Time"];
 
-const actualDate = new Date(row["ADT(Actual Delivery Time)"]);
+if (reachedDelivery == null || reachedDelivery === "") return;
 
-if (isNaN(actualDate)) return;
+let actualDate;
+
+if (typeof reachedDelivery === "number") {
+
+    const d = XLSX.SSF.parse_date_code(reachedDelivery);
+
+    actualDate = new Date(
+        d.y,
+        d.m - 1,
+        d.d,
+        d.H,
+        d.M,
+        Math.floor(d.S)
+    );
+
+} else {
+
+    actualDate = new Date(reachedDelivery);
+
+}
+
+if (isNaN(actualDate)) {
+    console.log("Invalid Reached Delivery:", reachedDelivery);
+    return;
+}
 
 // HH:MM from Actual Delivery Time
-const actualTime =
-    actualDate.getHours() * 60 +
-    actualDate.getMinutes();
+
 
 // HH:MM from Promise +15
 const promiseTime =
@@ -747,8 +831,24 @@ const promiseTime =
 const dpTime =
     dpSlot.getHours() * 60 +
     dpSlot.getMinutes();
+const actualTime =
+    actualDate.getHours() * 60 +
+    actualDate.getMinutes();
 
-const isBreach = actualTime > promiseTime;
+console.log({
+    Slot: row["Delivery Slot"],
+    Actual: actualDate.toLocaleTimeString(),
+    Promise: promise.toLocaleTimeString(),
+    SLA15: sla15.toLocaleTimeString(),
+    DeepPain: dpSlot.toLocaleTimeString(),
+    ActualMinutes: actualTime,
+    PromiseMinutes: promiseTime,
+    DeepPainMinutes: dpTime
+});
+
+    const isBreach =
+    status === "DELIVERED" &&
+    actualTime >= promiseTime;
 // -------------------------
 // DEEP PAIN ORDER
 // -------------------------
@@ -774,28 +874,38 @@ if (
     storeDelay[detected]++;
 }
 if (isBreach) {
-
     storeBreach[detected]++;
-
     return;
-
 }
 
 // -------------------------
 // COUNT
 // -------------------------
 
-if(serviceDuration===60)
+if (serviceDuration === 60) {
+
+    console.log("60 MIN", pincode, row["Reference ID"]);
     storeBuckets[detected][60]++;
 
-else if(serviceDuration===90)
+}
+else if (serviceDuration === 90) {
+
+    console.log("90 MIN", pincode, row["Reference ID"]);
     storeBuckets[detected][90]++;
 
-else if(serviceDuration===120)
+}
+else if (serviceDuration === 120) {
+
+    console.log("120 MIN", pincode, row["Reference ID"]);
     storeBuckets[detected][120]++;
 
-else if(serviceDuration==="others")
+}
+else {
+
+    console.log("OTHERS", pincode, row["Reference ID"]);
     storeBuckets[detected].others++;
+
+}
         });
     }
 
