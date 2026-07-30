@@ -23,26 +23,18 @@ th,td{padding:6px 10px;border:1px solid #ddd;text-align:center}
 th{background:#2563EB;color:#fff;position:sticky;top:0}
 button{padding:10px 20px;background:#2563EB;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-top:15px}
 footer{text-align:center;padding:20px;color:#666}
-#reportTitle{
-    text-align:center;
-    width:100%;
-    margin:0 0 20px;
-    font-size:20px;
-    font-weight:700;
-}
+
 .table-container{
-    display:inline-block;
-    width:auto;
-    margin:auto;
+    width:fit-content;
+    margin:25px auto;
     background:#fff;
     padding:20px;
     border-radius:10px;
 }
 
 .table-container table{
-    width: 100%;
-}
-</style>
+    width:auto;
+}</style>
 </head>
 <body>
 
@@ -66,43 +58,17 @@ cursor:pointer;">
 📥 Download PNG
 </button>
 
-<div id="reportCapture" class="table-container">
-
-<h2 id="reportTitle"></h2>
-
-<table id="summary">
-    <thead></thead>
-    <tbody></tbody>
-</table>
-
-<div style="
-text-align:center;
-margin-top:20px;
-font-size:18px;
-color:#666;
-font-weight:600;">
-Powered by SASA Automation | Zippee
-</div>
-
-</div>
+<div id="reports"></div>
 </div>
 <script>
-const labels=[
-"12 AM-1 AM","1 AM-2 AM","2 AM-3 AM","3 AM-4 AM","4 AM-5 AM","5 AM-6 AM",
-"6 AM-7 AM","7 AM-8 AM","8 AM-9 AM","9 AM-10 AM","10 AM-11 AM","11 AM-12 PM",
-"12 PM-1 PM","1 PM-2 PM","2 PM-3 PM","3 PM-4 PM","4 PM-5 PM","5 PM-6 PM",
-"6 PM-7 PM","7 PM-8 PM","8 PM-9 PM","9 PM-10 PM","10 PM-11 PM","11 PM-12 AM"];
-let chart;
-let storeName = "";
 
 document.getElementById("csvFile").addEventListener("change", function(e){
 
     const files = [...e.target.files];
 
-    let allRows = [];
-
     let completed = 0;
 
+document.getElementById("reports").innerHTML = "";
     files.forEach(file=>{
 
         Papa.parse(file,{
@@ -110,15 +76,9 @@ document.getElementById("csvFile").addEventListener("change", function(e){
             skipEmptyLines:true,
             complete:function(result){
 
-                allRows.push(...result.data);
-
                 completed++;
 
-                if(completed===files.length){
-
-                    processData(allRows);
-
-                }
+processData(result.data);
 
             }
 
@@ -138,90 +98,242 @@ for (const row of rows) {
     }
 }
 
-document.getElementById("reportTitle").innerHTML =
-`Zippee &lt;&gt; Zilo Pickup Report - ${reportDate}`;
+const storeName = rows[0]["Location"];
+
+const reportTitle =
+`Zippee &lt;&gt; Zilo Pickup Report - ${storeName} - ${reportDate}`;
 
     const currentHour = new Date().getHours();
 
-    const stores = {};
+const report = {};
 
-    rows.forEach(row=>{
+rows.forEach(row=>{
 
-        const store = row["Location"];
+    let finish = row["Picklist finish time"];
+    let start  = row["Picklist Date"];
 
-        if(!stores[store]){
-            stores[store]=new Array(24).fill(0);
-        }
+    if(!finish || !start) return;
 
-let t = row["Picklist finish time"];
+    finish = finish.replace(
+        /^(\d{4}-\d{2}-\d{2})(\d{2}:\d{2}:\d{2})$/,
+        "$1 $2"
+    );
 
-if (!t) return;
+    start = start.replace(
+        /^(\d{4}-\d{2}-\d{2})(\d{2}:\d{2}:\d{2})$/,
+        "$1 $2"
+    );
 
-t = t.replace(/^(\d{4}-\d{2}-\d{2})(\d{2}:\d{2}:\d{2})$/, "$1 $2");
+    const finishTime = new Date(finish);
+    const startTime  = new Date(start);
 
-let d = new Date(t);
+    if(isNaN(finishTime) || isNaN(startTime)) return;
 
-if (isNaN(d)) return;
+    const hour = finishTime.getHours();
 
-// Count one row
-stores[store][d.getHours()]++;
-    });
+    if(!report[hour]){
+        report[hour]={
+            totalMinutes:0,
+            total:0,
+            lt10:0,
+            m10_15:0,
+            m15_20:0,
+            m20_30:0,
+            gt30:0
+        };
+    }
+
+    const diff=(finishTime-startTime)/60000;
+
+    report[hour].totalMinutes+=diff;
+    report[hour].total++;
+
+    if(diff<10)
+        report[hour].lt10++;
+
+    else if(diff<15)
+        report[hour].m10_15++;
+
+    else if(diff<20)
+        report[hour].m15_20++;
+
+    else if(diff<30)
+        report[hour].m20_30++;
+
+    else
+        report[hour].gt30++;
+
+});
 
     // Table Header
 
-    const thead=document.querySelector("#summary thead");
-    thead.innerHTML="";
 
-    let header="<tr><th>Hour Slot</th>";
-
-    Object.keys(stores).forEach(store=>{
-        header+=`<th>${store}</th>`;
-    });
-
-    header+="</tr>";
-
-    thead.innerHTML=header;
+    let header=`
+<tr>
+<th>From</th>
+<th>To</th>
+<th>Avg TAT</th>
+<th>&lt;10 Min</th>
+<th>10-15 Min</th>
+<th>15-20 Min</th>
+<th>20-30 Min</th>
+<th>30+ Min</th>
+<th>Total</th>
+</tr>
+`;
 
     // Table Body
+let body = "";
+let totalOrders = 0;
+let totalLT10 = 0;
+let total10_15 = 0;
+let total15_20 = 0;
+let total20_30 = 0;
+let totalGT30 = 0; 
+let grandTotalMinutes = 0;
+for(let h=6;h<=currentHour;h++){
 
-    const tbody=document.querySelector("#summary tbody");
-    tbody.innerHTML="";
+    const r = report[h] || {
+        totalMinutes:0,
+        total:0,
+        lt10:0,
+        m10_15:0,
+        m15_20:0,
+        m20_30:0,
+        gt30:0
+    };
 
-    for(let h=6;h<=currentHour;h++){
+    const avg = r.total
+        ? formatDuration(r.totalMinutes/r.total)
+        : "00:00:00";
+        let avgColor = "#28a745";   // Green
 
-        let row=`<tr><td>${labels[h]}</td>`;
+if(r.total){
 
-        Object.keys(stores).forEach(store=>{
+    const avgMinutes = r.totalMinutes / r.total;
 
-            row+=`<td>${stores[store][h]}</td>`;
+    if(avgMinutes >= 20)
+        avgColor = "#dc3545";     // Red
 
-        });
+    else if(avgMinutes >= 10)
+        avgColor = "#ffc107";     // Yellow
+}
+        grandTotalMinutes += r.totalMinutes;
+totalLT10 += r.lt10;
+total10_15 += r.m10_15;
+total15_20 += r.m15_20;
+total20_30 += r.m20_30;
+totalGT30 += r.gt30;
+totalOrders += r.total;
+    body += `
+<tr>
+    <td>${String(h).padStart(2,"0")}:00</td>
+    <td>${String(h+1).padStart(2,"0")}:00</td>
+    <td style="
+background:${avgColor};
+color:${avgColor=="#ffc107" ? "#000" : "#fff"};
+font-weight:bold;">
+${avg}
+</td>
+    <td>${r.lt10}</td>
+    <td>${r.m10_15}</td>
+    <td>${r.m15_20}</td>
+    <td>${r.m20_30}</td>
+    <td>${r.gt30}</td>
+    <td>${r.total}</td>
+</tr>`;
+}
+const overallAvg = totalOrders
+    ? formatDuration(grandTotalMinutes / totalOrders)
+    : "00:00:00";
+body += `
+<tr style="background:#f3f6ff;font-weight:bold;">
+    <td colspan="2">Total</td>
+    <td>${overallAvg}</td>
+    <td>${totalLT10}</td>
+    <td>${total10_15}</td>
+    <td>${total15_20}</td>
+    <td>${total20_30}</td>
+    <td>${totalGT30}</td>
+    <td>${totalOrders}</td>
+</tr>`;
+const html = `
+<div class="table-container reportCapture">
 
-        row+="</tr>";
+<h2 style="
+text-align:center;
+margin-bottom:15px;
+font-size:20px;
+font-weight:700;">
+${reportTitle}
+</h2>
 
-        tbody.innerHTML+=row;
+<table>
+    <thead>
+        ${header}
+    </thead>
+    <tbody>
+        ${body}
+    </tbody>
+</table>
 
-    }
+<div style="
+text-align:center;
+margin-top:20px;
+font-size:18px;
+color:#666;
+font-weight:600;">
+Powered by SASA Automation | Zippee
+</div>
+
+</div>
+
+<br><br>
+`;
+
+document.getElementById("reports").innerHTML += html;
 
 }
+function formatDuration(minutes){
 
-function downloadPNG(){
+    const totalSeconds=Math.round(minutes*60);
 
-    html2canvas(document.getElementById("reportCapture"),{
-        scale:3,
-        backgroundColor:"#ffffff",
-        useCORS:true
-    }).then(canvas=>{
+    const h=Math.floor(totalSeconds/3600);
 
-        const link=document.createElement("a");
+    const m=Math.floor((totalSeconds%3600)/60);
 
-        link.download=document.getElementById("reportTitle").innerText+".png";
+    const s=totalSeconds%60;
 
-        link.href=canvas.toDataURL("image/png");
+    return `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;
+}
+async function downloadPNG(){
+
+    const reports = document.querySelectorAll(".reportCapture");
+
+    for(let i=0;i<reports.length;i++){
+
+        const report = reports[i];
+
+        const canvas = await html2canvas(report,{
+            scale:3,
+            backgroundColor:"#ffffff",
+            useCORS:true
+        });
+
+        const title = report.querySelector("h2").innerText;
+
+        const link = document.createElement("a");
+
+        link.download = title + ".png";
+
+        link.href = canvas.toDataURL("image/png");
 
         link.click();
 
-    });
+        // Small delay between downloads
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+    }
 
 }
 </script>
