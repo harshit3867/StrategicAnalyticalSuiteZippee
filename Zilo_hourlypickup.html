@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Hourly Picking Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<style>
+body{margin:0;font-family:Arial,sans-serif;background:#eef3ff}
+header{background:linear-gradient(90deg,#4F46E5,#2563EB);color:#fff;padding:20px;text-align:center}
+.container{max-width:1200px;margin:20px auto;padding:15px}
+.upload{background:#fff;border:2px dashed #4F46E5;border-radius:12px;padding:30px;text-align:center}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:15px;margin:20px 0}
+.card{background:#fff;border-radius:12px;padding:20px;box-shadow:0 2px 8px rgba(0,0,0,.1)}
+.card h3{margin:0;color:#555;font-size:15px}
+.card h2{margin:10px 0 0;color:#2563EB}
+canvas{background:#fff;border-radius:12px;padding:15px}
+table{width:auto;min-width:900px;border-collapse:collapse;margin-top:20px;background:#fff}
+th,td{padding:6px 10px;border:1px solid #ddd;text-align:center}
+th{background:#2563EB;color:#fff;position:sticky;top:0}
+button{padding:10px 20px;background:#2563EB;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-top:15px}
+footer{text-align:center;padding:20px;color:#666}
+#reportTitle{
+    text-align:center;
+    width:100%;
+    margin:0 0 20px;
+    font-size:20px;
+    font-weight:700;
+}
+.table-container{
+    display:inline-block;
+    width:auto;
+    margin:auto;
+    background:#fff;
+    padding:20px;
+    border-radius:10px;
+}
+
+.table-container table{
+    width: 100%;
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+<div class="upload">
+<input type="file" id="csvFile" accept=".csv" multiple>
+</div>
+
+
+<button onclick="downloadPNG()" style="
+margin:20px 0;
+display:block;
+background:#2563EB;
+color:white;
+padding:12px 25px;
+border:none;
+border-radius:8px;
+font-size:16px;
+font-weight:600;
+cursor:pointer;">
+📥 Download PNG
+</button>
+
+<div id="reportCapture" class="table-container">
+
+<h2 id="reportTitle"></h2>
+
+<table id="summary">
+    <thead></thead>
+    <tbody></tbody>
+</table>
+
+<div style="
+text-align:center;
+margin-top:20px;
+font-size:18px;
+color:#666;
+font-weight:600;">
+Powered by SASA Automation | Zippee
+</div>
+
+</div>
+</div>
+<script>
+const labels=[
+"12 AM-1 AM","1 AM-2 AM","2 AM-3 AM","3 AM-4 AM","4 AM-5 AM","5 AM-6 AM",
+"6 AM-7 AM","7 AM-8 AM","8 AM-9 AM","9 AM-10 AM","10 AM-11 AM","11 AM-12 PM",
+"12 PM-1 PM","1 PM-2 PM","2 PM-3 PM","3 PM-4 PM","4 PM-5 PM","5 PM-6 PM",
+"6 PM-7 PM","7 PM-8 PM","8 PM-9 PM","9 PM-10 PM","10 PM-11 PM","11 PM-12 AM"];
+let chart;
+let storeName = "";
+
+document.getElementById("csvFile").addEventListener("change", function(e){
+
+    const files = [...e.target.files];
+
+    let allRows = [];
+
+    let completed = 0;
+
+    files.forEach(file=>{
+
+        Papa.parse(file,{
+            header:true,
+            skipEmptyLines:true,
+            complete:function(result){
+
+                allRows.push(...result.data);
+
+                completed++;
+
+                if(completed===files.length){
+
+                    processData(allRows);
+
+                }
+
+            }
+
+        });
+
+    });
+
+});
+
+function processData(rows){
+    let reportDate = "";
+
+for (const row of rows) {
+    if (row["Picklist finish time"]) {
+        reportDate = row["Picklist finish time"].substring(0, 10);
+        break;
+    }
+}
+
+document.getElementById("reportTitle").innerHTML =
+`Zippee &lt;&gt; Zilo Pickup Report - ${reportDate}`;
+
+    const currentHour = new Date().getHours();
+
+    const stores = {};
+
+    rows.forEach(row=>{
+
+        const store = row["Location"];
+
+        if(!stores[store]){
+            stores[store]=new Array(24).fill(0);
+        }
+
+let t = row["Picklist finish time"];
+
+if (!t) return;
+
+t = t.replace(/^(\d{4}-\d{2}-\d{2})(\d{2}:\d{2}:\d{2})$/, "$1 $2");
+
+let d = new Date(t);
+
+if (isNaN(d)) return;
+
+// Count one row
+stores[store][d.getHours()]++;
+    });
+
+    // Table Header
+
+    const thead=document.querySelector("#summary thead");
+    thead.innerHTML="";
+
+    let header="<tr><th>Hour Slot</th>";
+
+    Object.keys(stores).forEach(store=>{
+        header+=`<th>${store}</th>`;
+    });
+
+    header+="</tr>";
+
+    thead.innerHTML=header;
+
+    // Table Body
+
+    const tbody=document.querySelector("#summary tbody");
+    tbody.innerHTML="";
+
+    for(let h=6;h<=currentHour;h++){
+
+        let row=`<tr><td>${labels[h]}</td>`;
+
+        Object.keys(stores).forEach(store=>{
+
+            row+=`<td>${stores[store][h]}</td>`;
+
+        });
+
+        row+="</tr>";
+
+        tbody.innerHTML+=row;
+
+    }
+
+}
+
+function downloadPNG(){
+
+    html2canvas(document.getElementById("reportCapture"),{
+        scale:3,
+        backgroundColor:"#ffffff",
+        useCORS:true
+    }).then(canvas=>{
+
+        const link=document.createElement("a");
+
+        link.download=document.getElementById("reportTitle").innerText+".png";
+
+        link.href=canvas.toDataURL("image/png");
+
+        link.click();
+
+    });
+
+}
+</script>
+</body>
+</html>
