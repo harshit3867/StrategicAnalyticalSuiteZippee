@@ -394,6 +394,15 @@ document.getElementById("mProjRider").innerText =
 
 document.getElementById("vProjRider").innerText =
     riderRow["Vashi"] || "--";
+    // Projected Pickup Rider (Constant)
+document.getElementById("gProjPickupRider").value = 3;
+document.getElementById("mProjPickupRider").value = 5;
+document.getElementById("vProjPickupRider").value = 0;
+
+// Projected Omni Rider (Constant)
+document.getElementById("gProjOmniRider").value = 2;
+document.getElementById("mProjOmniRider").value = 3;
+document.getElementById("vProjOmniRider").value = 1;
 
     const slaRow = slaData.find(r => r.Date === today) || {};
 
