@@ -439,28 +439,43 @@ function handleFile(e){
         const awbText =
 document.getElementById("awbFilter").value.trim();
 
-if(awbText){
+if (awbText) {
 
     const awbSet = new Set(
         awbText
-        .split(/\r?\n/)
-        .map(x => x.trim().toUpperCase())
-        .filter(Boolean)
+            .split(/\r?\n/)
+            .map(x => x.trim().toUpperCase())
+            .filter(Boolean)
     );
 
+    const awbFilterStores = [
+        "zippee_krishna_herbal_indorewh",
+        "zippee_krishna_herbal_jodhpurwh"
+    ];
+
     const filteredData = json.filter(row => {
+
+        const darkstore = String(
+            row["Darkstore"] || ""
+        ).trim().toLowerCase();
 
         const awb = String(
             row["AWB Number"] || ""
         ).trim().toUpperCase();
 
-        return awbSet.has(awb);
+        // Apply AWB filter only for these two darkstores
+        if (awbFilterStores.includes(darkstore)) {
+            return awbSet.has(awb);
+        }
+
+        // Keep all orders for every other darkstore
+        return true;
 
     });
 
     processData(filteredData);
 
-}else{
+} else {
 
     processData(json);
 
@@ -558,7 +573,7 @@ const brandStats = {};
 
 data.forEach(row => {
 
-    const brand = reportBrand;
+    const reportName = reportBrand;
     const status = String(
     row["Current Status"] || ""
 ).trim().toUpperCase();
@@ -571,6 +586,13 @@ const attempts = String(
     "0"
 ).trim();
 
+const brand = String(row["Brand Name"] || "")
+    .trim()
+    .toUpperCase();
+
+if (brand !== "SANDIPANI HEALTHCARE") {
+    return;
+}
 
 let darkstore =
 String(row["Darkstore"] || "").trim();
@@ -586,13 +608,13 @@ const delhiHubStores = [
 if(delhiHubStores.includes(darkstore.toLowerCase())){
     darkstore = "Delhi_Hub";
 }
-if(!brandStats[brand]){
-    brandStats[brand] = {};
+if(!brandStats[reportName]){
+    brandStats[reportName] = {};
 }
 
-if(!brandStats[brand][darkstore]){
+if(!brandStats[reportName][darkstore]){
 
-    brandStats[brand][darkstore] = {
+    brandStats[reportName][darkstore] = {
     total:0,
     readyZeroAttempt:0,
     cancelled:0,
@@ -600,16 +622,16 @@ if(!brandStats[brand][darkstore]){
 };
 }
 
-brandStats[brand][darkstore].total++;
+brandStats[reportName][darkstore].total++;
     if(status === "READY" && attempts === "0"){
-    brandStats[brand][darkstore].readyZeroAttempt++;
+    brandStats[reportName][darkstore].readyZeroAttempt++;
 }
     if(status === "CANCELLED"){
-        brandStats[brand][darkstore].cancelled++;
+        brandStats[reportName][darkstore].cancelled++;
     }
 
     if(status === "DELIVERED" && attempts === "0"){
-    brandStats[brand][darkstore].fasrDelivered++;
+    brandStats[reportName][darkstore].fasrDelivered++;
 }
 });
 
@@ -620,10 +642,10 @@ const eodTable =
 
 let html = "";
 
-const brand = reportBrand;
+const reportName = reportBrand;
 
 const darkstores =
-    Object.keys(brandStats[brand] || {});
+    Object.keys(brandStats[reportName] || {});
 
 if(darkstores.length === 0){
     eodTable.innerHTML = "";
@@ -702,7 +724,7 @@ html += `<tr><td class="yellow"><b>Processed</b></td>`;
 
 darkstores.forEach(ds => {
 
-    html += `<td>${brandStats[brand][ds].total}</td>`;
+    html += `<td>${brandStats[reportName][ds].total}</td>`;
 });
 
 html += `</tr>`;
@@ -714,7 +736,7 @@ html += `<tr><td class="yellow"><b>D0_Dispatched %</b></td>`;
 
 darkstores.forEach(ds => {
 
-    const s = brandStats[brand][ds];
+    const s = brandStats[reportName][ds];
 
     const pct =
     s.total > 0
@@ -744,7 +766,7 @@ html += `<tr><td class="yellow"><b>D0_Dispatched</b></td>`;
 
 darkstores.forEach(ds => {
 
-    const s = brandStats[brand][ds];
+    const s = brandStats[reportName][ds];
 
     html += `<td>${s.total - s.readyZeroAttempt}</td>`;
 });
@@ -758,7 +780,7 @@ html += `<tr><td class="yellow"><b>FASR%</b></td>`;
 
 darkstores.forEach(ds => {
 
-    const s = brandStats[brand][ds];
+    const s = brandStats[reportName][ds];
 
     const pct =
         s.total > 0
@@ -789,7 +811,7 @@ html += `<tr><td class="yellow"><b>Cancelled</b></td>`;
 
 darkstores.forEach(ds => {
 
-    html += `<td>${brandStats[brand][ds].cancelled}</td>`;
+    html += `<td>${brandStats[reportName][ds].cancelled}</td>`;
 });
 
 html += `</tr>`;
