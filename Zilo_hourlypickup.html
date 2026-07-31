@@ -236,11 +236,41 @@ font-weight:bold;">
 ${avg}
 </td>
     <td>${r.lt10}</td>
-    <td>${r.m10_15}</td>
-    <td>${r.m15_20}</td>
-    <td>${r.m20_30}</td>
-    <td>${r.gt30}</td>
-    <td>${r.total}</td>
+
+<td>${r.m10_15}</td>
+
+<td style="
+background:${
+    r.m15_20 >= 8 ? '#d4a000' :
+    r.m15_20 >= 3 ? '#ffd54f' :
+    r.m15_20 > 0 ? '#fff8b3' : ''
+};
+font-weight:bold;">
+${r.m15_20}
+</td>
+
+<td style="
+background:${
+    r.m20_30 >= 8 ? '#d81b60' :
+    r.m20_30 >= 3 ? '#f48fb1' :
+    r.m20_30 > 0 ? '#fce4ec' : ''
+};
+font-weight:bold;">
+${r.m20_30}
+</td>
+
+<td style="
+background:${
+    r.gt30 >= 8 ? '#b71c1c' :
+    r.gt30 >= 3 ? '#ef5350' :
+    r.gt30 > 0 ? '#ffcdd2' : ''
+};
+color:${r.gt30 >= 3 ? '#fff' : '#000'};
+font-weight:bold;">
+${r.gt30}
+</td>
+
+<td>${r.total}</td>
 </tr>`;
 }
 const overallAvg = totalOrders
