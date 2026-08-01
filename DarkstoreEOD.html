@@ -550,9 +550,14 @@ const darkstores = Object.keys(darkstoreStats).sort((a, b) => {
     return a.localeCompare(b);
 
 });
-
+let totalProcessed = 0;
+let totalD0Dispatched = 0;
+let totalCancelled = 0;
+let totalD0Pct = 0;
+let totalFasrPct = 0;
 let html = `
 <table class="eod-table">
+    
 
 <tr>
 <th colspan="6"
@@ -587,7 +592,12 @@ darkstores.forEach(ds=>{
     const fasrPct = s.total
         ? ((s.fasrDelivered/s.total)*100).toFixed(0)
         : 0;
+totalProcessed += s.total;
+totalD0Dispatched += (s.total - s.readyZeroAttempt);
+totalCancelled += s.cancelled;
 
+totalD0Pct += Number(d0Pct);
+totalFasrPct += Number(fasrPct);
     let name = ds;
 
     if(name !== "DEL_HUB"){
@@ -620,6 +630,26 @@ darkstores.forEach(ds=>{
     </tr>
     `;
 });
+
+const storeCount = darkstores.length;
+
+html += `
+<tr style="background:#d9edf7;font-weight:700;">
+
+    <td><b>Total</b></td>
+
+    <td><b>${totalProcessed}</b></td>
+
+    <td><b>${(totalD0Pct / storeCount).toFixed(0)}%</b></td>
+
+    <td><b>${totalD0Dispatched}</b></td>
+
+    <td><b>${(totalFasrPct / storeCount).toFixed(0)}%</b></td>
+
+    <td><b>${totalCancelled}</b></td>
+
+</tr>
+`;
 
 html += `
 <tr>
