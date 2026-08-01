@@ -517,12 +517,13 @@ json = json.filter(row => {
         .toUpperCase();
 
     return (
-        channel === "ZILO" &&
-        status === "COMPLETED" &&
-        (fulfillment === "DELIVERED" ||
-         fulfillment === "RTO_DELIVERED") &&
-        isTodayOrBlank(row["Delivery Date"])
-    );
+    channel === "ZILO" &&
+    status === "COMPLETED" &&
+    (fulfillment === "DELIVERED" ||
+     fulfillment === "RTO_DELIVERED") &&
+    isTodayOrBlank(row["Delivery Date"]) &&
+    isTodayOrBlank(row["Pickup Time"])
+);
 
 });
 console.log("Rows after filter:", json.length);
@@ -580,8 +581,13 @@ let orderId = (row["Reference ID"] || "")
     .toString()
     .trim()
     .toLowerCase();
-    // Pickup Orders
-if (orderId.startsWith("return")) {
+    // Pickup Orders (Delivered + RTO Delivered only)
+if (
+    orderId.startsWith("return") &&
+    (status === "DELIVERED" || status === "RTO_DELIVERED")
+) {
+    console.log(row["Reference ID"]);
+
     storePickup[detected]++;
 }
 
