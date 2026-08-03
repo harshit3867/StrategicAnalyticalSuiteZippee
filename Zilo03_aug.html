@@ -1,0 +1,1454 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Zippee KPI Report</title>
+
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+
+<style>
+:root{
+    --glass-bg:rgba(255,255,255,0.16);
+    --card-shadow:0 8px 30px rgba(0,0,0,0.25);
+}
+body{
+    margin:0;
+    font-family:"Segoe UI",Arial;
+    background:url('Zippee.png') center/cover fixed no-repeat;
+}
+body::before{
+    content:"";
+    position:fixed;
+    inset:0;
+    background:rgba(255,255,255,.24);
+    backdrop-filter:blur(6px);
+    z-index:-1;
+}
+.header{
+    background:linear-gradient(90deg,rgba(0,63,140,.85),rgba(0,89,179,.85));
+    color:white;
+    padding:18px;
+    text-align:center;
+}
+.card{
+    background:var(--glass-bg);
+    backdrop-filter:blur(10px);
+    width:fit-content;
+    max-width:none;
+    margin:40px auto;
+    padding:30px;
+    border-radius:18px;
+    box-shadow:var(--card-shadow);
+}
+#reportCard{
+    display:inline-block;
+    width:fit-content;
+    margin:auto;
+}
+.controls{
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    gap:12px;
+    flex-wrap:wrap;
+    margin:20px 0;
+}
+button{
+    padding:8px 16px;
+    background:#0078ff;
+    color:white;
+    border:none;
+    border-radius:8px;
+    cursor:pointer;
+}
+table{
+    width:auto;
+    border-collapse:collapse;
+    background:white;
+    margin:auto;
+}
+th,
+td{
+    border:1px solid #ddd;
+    padding:6px 8px;
+    font-size:13px;
+    text-align:center;
+    white-space:nowrap;
+}
+th{background:#e6e6e6;}
+.left{text-align:left;}
+.left{
+    text-align:left;
+    white-space:normal;
+    font-weight:600;
+}
+.footer{
+    text-align:center;
+    margin-top:10px;
+    font-weight:700;
+}
+</style>
+</head>
+
+<body>
+
+<div class="header">
+    <h1>Zippee <> Zilo Report</h1>
+</div>
+
+<div class="card">
+
+
+
+<div class="controls">
+    <input type="file" id="fileInput" multiple accept=".csv,.xlsx">
+
+    <button onclick="generateReport()">
+        Generate Report
+    </button>
+
+    <button onclick="downloadReport()">
+        Download Report
+    </button>
+</div>
+
+<div id="reportCard">
+
+    <div style="text-align:center;font-weight:800;margin-bottom:10px;">
+        Zippee <> Zilo SLA Report
+    </div>
+
+    <div style="text-align:center;margin-bottom:10px;">
+        Date: <span id="date"></span> |
+        Time: <span id="time"></span>
+    </div>
+
+<table>
+
+<tr><th>S. No.</th>
+<th>Key Parameters</th>
+<th>Ghatkopar</th>
+<th>Malad</th>
+<th>Vashi</th>
+</tr>
+
+<tr><td>1</td><td class="left">SLA Target</td><td id="gSLA">--</td><td id="mSLA">--</td><td id="vSLA">--</td></tr>
+<tr><td>2</td><td class="left">Delay Target</td><td id="gDelay">--</td><td id="mDelay">--</td><td id="vDelay">--</td></tr>
+<tr><td>3</td><td class="left">Projected Order</td><td id="gProjOrder">--</td><td id="mProjOrder">--</td><td id="vProjOrder">--</td></tr>
+
+<tr>
+    <td>4</td>
+    <td class="left">Actual Order</td>
+    <td id="gOrders">--</td>
+    <td id="mOrders">--</td>
+    <td id="vOrders">--</td>
+</tr>
+<tr>
+    <td>4.1</td>
+    <td class="left">Attainment%</td>
+    <td>--</td>
+    <td>--</td>
+    <td>--</td>
+</tr>
+
+<tr>
+    <td>5</td>
+    <td class="left">Delivered Order</td>
+    <td id="gDelivered">--</td>
+    <td id="mDelivered">--</td>
+    <td id="vDelivered">--</td>
+</tr>
+
+<tr>
+    <td>6</td>
+    <td class="left">RTO Orders</td>
+    <td id="gRTO">--</td>
+    <td id="mRTO">--</td>
+    <td id="vRTO">--</td>
+</tr>
+
+<tr>
+    <td>7</td>
+    <td class="left">SLA + 15 min</td>
+    <td>--</td>
+    <td>--</td>
+    <td>--</td>
+</tr>
+<tr>
+    <td>7.1</td>
+    <td class="left">SLA %</td>
+    <td>--</td>
+    <td>--</td>
+    <td>--</td>
+</tr>
+<tr>
+    <td>7.2</td>
+    <td class="left">60 Min</td>
+    <td>--</td>
+    <td>--</td>
+    <td>--</td>
+</tr>
+<tr>
+    <td>7.3</td>
+    <td class="left">90 Min</td>
+    <td>--</td>
+    <td>--</td>
+    <td>--</td>
+</tr>
+<tr>
+    <td>7.4</td>
+    <td class="left">120 Min</td>
+    <td>--</td>
+    <td>--</td>
+    <td>--</td>
+</tr>
+<tr>
+    <td>7.5</td>
+    <td class="left">Others</td>
+    <td>--</td>
+    <td>--</td>
+    <td>--</td>
+</tr>
+
+
+<tr>
+    <td>8</td>
+    <td class="left">Breach order / %</td>
+    <td id="gBreach">--</td>
+    <td id="mBreach">--</td>
+    <td id="vBreach">--</td>
+</tr>
+<tr>
+    <td>9</td>
+    <td class="left">Delay Order/%</td>
+    <td id="gDelayOrder">--</td>
+    <td id="mDelayOrder">--</td>
+    <td id="vDelayOrder">--</td>
+</tr>
+<tr>
+    <td>10</td>
+    <td class="left">Deep Pain Order</td>
+    <td id="gDeepPain">--</td>
+    <td id="mDeepPain">--</td>
+    <td id="vDeepPain">--</td>
+</tr>
+
+<tr>
+    <td>11</td>
+    <td class="left">Projected Forward Rider</td>
+    <td id="gProjRider">--</td>
+    <td id="mProjRider">--</td>
+    <td id="vProjRider">--</td>
+</tr>
+<tr>
+    <td>12</td>
+    <td class="left">Actual Forward Rider</td>
+    <td><input type="number" id="gRiders" style="width:60px;text-align:center;"></td>
+    <td><input type="number" id="mRiders" style="width:60px;text-align:center;"></td>
+    <td><input type="number" id="vRiders" style="width:60px;text-align:center;"></td>
+</tr>
+<tr>
+    <td>12.1</td>
+    <td class="left">Rider attainment</td>
+    <td>--</td>
+    <td>--</td>
+    <td>--</td>
+</tr>
+<tr>
+    <td>12.2</td>
+    <td class="left">Projected Pickup Rider</td>
+    <td><input type="number" id="gProjPickupRider" style="width:60px;text-align:center;"></td>
+    <td><input type="number" id="mProjPickupRider" style="width:60px;text-align:center;"></td>
+    <td><input type="number" id="vProjPickupRider" style="width:60px;text-align:center;"></td>
+</tr>
+
+<tr>
+    <td>12.3</td>
+    <td class="left">Pickup Rider</td>
+    <td><input type="number" id="gPickupRider" style="width:60px;text-align:center;"></td>
+    <td><input type="number" id="mPickupRider" style="width:60px;text-align:center;"></td>
+    <td><input type="number" id="vPickupRider" style="width:60px;text-align:center;"></td>
+</tr>
+
+<tr>
+    <td>12.4</td>
+    <td class="left">Projected Omni Rider</td>
+    <td><input type="number" id="gProjOmniRider" style="width:60px;text-align:center;"></td>
+    <td><input type="number" id="mProjOmniRider" style="width:60px;text-align:center;"></td>
+    <td><input type="number" id="vProjOmniRider" style="width:60px;text-align:center;"></td>
+</tr>
+
+<tr>
+    <td>12.5</td>
+    <td class="left">Omni Rider</td>
+    <td><input type="number" id="gOmniRider" style="width:60px;text-align:center;"></td>
+    <td><input type="number" id="mOmniRider" style="width:60px;text-align:center;"></td>
+    <td><input type="number" id="vOmniRider" style="width:60px;text-align:center;"></td>
+</tr>
+<!--<tr>
+    <td>13</td>
+    <td class="left">Pickup Orders</td>
+    <td>--</td>
+    <td>--</td>
+    <td>--</td>
+</tr>
+-->
+
+</table>
+
+<div class="footer">
+    Powered by SASA Automation | Zippee
+</div>
+
+</div> <!-- reportCard -->
+
+
+<div class="card" id="breachCard">
+
+    <h2 style="text-align:center;">
+        Store Wise Breach Orders
+    </h2>
+
+    <div id="breachContainer"></div>
+
+</div>
+
+</div> <!-- card -->
+
+<script>
+const ORDER_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQHEGv04UcbZtiL2_vsy5G2zxbG-AljveWcJfPQ2Mod1a9XuiUhARYDR4v83yc2FSawTcmdHR04Z0ES/pub?gid=0&single=true&output=csv";
+const RIDER_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQHEGv04UcbZtiL2_vsy5G2zxbG-AljveWcJfPQ2Mod1a9XuiUhARYDR4v83yc2FSawTcmdHR04Z0ES/pub?gid=775811107&single=true&output=csv";
+const SLA_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQHEGv04UcbZtiL2_vsy5G2zxbG-AljveWcJfPQ2Mod1a9XuiUhARYDR4v83yc2FSawTcmdHR04Z0ES/pub?gid=1169651333&single=true&output=csv";
+const DELAY_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQHEGv04UcbZtiL2_vsy5G2zxbG-AljveWcJfPQ2Mod1a9XuiUhARYDR4v83yc2FSawTcmdHR04Z0ES/pub?gid=319008300&single=true&output=csv";
+
+function formatDate(d){
+    return d.toLocaleDateString('en-GB',{
+        day:"2-digit",
+        month:"short"
+    }).replace(" ","-");
+}
+
+function updateDateTime(){
+    const d = new Date();
+    document.getElementById("date").innerText =
+        d.toLocaleDateString('en-GB',{day:"2-digit",month:"short",year:"numeric"});
+    let h=d.getHours(); let ampm=h>=12?"PM":"AM"; h=h%12||12;
+    document.getElementById("time").innerText = h+" "+ampm;
+}
+
+function parseCSV(text){
+    const rows = text.trim().split("\n").map(r=>r.split(","));
+    const headers = rows[0];
+    return rows.slice(1).map(r=>{
+        let obj={};
+        headers.forEach((h,i)=>obj[h.trim()]=r[i]);
+        return obj;
+    });
+}
+
+async function fetchSheet(url){
+    const res = await fetch(url);
+    const text = await res.text();
+    return parseCSV(text);
+}
+function isTodayOrBlank(value) {
+
+    if (value == null || value === "")
+        return true;
+
+    // Excel serial number
+    if (typeof value === "number") {
+        const d = XLSX.SSF.parse_date_code(value);
+        value = new Date(d.y, d.m - 1, d.d);
+    } else {
+        value = new Date(value);
+    }
+
+    if (isNaN(value)) return false;
+
+    const today = new Date();
+
+    return (
+        value.getDate() === today.getDate() &&
+        value.getMonth() === today.getMonth() &&
+        value.getFullYear() === today.getFullYear()
+    );
+}
+async function generateReport(){
+    updateDateTime();
+    const today = formatDate(new Date());
+
+    const [orderData, riderData, slaData, delayData] = await Promise.all([
+    fetchSheet(ORDER_URL),
+    fetchSheet(RIDER_URL),
+    fetchSheet(SLA_URL),
+    fetchSheet(DELAY_URL)
+]);
+    const orderRow = orderData.find(r => r.Date === today) || {};
+
+document.getElementById("gProjOrder").innerText =
+    orderRow["GHATKOPAR"] || "--";
+
+document.getElementById("mProjOrder").innerText =
+    orderRow["MALAD"] || "--";
+
+document.getElementById("vProjOrder").innerText =
+    orderRow["VASHI"] || "--";
+
+    const riderRow = riderData.find(r => r.Date === today) || {};
+
+document.getElementById("gProjRider").innerText =
+    riderRow["Ghatkopar"] || "--";
+
+document.getElementById("mProjRider").innerText =
+    riderRow["Malad"] || "--";
+
+document.getElementById("vProjRider").innerText =
+    riderRow["Vashi"] || "--";
+    // Projected Pickup Rider (Constant)
+document.getElementById("gProjPickupRider").value = 3;
+document.getElementById("mProjPickupRider").value = 5;
+document.getElementById("vProjPickupRider").value = 0;
+
+// Projected Omni Rider (Constant)
+document.getElementById("gProjOmniRider").value = 2;
+document.getElementById("mProjOmniRider").value = 3;
+document.getElementById("vProjOmniRider").value = 1;
+
+    const slaRow = slaData.find(r => r.Date === today) || {};
+
+document.getElementById("gSLA").innerText =
+    slaRow["Target"] || "--";
+
+document.getElementById("mSLA").innerText =
+    slaRow["Target"] || "--";
+
+document.getElementById("vSLA").innerText =
+    slaRow["Target"] || "--";
+    const delayRow = delayData.find(r => r.Date === today) || {};
+
+document.getElementById("gDelay").innerText =
+    delayRow["Target"] || "--";
+
+document.getElementById("mDelay").innerText =
+    delayRow["Target"] || "--";
+
+document.getElementById("vDelay").innerText =
+    delayRow["Target"] || "--";
+    const files = Array.from(document.getElementById("fileInput").files);
+
+    let storeOrders = {
+    Ghatkopar: 0,
+    Malad: 0,
+    Vashi: 0
+};
+
+let storeDelivered = {
+    Ghatkopar: 0,
+    Malad: 0,
+    Vashi: 0
+};
+
+let storeRTO = {
+    Ghatkopar: 0,
+    Malad: 0,
+    Vashi: 0
+};
+
+let storeBreach = {
+    Ghatkopar: 0,
+    Malad: 0,
+    Vashi: 0
+};
+
+breachOrders = {
+    Ghatkopar: [],
+    Malad: [],
+    Vashi: []
+};
+
+let storeDelay = {
+    Ghatkopar: 0,
+    Malad: 0,
+    Vashi: 0
+};
+
+let storeDeepPain = {
+    Ghatkopar: 0,
+    Malad: 0,
+    Vashi: 0
+};
+
+let storePickup = {
+    Ghatkopar: 0,
+    Malad: 0,
+    Vashi: 0
+};
+
+let storeBuckets = {
+    Ghatkopar: {
+        30: 0,
+        60: 0,
+        90: 0,
+        120: 0,
+        others: 0
+    },
+    Malad: {
+        30: 0,
+        60: 0,
+        90: 0,
+        120: 0,
+        others: 0
+    },
+    Vashi: {
+        30: 0,
+        60: 0,
+        90: 0,
+        120: 0,
+        others: 0
+    }
+};
+
+    for (let file of files){
+        const data = await file.arrayBuffer();
+        const wb = XLSX.read(data);
+        const sheet = wb.Sheets[wb.SheetNames[0]];
+        let json = XLSX.utils.sheet_to_json(sheet);
+        console.log(Object.keys(json[0]));
+
+// Today's date (dd/mm/yyyy)
+const today = new Date();
+const todayStr = today.toLocaleDateString("en-GB");
+json = json.filter(row => {
+
+    const channel = String(row["Channel"] || "")
+        .trim()
+        .toUpperCase();
+
+    const status = String(row["Status"] || "")
+        .trim()
+        .toUpperCase();
+
+    const fulfillment = String(row["Fulfillment Status"] || "")
+        .trim()
+        .toUpperCase();
+
+    return (
+    channel === "ZILO" &&
+    status === "COMPLETED" &&
+    (fulfillment === "DELIVERED" ||
+     fulfillment === "RTO_DELIVERED") &&
+    isTodayOrBlank(row["Delivery Date"]) &&
+    isTodayOrBlank(row["Pickup Time"])
+);
+
+});
+console.log("Rows after filter:", json.length);
+
+        let detected=null;
+
+        for (let row of json){
+            let s = Object.values(row).join(" ").toLowerCase();
+            if(s.includes("ghatkopar") || s.includes("ght")){
+    detected = "Ghatkopar";
+    break;
+}
+if(s.includes("malad") || s.includes("mld")){
+    detected = "Malad";
+    break;
+}
+if(s.includes("vashi") || s.includes("vsh")){
+    detected = "Vashi";
+    break;
+}
+        }
+
+        if(!detected) continue;
+        
+let deliveredCount = 0;
+        json.forEach(row => {
+
+    // Reference ID / Order ID
+    let orderId = (row["Reference ID"] || "")
+        .toString()
+        .trim()
+        .toLowerCase();
+
+    // NONE Logic (Actual Orders)
+    const isActualOrder =
+        !orderId.startsWith("return") &&
+        !orderId.startsWith("f-") &&
+        !orderId.endsWith("-pd") &&
+        !orderId.startsWith("rtv-");
+
+    if (isActualOrder) {
+        storeOrders[detected]++;
+    }
+
+});
+
+        json.forEach(row=>{
+            
+            let status = (row["Fulfillment Status"] || "").toUpperCase().trim();
+            if (status === "RTO_DELIVERED") {
+    storeRTO[detected]++;
+}
+
+let orderId = (row["Reference ID"] || "")
+    .toString()
+    .trim()
+    .toLowerCase();
+    // Pickup Orders (Delivered + RTO Delivered only)
+if (
+    orderId.startsWith("return") &&
+    (status === "DELIVERED" || status === "RTO_DELIVERED")
+) {
+    console.log(row["Reference ID"]);
+
+    storePickup[detected]++;
+}
+
+const isActualOrder =
+    !orderId.startsWith("return") &&
+    !orderId.startsWith("f-") &&
+    !orderId.endsWith("-pd") &&
+    !orderId.startsWith("rtv-");
+
+// Delivered Orders should be counted only from Actual Orders
+if (status === "DELIVERED") {
+
+    deliveredCount++;
+
+    if (isActualOrder) {
+        storeDelivered[detected]++;
+    }
+
+}
+ 
+// Only Delivered Actual Orders are eligible
+if (!(isActualOrder && status === "DELIVERED")) return;
+
+// -------------------------
+// SERVICE DURATION
+// -------------------------
+
+const address = String(row["Customer Address"] || "").trim();
+const pincode = address.slice(-6);
+
+let serviceDuration = "NA";
+
+if (detected === "Malad") {
+
+    // ---------- 120 MIN ----------
+    if ([
+        "400068","401105","401107","401101"
+    ].includes(pincode)) {
+
+        serviceDuration = 120;
+
+    }
+
+    // ---------- 60 MIN ----------
+    else if ([
+        "400047","400053","400058","400060",
+        "400062","400063","400064","400066",
+        "400067","400069","400090","400091",
+        "400092","400093","400095","400097",
+        "400101","400102","400103","400104"
+    ].includes(pincode)) {
+
+        serviceDuration = 60;
+
+    }
+
+    // ---------- 90 MIN ----------
+    else if ([
+        "400049","400054","400056","400061","400065"
+    ].includes(pincode)) {
+
+        serviceDuration = 90;
+
+    }
+
+    else {
+
+        serviceDuration = "others";
+
+    }
+
+}
+
+else if (detected === "Ghatkopar") {
+
+    // ---------- 60 MIN ----------
+    if ([
+        "400024","400042","400043","400059",
+        "400070","400071","400072","400075",
+        "400076","400077","400078","400079",
+        "400083","400084","400086","400087",
+        "400089","400096"
+    ].includes(pincode)) {
+
+        serviceDuration = 60;
+
+    }
+
+    // ---------- 90 MIN ----------
+    else if ([
+        "400051","400055","400057","400074",
+        "400085","400088","400094","400098",
+        "400099","400029"
+    ].includes(pincode)) {
+
+        serviceDuration = 90;
+
+    }
+
+    else {
+
+        serviceDuration = "others";
+
+    }
+
+}
+else if (detected === "Vashi") {
+
+    // ---------- 120 MIN ----------
+    if ([
+        "400068","401105","401107"
+    ].includes(pincode)) {
+
+        serviceDuration = 120;
+
+    }
+
+    // ---------- 60 MIN ----------
+    else if ([
+        "400047","400053","400058","400060",
+        "400062","400063","400064","400066",
+        "400067","400069","400090","400091",
+        "400092","400093","400095","400097",
+        "400101","400102","400103","400104",
+        "400614","400701","400703","400705",
+        "400706","400709","400710"
+    ].includes(pincode)) {
+
+        serviceDuration = 60;
+
+    }
+
+    // ---------- 90 MIN ----------
+    else if ([
+        "400049","400054","400056",
+        "400061","400065","400708"
+    ].includes(pincode)) {
+
+        serviceDuration = 90;
+
+    }
+
+    else {
+
+        serviceDuration = "others";
+
+    }
+
+}
+
+// -------------------------
+// PROMISE TIME
+// -------------------------
+
+const slot = String(row["Delivery Slot"] || "").trim();
+const slotMatch = slot.match(/(\d{1,2}):(\d{2})-(\d{1,2}):(\d{2})/);
+
+if (!slotMatch) return;
+
+const start = new Date(
+    `1970-01-01 ${slotMatch[1]}:${slotMatch[2]}:00`
+);
+
+const end = new Date(
+    `1970-01-01 ${slotMatch[3]}:${slotMatch[4]}:00`
+);
+
+const actualPromise =
+    (end - start) / 60000;
+const endMinute = parseInt(slotMatch[4], 10);
+
+const orderType =
+    endMinute === 0
+        ? "SLOTTED"
+        : "INSTANT";
+
+// -------------------------
+// DELAY DURATION (BJ)
+// -------------------------
+
+let delayDuration = "NA";
+
+if (
+    typeof serviceDuration === "number" &&
+    !isNaN(actualPromise)
+) {
+    delayDuration = actualPromise - serviceDuration;
+}
+
+const match = slot.match(/(\d{1,2}:\d{2})$/);
+
+if(!match) return;
+
+const promise = new Date("1970-01-01 " + match[1] + ":00");
+
+// SLA +15
+const sla15 = new Date(promise);
+sla15.setMinutes(sla15.getMinutes() + 15);
+
+// Deep Pain Slot (+1 Hour)
+const dpSlot = new Date(promise);
+dpSlot.setHours(dpSlot.getHours() + 1);
+
+
+// -------------------------
+// ACTUAL DELIVERY TIME
+// -------------------------
+if (detected === "Malad") {
+    console.log(
+        "Reached Delivery Raw:",
+        row["Reached Delivery Time"],
+        "| Fulfillment:",
+        row["Fulfillment Status"],
+        "| Ref:",
+        row["Reference ID"]
+    );
+}
+const reachedDelivery = row["Reached Delivery Time"];
+
+if (reachedDelivery == null || reachedDelivery === "") return;
+
+let actualDate;
+
+if (typeof reachedDelivery === "number") {
+
+    const d = XLSX.SSF.parse_date_code(reachedDelivery);
+
+    actualDate = new Date(
+        d.y,
+        d.m - 1,
+        d.d,
+        d.H,
+        d.M,
+        Math.floor(d.S)
+    );
+
+} else {
+
+    actualDate = new Date(reachedDelivery);
+
+}
+
+if (isNaN(actualDate)) {
+    console.log("Invalid Reached Delivery:", reachedDelivery);
+    return;
+}
+
+// HH:MM from Actual Delivery Time
+
+
+// HH:MM from Promise +15
+const promiseTime =
+    sla15.getHours() * 60 +
+    sla15.getMinutes();
+
+const dpTime =
+    dpSlot.getHours() * 60 +
+    dpSlot.getMinutes();
+const actualTime =
+    actualDate.getHours() * 60 +
+    actualDate.getMinutes();
+
+console.log({
+    Slot: row["Delivery Slot"],
+    Actual: actualDate.toLocaleTimeString(),
+    Promise: promise.toLocaleTimeString(),
+    SLA15: sla15.toLocaleTimeString(),
+    DeepPain: dpSlot.toLocaleTimeString(),
+    ActualMinutes: actualTime,
+    PromiseMinutes: promiseTime,
+    DeepPainMinutes: dpTime
+});
+
+    const isBreach =
+    status === "DELIVERED" &&
+    actualTime >= promiseTime;
+// -------------------------
+// DEEP PAIN ORDER
+// -------------------------
+
+const isDeepPain = actualTime > dpTime;
+
+if (
+    status === "DELIVERED" &&
+    isDeepPain
+) {
+    storeDeepPain[detected]++;
+}
+// -------------------------
+// DELAY ORDER
+// -------------------------
+
+if (
+    status === "DELIVERED" &&
+    orderType === "INSTANT" &&
+    typeof delayDuration === "number" &&
+    delayDuration > 0
+) {
+    storeDelay[detected]++;
+}
+if (isBreach) {
+
+    storeBreach[detected]++;
+
+    let orderTime = String(row["Delivery Slot"] || "").split("-")[0];
+
+let manifestedTime = "";
+let orderToPackTAT = "";
+
+let orderMinutes = 0;
+let manifestMinutes = 0;
+
+// Order Time
+if (orderTime.includes(":")) {
+
+    const [h, m] = orderTime.split(":").map(Number);
+    orderMinutes = h * 60 + m;
+
+}
+
+// Manifested Time
+if (typeof row["Manifested Time"] === "number") {
+
+    const d = XLSX.SSF.parse_date_code(row["Manifested Time"]);
+
+    manifestedTime =
+        String(d.H).padStart(2, "0") + ":" +
+        String(d.M).padStart(2, "0");
+
+    manifestMinutes = d.H * 60 + d.M + (d.S || 0) / 60;
+
+} else {
+
+    const dt = new Date(row["Manifested Time"]);
+
+    if (!isNaN(dt)) {
+
+        manifestedTime =
+            String(dt.getHours()).padStart(2, "0") + ":" +
+            String(dt.getMinutes()).padStart(2, "0");
+
+        manifestMinutes =
+            dt.getHours() * 60 +
+            dt.getMinutes();
+    }
+
+}
+
+// Difference in Minutes
+if (manifestMinutes >= orderMinutes) {
+    orderToPackTAT = (manifestMinutes - orderMinutes).toFixed(2);
+}
+
+let reachedPickupTime = "";
+let packingToPickTAT = "";
+
+let pickupMinutes = 0;
+
+if (typeof row["Reached Pickup Time"] === "number") {
+
+    const d = XLSX.SSF.parse_date_code(row["Reached Pickup Time"]);
+
+    reachedPickupTime =
+        String(d.H).padStart(2, "0") + ":" +
+        String(d.M).padStart(2, "0");
+
+    pickupMinutes = d.H * 60 + d.M + (d.S || 0) / 60;
+
+} else {
+
+    const dt = new Date(row["Reached Pickup Time"]);
+
+    if (!isNaN(dt)) {
+
+        reachedPickupTime =
+            String(dt.getHours()).padStart(2, "0") + ":" +
+            String(dt.getMinutes()).padStart(2, "0");
+
+        pickupMinutes =
+            dt.getHours() * 60 +
+            dt.getMinutes();
+    }
+
+}
+
+// Packing to Pick TAT
+if (pickupMinutes >= manifestMinutes) {
+    packingToPickTAT = (pickupMinutes - manifestMinutes).toFixed(2);
+}
+
+// -------------------------
+// TOTAL UTR
+// -------------------------
+let totalUTR = "";
+
+if (pickupMinutes >= orderMinutes) {
+    totalUTR = (pickupMinutes - orderMinutes).toFixed(2);
+}
+
+// -------------------------
+// PROMISE (+15)
+// -------------------------
+const promiseHH =
+    String(sla15.getHours()).padStart(2, "0");
+
+const promiseMM =
+    String(sla15.getMinutes()).padStart(2, "0");
+
+const promiseTimeText =
+    `${promiseHH}:${promiseMM}`;
+
+// -------------------------
+// REACHED DELIVERY TIME
+// -------------------------
+const reachDeliveryTime =
+    String(actualDate.getHours()).padStart(2, "0") +
+    ":" +
+    String(actualDate.getMinutes()).padStart(2, "0");
+
+// -------------------------
+// BREACH (mins)
+// -------------------------
+const breachMinutes =
+    Math.max(0, actualTime - promiseTime);
+
+// -------------------------
+// FLAGS
+// -------------------------
+const utrBreach =
+    parseFloat(totalUTR) > 20 ? "YES" : "NO";
+
+const deepPain =
+    breachMinutes >= 60 ? "YES" : "NO";
+
+// -------------------------
+// STORE
+// -------------------------
+breachOrders[detected].push({
+
+    referenceId: row["Reference ID"] || "",
+
+    fulfillmentStatus: row["Fulfillment Status"] || "",
+
+    orderTime: orderTime,
+
+    manifestedTime: manifestedTime,
+
+    orderToPackTAT: orderToPackTAT,
+
+    reachedPickupTime: reachedPickupTime,
+
+    packingToPickTAT: packingToPickTAT,
+
+    totalUTR: totalUTR,
+
+    promise: promiseTimeText,
+
+    reachDeliveryTime: reachDeliveryTime,
+
+    breach: breachMinutes,
+
+    utrBreach: utrBreach,
+
+    deepPain: deepPain,
+
+    riderName: row["Rider Name"] || "",
+
+    riderId: row["Rider ID"] || ""
+
+});
+    return;
+}
+
+// -------------------------
+// COUNT
+// -------------------------
+
+if (serviceDuration === 60) {
+
+    console.log("60 MIN", pincode, row["Reference ID"]);
+    storeBuckets[detected][60]++;
+
+}
+else if (serviceDuration === 90) {
+
+    console.log("90 MIN", pincode, row["Reference ID"]);
+    storeBuckets[detected][90]++;
+
+}
+else if (serviceDuration === 120) {
+
+    console.log("120 MIN", pincode, row["Reference ID"]);
+    storeBuckets[detected][120]++;
+
+}
+else {
+
+    console.log("OTHERS", pincode, row["Reference ID"]);
+    storeBuckets[detected].others++;
+
+}
+        });
+    }
+
+    document.getElementById("gOrders").innerText = storeOrders.Ghatkopar;
+    document.getElementById("mOrders").innerText = storeOrders.Malad;
+    document.getElementById("vOrders").innerText = storeOrders.Vashi;
+
+    document.getElementById("gDelivered").innerText = storeDelivered.Ghatkopar;
+document.getElementById("mDelivered").innerText = storeDelivered.Malad;
+document.getElementById("vDelivered").innerText = storeDelivered.Vashi;
+    document.getElementById("gRTO").innerText = storeRTO.Ghatkopar;
+document.getElementById("mRTO").innerText = storeRTO.Malad;
+document.getElementById("vRTO").innerText = storeRTO.Vashi;
+document.getElementById("gBreach").innerText = storeBreach.Ghatkopar;
+document.getElementById("mBreach").innerText = storeBreach.Malad;
+document.getElementById("vBreach").innerText = storeBreach.Vashi;
+document.getElementById("gDelayOrder").innerText =
+    storeDelay.Ghatkopar;
+
+document.getElementById("mDelayOrder").innerText =
+    storeDelay.Malad;
+
+document.getElementById("vDelayOrder").innerText =
+    storeDelay.Vashi;
+    document.getElementById("gDeepPain").innerText =
+    storeDeepPain.Ghatkopar;
+
+document.getElementById("mDeepPain").innerText =
+    storeDeepPain.Malad;
+document.getElementById("vDeepPain").innerText =
+    storeDeepPain.Vashi;
+
+    document.querySelectorAll("table tr").forEach(row=>{
+        let label=row.cells[1]?.innerText;
+
+        if(label==="Pickup Orders"){
+    row.cells[2].innerText = storePickup.Ghatkopar;
+    row.cells[3].innerText = storePickup.Malad;
+    row.cells[4].innerText = storePickup.Vashi;
+}
+       if(label==="60 Min"){
+    row.cells[2].innerText = storeBuckets.Ghatkopar[60];
+    row.cells[3].innerText = storeBuckets.Malad[60];
+    row.cells[4].innerText = storeBuckets.Vashi[60];
+}if(label==="90 Min"){
+    row.cells[2].innerText = storeBuckets.Ghatkopar[90];
+    row.cells[3].innerText = storeBuckets.Malad[90];
+    row.cells[4].innerText = storeBuckets.Vashi[90];
+}       if(label==="120 Min"){
+            row.cells[2].innerText = storeBuckets.Ghatkopar[120];
+            row.cells[3].innerText = storeBuckets.Malad[120];
+            row.cells[4].innerText = storeBuckets.Vashi[120];
+        }
+        if(label==="Others"){
+            row.cells[2].innerText = storeBuckets.Ghatkopar.others;
+            row.cells[3].innerText = storeBuckets.Malad.others;
+            row.cells[4].innerText = storeBuckets.Vashi.others;
+        }
+if(label==="SLA + 15 min"){
+
+    let gTotal = 
+        storeBuckets.Ghatkopar[30] +
+        storeBuckets.Ghatkopar[60] +
+        storeBuckets.Ghatkopar[90] +
+        storeBuckets.Ghatkopar[120] +
+        storeBuckets.Ghatkopar.others;
+
+    let mTotal = 
+        storeBuckets.Malad[30] +
+        storeBuckets.Malad[60] +
+        storeBuckets.Malad[90] +
+        storeBuckets.Malad[120] +
+        storeBuckets.Malad.others;
+        let vTotal =
+    storeBuckets.Vashi[30] +
+    storeBuckets.Vashi[60] +
+    storeBuckets.Vashi[90] +
+    storeBuckets.Vashi[120] +
+    storeBuckets.Vashi.others;
+
+    row.cells[2].innerText = gTotal;
+row.cells[3].innerText = mTotal;
+row.cells[4].innerText = vTotal;
+}
+        if(label==="SLA %"){
+
+    let gTotal = 
+        storeBuckets.Ghatkopar[30] +
+        storeBuckets.Ghatkopar[60] +
+        storeBuckets.Ghatkopar[90] +
+        storeBuckets.Ghatkopar[120] +
+        storeBuckets.Ghatkopar.others;
+
+    let mTotal = 
+        storeBuckets.Malad[30] +
+        storeBuckets.Malad[60] +
+        storeBuckets.Malad[90] +
+        storeBuckets.Malad[120] +
+        storeBuckets.Malad.others;
+
+    let g = storeDelivered.Ghatkopar
+        ? ((gTotal / storeDelivered.Ghatkopar) * 100).toFixed(0) + "%"
+        : "--";
+
+    let m = storeDelivered.Malad
+        ? ((mTotal / storeDelivered.Malad) * 100).toFixed(0) + "%"
+        : "--";
+    
+        let vTotal =
+    storeBuckets.Vashi[30] +
+    storeBuckets.Vashi[60] +
+    storeBuckets.Vashi[90] +
+    storeBuckets.Vashi[120] +
+    storeBuckets.Vashi.others;
+
+let v = storeDelivered.Vashi
+    ? ((vTotal / storeDelivered.Vashi) * 100).toFixed(0) + "%"
+    : "--";
+
+    row.cells[2].innerText = g;
+    row.cells[3].innerText = m;
+    row.cells[4].innerText = v;
+}    });
+const breachContainer = document.getElementById("breachContainer");
+
+breachContainer.innerHTML = "";
+
+["Ghatkopar","Malad","Vashi"].forEach(store=>{
+
+    breachContainer.innerHTML += `
+        <div style="
+display:flex;
+justify-content:space-between;
+align-items:center;
+margin-top:25px;
+margin-bottom:8px;
+">
+
+    <h3 style="margin:0;">${store}</h3>
+
+    <button onclick="copyStore('${store}')">
+        📋 Copy
+    </button>
+
+</div>
+
+        <table style="margin-bottom:25px;">
+
+<tr>
+    <th>Reference ID</th>
+    <th>Fulfillment Status</th>
+    <th>Order Time</th>
+    <th>Manifested Time</th>
+    <th>Order to Pack TAT (mins)</th>
+    <th>Reached Pickup Time</th>
+    <th>Packing to Pick TAT (mins)</th>
+    <th>Total UTR (mins)</th>
+<th>Promise</th>
+<th>Reach Delivery Time</th>
+<th>Breach (mins)</th>
+<th>UTR Breach</th>
+<th>DEEP PAIN</th>
+<th>Rider Name</th>
+<th>Rider ID</th>
+</tr>
+            ${
+                breachOrders[store].length
+                ?
+                breachOrders[store].map(order=>`
+<tr>
+    <td>${order.referenceId}</td>
+    <td>${order.fulfillmentStatus}</td>
+    <td>${order.orderTime}</td>
+    <td>${order.manifestedTime}</td>
+    <td>${order.orderToPackTAT}</td>
+    <td>${order.reachedPickupTime}</td>
+    <td>${order.packingToPickTAT}</td>
+    <td>${order.totalUTR}</td>
+<td>${order.promise}</td>
+<td>${order.reachDeliveryTime}</td>
+<td>${order.breach}</td>
+<td>${order.utrBreach}</td>
+<td>${order.deepPain}</td>
+<td>${order.riderName}</td>
+<td>${order.riderId}</td>
+</tr>
+`).join("")                :
+                `<tr>
+    <td colspan="15">No Breach Orders</td>
+</tr>`
+            }
+
+        </table>
+    `;
+});
+    function calcRiderAttainment(actual, projected){
+        if(isNaN(projected) || projected === 0) return "--";
+        let val = (actual / projected) * 100;
+        return val.toFixed(0) + "%";
+    }
+
+    let gActualRider = parseFloat(document.getElementById("gRiders").value) || 0;
+let mActualRider = parseFloat(document.getElementById("mRiders").value) || 0;
+let vActualRider = parseFloat(document.getElementById("vRiders").value) || 0;
+
+    let gProjRider = parseFloat(document.getElementById("gProjRider").innerText);
+    let mProjRider = parseFloat(document.getElementById("mProjRider").innerText);
+let vProjRider = parseFloat(document.getElementById("vProjRider").innerText);
+    let gRiderAttain = calcRiderAttainment(gActualRider, gProjRider);
+    let mRiderAttain = calcRiderAttainment(mActualRider, mProjRider);
+    let vRiderAttain = calcRiderAttainment(vActualRider, vProjRider);
+
+
+    document.querySelectorAll("table tr").forEach(row=>{
+        if(row.cells[1]?.innerText === "Rider attainment"){
+    row.cells[2].innerText = gRiderAttain;
+    row.cells[3].innerText = mRiderAttain;
+    row.cells[4].innerText = vRiderAttain;
+}    });
+
+    function calcAttainment(actual, projected){
+        if(isNaN(projected) || projected === 0) return "--";
+        let val = (actual / projected) * 100;
+        return val.toFixed(0) + "%";
+    }
+
+    let gActual = parseFloat(document.getElementById("gOrders").innerText) || 0;
+    let mActual = parseFloat(document.getElementById("mOrders").innerText) || 0;
+    let vActual = parseFloat(document.getElementById("vOrders").innerText) || 0;
+
+    let gProjected = parseFloat(document.getElementById("gProjOrder").innerText);
+    let mProjected = parseFloat(document.getElementById("mProjOrder").innerText);
+    let vProjected = parseFloat(document.getElementById("vProjOrder").innerText);
+
+    let gAttain = calcAttainment(gActual, gProjected);
+    let mAttain = calcAttainment(mActual, mProjected);
+    let vAttain = calcAttainment(vActual, vProjected);
+
+    document.querySelectorAll("table tr").forEach(row=>{
+        if(row.cells[1]?.innerText === "Attainment%"){
+            row.cells[2].innerText = gAttain;
+            row.cells[3].innerText = mAttain;
+            row.cells[4].innerText = vAttain;
+        }
+    });
+}
+function downloadReport() {
+
+    // Hide rider input boxes
+    const inputs = document.querySelectorAll(
+"#gRiders,#mRiders,#vRiders," +
+"#gProjPickupRider,#mProjPickupRider,#vProjPickupRider," +
+"#gPickupRider,#mPickupRider,#vPickupRider," +
+"#gProjOmniRider,#mProjOmniRider,#vProjOmniRider," +
+"#gOmniRider,#mOmniRider,#vOmniRider"
+);
+
+    inputs.forEach(input => {
+
+        const span = document.createElement("span");
+        span.className = "download-value";
+        span.innerText = input.value || "--";
+
+        input.style.display = "none";
+        input.parentNode.appendChild(span);
+
+    });
+
+    const report = document.getElementById("reportCard");
+
+const oldWidth = report.style.width;
+const oldDisplay = report.style.display;
+
+report.style.display = "inline-block";
+report.style.width = "fit-content";
+
+    html2canvas(report,{
+        scale:3,
+        useCORS:true,
+        backgroundColor:"#ffffff"
+    }).then(canvas=>{
+
+        const link=document.createElement("a");
+        link.download="Zippee_Report.png";
+        link.href=canvas.toDataURL("image/png");
+        link.click();
+
+        // Restore input boxes
+        document.querySelectorAll(".download-value").forEach(span => span.remove());
+
+        inputs.forEach(input=>{
+            input.style.display="";
+        });
+        report.style.width = oldWidth;
+report.style.display = oldDisplay;
+
+    });
+
+}
+function copyStore(store){
+
+    const orders = breachOrders[store];
+
+    if(!orders.length){
+        alert("No Breach Orders found for " + store);
+        return;
+    }
+
+    let text = "";
+
+    orders.forEach(order=>{
+
+        text += [
+
+            order.referenceId,
+            order.fulfillmentStatus,
+            order.orderTime,
+            order.manifestedTime,
+            order.orderToPackTAT,
+            order.reachedPickupTime,
+            order.packingToPickTAT,
+            order.totalUTR,
+            order.promise,
+            order.reachDeliveryTime,
+            order.breach,
+            order.utrBreach,
+            order.deepPain,
+            order.riderName,
+            order.riderId
+
+        ].join("\t");
+
+        text += "\n";
+
+    });
+
+    navigator.clipboard.writeText(text);
+
+    alert(store + " copied successfully.");
+
+}
+</script>
+
+</body>
+</html>
