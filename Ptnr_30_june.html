@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Zippee – Partner Report</title>
+<title>Zippee – Partnr Report</title>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -279,7 +279,6 @@ dataset.forEach(r=>{
 
 let trackingNo = (r[4] + "").trim()
 
-if(trackingNo.startsWith("Z0")) return
 
 let status=r[5]     // column F
 if(typeof r[6] === "number"){
