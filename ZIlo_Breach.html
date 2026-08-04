@@ -1,0 +1,935 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Zippee KPI Report</title>
+
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+
+<style>
+:root{
+    --glass-bg:rgba(255,255,255,0.16);
+    --card-shadow:0 8px 30px rgba(0,0,0,0.25);
+}
+body{
+    margin:0;
+    font-family:"Segoe UI",Arial;
+    background:url('Zippee.png') center/cover fixed no-repeat;
+}
+body::before{
+    content:"";
+    position:fixed;
+    inset:0;
+    background:rgba(255,255,255,.24);
+    backdrop-filter:blur(6px);
+    z-index:-1;
+}
+.header{
+    background:linear-gradient(90deg,rgba(0,63,140,.85),rgba(0,89,179,.85));
+    color:white;
+    padding:18px;
+    text-align:center;
+}
+.card{
+    background:var(--glass-bg);
+    backdrop-filter:blur(10px);
+    width:fit-content;
+    max-width:none;
+    margin:40px auto;
+    padding:30px;
+    border-radius:18px;
+    box-shadow:var(--card-shadow);
+}
+#reportCard{
+    display:none;
+    width:fit-content;
+    margin:auto;
+}
+
+#reportCard2{
+    display: none;
+    width: fit-content;
+    margin: 40px auto;
+    text-align: center;
+}
+.controls{
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    gap:12px;
+    flex-wrap:wrap;
+    margin:20px 0;
+}
+button{
+    padding:8px 16px;
+    background:#0078ff;
+    color:white;
+    border:none;
+    border-radius:8px;
+    cursor:pointer;
+}
+table{
+    width:auto;
+    border-collapse:collapse;
+    background:white;
+    margin:auto;
+}
+th,
+td{
+    border:1px solid #ddd;
+    padding:6px 8px;
+    font-size:13px;
+    text-align:center;
+    white-space:nowrap;
+}
+th{background:#e6e6e6;}
+.left{text-align:left;}
+.left{
+    text-align:left;
+    white-space:normal;
+    font-weight:600;
+}
+.footer{
+    text-align:center;
+    margin-top:10px;
+    font-weight:700;
+}
+</style>
+</head>
+
+<body>
+
+<div class="header">
+    <h1>Zippee <> Zilo Report</h1>
+</div>
+
+<div class="card">
+
+
+
+<div class="controls">
+    <input type="file" id="fileInput" multiple accept=".csv,.xlsx">
+
+    <button onclick="generateReport()">
+        Generate Report
+    </button>
+
+<button onclick="downloadHourlyReport()">
+    Download Hourly Breach Report
+</button>
+</div>
+
+
+<div class="footer">
+    Powered by SASA Automation | Zippee
+</div>
+
+</div> <!-- card -->
+<div id="reportCard2">
+
+<div style="text-align:center;margin-bottom:15px;">
+
+    <div style="
+        font-size:28px;
+        font-weight:800;
+        margin-bottom:6px;
+    ">
+        Zippee <> Zilo Hourly Breach Report
+    </div>
+
+    <div id="reportDateTime" style="
+        font-size:15px;
+        color:#555;
+        font-weight:600;
+    ">
+    </div>
+
+</div>
+
+<table id="hourlyTable">
+
+<thead>
+
+<tr>
+
+<th rowspan="2">From</th>
+<th rowspan="2">To</th>
+
+<th colspan="4">Malad</th>
+<th colspan="4">Ghatkopar</th>
+<th colspan="4">Vashi</th>
+
+</tr>
+
+<tr>
+
+<th>Total</th>
+<th>Delivered</th>
+<th>Breach</th>
+<th>B%</th>
+
+<th>Total</th>
+<th>Delivered</th>
+<th>Breach</th>
+<th>B%</th>
+
+<th>Total</th>
+<th>Delivered</th>
+<th>Breach</th>
+<th>B%</th>
+
+</tr>
+
+</thead>
+
+<tbody>
+
+</tbody>
+
+
+</table>
+
+<div class="footer">
+Powered by SASA Automation | Zippee
+</div>
+
+</div>
+
+</div> <!-- card -->
+
+<script>
+const ORDER_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQHEGv04UcbZtiL2_vsy5G2zxbG-AljveWcJfPQ2Mod1a9XuiUhARYDR4v83yc2FSawTcmdHR04Z0ES/pub?gid=0&single=true&output=csv";
+const RIDER_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQHEGv04UcbZtiL2_vsy5G2zxbG-AljveWcJfPQ2Mod1a9XuiUhARYDR4v83yc2FSawTcmdHR04Z0ES/pub?gid=775811107&single=true&output=csv";
+const SLA_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQHEGv04UcbZtiL2_vsy5G2zxbG-AljveWcJfPQ2Mod1a9XuiUhARYDR4v83yc2FSawTcmdHR04Z0ES/pub?gid=1169651333&single=true&output=csv";
+const DELAY_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQHEGv04UcbZtiL2_vsy5G2zxbG-AljveWcJfPQ2Mod1a9XuiUhARYDR4v83yc2FSawTcmdHR04Z0ES/pub?gid=319008300&single=true&output=csv";
+
+function formatDate(d){
+    return d.toLocaleDateString('en-GB',{
+        day:"2-digit",
+        month:"short"
+    }).replace(" ","-");
+}
+
+function updateDateTime(){
+
+    const now = new Date();
+
+    const date = now.toLocaleDateString("en-GB",{
+        day:"2-digit",
+        month:"short",
+        year:"numeric"
+    });
+
+    const time = now.toLocaleTimeString("en-GB",{
+        hour:"2-digit",
+        minute:"2-digit",
+        hour12:true
+    });
+
+    document.getElementById("reportDateTime").innerHTML =
+        `<b>Date:</b> ${date} &nbsp;&nbsp;|&nbsp;&nbsp; <b>Time:</b> ${time}`;
+
+}
+function parseCSV(text){
+    const rows = text.trim().split("\n").map(r=>r.split(","));
+    const headers = rows[0];
+    return rows.slice(1).map(r=>{
+        let obj={};
+        headers.forEach((h,i)=>obj[h.trim()]=r[i]);
+        return obj;
+    });
+}
+
+async function fetchSheet(url){
+    const res = await fetch(url);
+    const text = await res.text();
+    return parseCSV(text);
+}
+function isTodayOrBlank(value) {
+
+    if (value == null || value === "")
+        return true;
+
+    // Excel serial number
+    if (typeof value === "number") {
+        const d = XLSX.SSF.parse_date_code(value);
+        value = new Date(d.y, d.m - 1, d.d);
+    } else {
+        value = new Date(value);
+    }
+
+    if (isNaN(value)) return false;
+
+    const today = new Date();
+
+    return (
+        value.getDate() === today.getDate() &&
+        value.getMonth() === today.getMonth() &&
+        value.getFullYear() === today.getFullYear()
+    );
+}
+async function generateReport(){
+    updateDateTime();
+    const today = formatDate(new Date());
+
+    const files = Array.from(document.getElementById("fileInput").files);
+
+    let storeOrders = {
+    Ghatkopar: 0,
+    Malad: 0,
+    Vashi: 0
+};
+
+let storeDelivered = {
+    Ghatkopar: 0,
+    Malad: 0,
+    Vashi: 0
+};
+
+let storeRTO = {
+    Ghatkopar: 0,
+    Malad: 0,
+    Vashi: 0
+};
+
+let storeBreach = {
+    Ghatkopar: 0,
+    Malad: 0,
+    Vashi: 0
+};
+
+let storeDelay = {
+    Ghatkopar: 0,
+    Malad: 0,
+    Vashi: 0
+};
+
+let storeDeepPain = {
+    Ghatkopar: 0,
+    Malad: 0,
+    Vashi: 0
+};
+
+let storePickup = {
+    Ghatkopar: 0,
+    Malad: 0,
+    Vashi: 0
+};
+
+let storeBuckets = {
+
+    Ghatkopar: {
+        30: 0,
+        60: 0,
+        90: 0,
+        120: 0,
+        others: 0
+    },
+    Malad: {
+        30: 0,
+        60: 0,
+        90: 0,
+        120: 0,
+        others: 0
+    },
+    Vashi: {
+        30: 0,
+        60: 0,
+        90: 0,
+        120: 0,
+        others: 0
+    }
+    
+};
+const hourlyStats = {
+
+    Ghatkopar:{},
+    Malad:{},
+    Vashi:{}
+
+};
+
+["Ghatkopar","Malad","Vashi"].forEach(store=>{
+
+    for(let h=7; h<=22; h++){
+
+        hourlyStats[store][h]={
+
+            total:0,
+            delivered:0,
+            breach:0
+
+        };
+
+    }
+
+});
+    for (let file of files){
+        const data = await file.arrayBuffer();
+        const wb = XLSX.read(data);
+        const sheet = wb.Sheets[wb.SheetNames[0]];
+        let json = XLSX.utils.sheet_to_json(sheet);
+        console.log(Object.keys(json[0]));
+
+// Today's date (dd/mm/yyyy)
+const today = new Date();
+const todayStr = today.toLocaleDateString("en-GB");
+json = json.filter(row => {
+
+    const channel = String(row["Channel"] || "")
+        .trim()
+        .toUpperCase();
+
+    const status = String(row["Status"] || "")
+        .trim()
+        .toUpperCase();
+
+    const fulfillment = String(row["Fulfillment Status"] || "")
+        .trim()
+        .toUpperCase();
+
+    return (
+    channel === "ZILO" &&
+    status === "COMPLETED" &&
+    (fulfillment === "DELIVERED" ||
+     fulfillment === "RTO_DELIVERED") &&
+    isTodayOrBlank(row["Delivery Date"]) &&
+    isTodayOrBlank(row["Pickup Time"])
+);
+
+});
+console.log("Rows after filter:", json.length);
+
+        let detected=null;
+
+        for (let row of json){
+            let s = Object.values(row).join(" ").toLowerCase();
+            if(s.includes("ghatkopar") || s.includes("ght")){
+    detected = "Ghatkopar";
+    break;
+}
+if(s.includes("malad") || s.includes("mld")){
+    detected = "Malad";
+    break;
+}
+if(s.includes("vashi") || s.includes("vsh")){
+    detected = "Vashi";
+    break;
+}
+        }
+
+        if(!detected) continue;
+        
+let deliveredCount = 0;
+        json.forEach(row => {
+
+    // Reference ID / Order ID
+    let orderId = (row["Reference ID"] || "")
+        .toString()
+        .trim()
+        .toLowerCase();
+
+    // NONE Logic (Actual Orders)
+    const isActualOrder =
+        !orderId.startsWith("return") &&
+        !orderId.startsWith("f-") &&
+        !orderId.endsWith("-pd") &&
+        !orderId.startsWith("rtv-");
+
+    if (isActualOrder) {
+        storeOrders[detected]++;
+    }
+
+});
+
+        json.forEach(row=>{
+            
+            let status = (row["Fulfillment Status"] || "").toUpperCase().trim();
+            if (status === "RTO_DELIVERED") {
+    storeRTO[detected]++;
+}
+
+let orderId = (row["Reference ID"] || "")
+    .toString()
+    .trim()
+    .toLowerCase();
+    // Pickup Orders (Delivered + RTO Delivered only)
+if (
+    orderId.startsWith("return") &&
+    (status === "DELIVERED" || status === "RTO_DELIVERED")
+) {
+    console.log(row["Reference ID"]);
+
+    storePickup[detected]++;
+}
+
+const isActualOrder =
+    !orderId.startsWith("return") &&
+    !orderId.startsWith("f-") &&
+    !orderId.endsWith("-pd") &&
+    !orderId.startsWith("rtv-");
+    // =============================
+// HOURLY TOTAL
+// =============================
+
+
+// Delivered Orders should be counted only from Actual Orders
+ 
+// Only Delivered + RTO Delivered Actual Orders are eligible (Hourly Report)
+const isDelivered =
+    status === "DELIVERED" ||
+    status === "RTO_DELIVERED";
+
+if (!(isActualOrder && isDelivered)) return;
+
+// -------------------------
+// SERVICE DURATION
+// -------------------------
+
+const address = String(row["Customer Address"] || "").trim();
+const pincode = address.slice(-6);
+
+let serviceDuration = "NA";
+
+if (detected === "Malad") {
+
+    // ---------- 120 MIN ----------
+    if ([
+        "400068","401105","401107","401101"
+    ].includes(pincode)) {
+
+        serviceDuration = 120;
+
+    }
+
+    // ---------- 60 MIN ----------
+    else if ([
+        "400047","400053","400058","400060",
+        "400062","400063","400064","400066",
+        "400067","400069","400090","400091",
+        "400092","400093","400095","400097",
+        "400101","400102","400103","400104"
+    ].includes(pincode)) {
+
+        serviceDuration = 60;
+
+    }
+
+    // ---------- 90 MIN ----------
+    else if ([
+        "400049","400054","400056","400061","400065"
+    ].includes(pincode)) {
+
+        serviceDuration = 90;
+
+    }
+
+    else {
+
+        serviceDuration = "others";
+
+    }
+
+}
+
+else if (detected === "Ghatkopar") {
+
+    // ---------- 60 MIN ----------
+    if ([
+        "400024","400042","400043","400059",
+        "400070","400071","400072","400075",
+        "400076","400077","400078","400079",
+        "400083","400084","400086","400087",
+        "400089","400096"
+    ].includes(pincode)) {
+
+        serviceDuration = 60;
+
+    }
+
+    // ---------- 90 MIN ----------
+    else if ([
+        "400051","400055","400057","400074",
+        "400085","400088","400094","400098",
+        "400099","400029"
+    ].includes(pincode)) {
+
+        serviceDuration = 90;
+
+    }
+
+    else {
+
+        serviceDuration = "others";
+
+    }
+
+}
+else if (detected === "Vashi") {
+
+    // ---------- 120 MIN ----------
+    if ([
+        "400068","401105","401107"
+    ].includes(pincode)) {
+
+        serviceDuration = 120;
+
+    }
+
+    // ---------- 60 MIN ----------
+    else if ([
+        "400047","400053","400058","400060",
+        "400062","400063","400064","400066",
+        "400067","400069","400090","400091",
+        "400092","400093","400095","400097",
+        "400101","400102","400103","400104",
+        "400614","400701","400703","400705",
+        "400706","400709","400710"
+    ].includes(pincode)) {
+
+        serviceDuration = 60;
+
+    }
+
+    // ---------- 90 MIN ----------
+    else if ([
+        "400049","400054","400056",
+        "400061","400065","400708"
+    ].includes(pincode)) {
+
+        serviceDuration = 90;
+
+    }
+
+    else {
+
+        serviceDuration = "others";
+
+    }
+
+}
+
+// -------------------------
+// PROMISE TIME
+// -------------------------
+
+const slot = String(row["Delivery Slot"] || "").trim();
+const slotMatch = slot.match(/(\d{1,2}):(\d{2})-(\d{1,2}):(\d{2})/);
+
+if (!slotMatch) return;
+
+const start = new Date(
+    `1970-01-01 ${slotMatch[1]}:${slotMatch[2]}:00`
+);
+
+const end = new Date(
+    `1970-01-01 ${slotMatch[3]}:${slotMatch[4]}:00`
+);
+
+const slotHour = end.getHours();
+// Delivered column should count only DELIVERED
+if (status === "DELIVERED") {
+
+    deliveredCount++;
+
+    if (isActualOrder) {
+
+        storeDelivered[detected]++;
+
+        // =============================
+        // HOURLY DELIVERED
+        // =============================
+        if (hourlyStats[detected][slotHour]) {
+            hourlyStats[detected][slotHour].delivered++;
+        }
+
+    }
+
+}
+
+if (
+    isActualOrder &&
+    hourlyStats[detected][slotHour]
+){
+    hourlyStats[detected][slotHour].total++;
+}
+const actualPromise =
+    (end - start) / 60000;
+const endMinute = parseInt(slotMatch[4], 10);
+
+const orderType =
+    endMinute === 0
+        ? "SLOTTED"
+        : "INSTANT";
+
+// -------------------------
+// DELAY DURATION (BJ)
+// -------------------------
+
+let delayDuration = "NA";
+
+if (
+    typeof serviceDuration === "number" &&
+    !isNaN(actualPromise)
+) {
+    delayDuration = actualPromise - serviceDuration;
+}
+
+const match = slot.match(/(\d{1,2}:\d{2})$/);
+
+if(!match) return;
+
+const promise = new Date("1970-01-01 " + match[1] + ":00");
+
+// SLA +15
+const sla15 = new Date(promise);
+sla15.setMinutes(sla15.getMinutes() + 15);
+
+// Deep Pain Slot (+1 Hour)
+const dpSlot = new Date(promise);
+dpSlot.setHours(dpSlot.getHours() + 1);
+
+
+// -------------------------
+// ACTUAL DELIVERY TIME
+// -------------------------
+if (detected === "Malad") {
+    console.log(
+        "Reached Delivery Raw:",
+        row["Reached Delivery Time"],
+        "| Fulfillment:",
+        row["Fulfillment Status"],
+        "| Ref:",
+        row["Reference ID"]
+    );
+}
+const reachedDelivery = row["Reached Delivery Time"];
+
+if (reachedDelivery == null || reachedDelivery === "") return;
+
+let actualDate;
+
+if (typeof reachedDelivery === "number") {
+
+    const d = XLSX.SSF.parse_date_code(reachedDelivery);
+
+    actualDate = new Date(
+        d.y,
+        d.m - 1,
+        d.d,
+        d.H,
+        d.M,
+        Math.floor(d.S)
+    );
+
+} else {
+
+    actualDate = new Date(reachedDelivery);
+
+}
+
+if (isNaN(actualDate)) {
+    console.log("Invalid Reached Delivery:", reachedDelivery);
+    return;
+}
+
+// HH:MM from Actual Delivery Time
+
+
+// HH:MM from Promise +15
+const promiseTime =
+    sla15.getHours() * 60 +
+    sla15.getMinutes();
+
+const dpTime =
+    dpSlot.getHours() * 60 +
+    dpSlot.getMinutes();
+const actualTime =
+    actualDate.getHours() * 60 +
+    actualDate.getMinutes();
+
+console.log({
+    Slot: row["Delivery Slot"],
+    Actual: actualDate.toLocaleTimeString(),
+    Promise: promise.toLocaleTimeString(),
+    SLA15: sla15.toLocaleTimeString(),
+    DeepPain: dpSlot.toLocaleTimeString(),
+    ActualMinutes: actualTime,
+    PromiseMinutes: promiseTime,
+    DeepPainMinutes: dpTime
+});
+
+    const isBreach =
+    isDelivered &&
+    actualTime >= promiseTime;
+// -------------------------
+// DEEP PAIN ORDER
+// -------------------------
+
+const isDeepPain = actualTime > dpTime;
+
+if (
+    isDelivered &&
+    isDeepPain
+) {
+    storeDeepPain[detected]++;
+}
+// -------------------------
+// DELAY ORDER
+// -------------------------
+
+if (
+    isDelivered &&
+    orderType === "INSTANT" &&
+    typeof delayDuration === "number" &&
+    delayDuration > 0
+) {
+    storeDelay[detected]++;
+}
+if (isBreach) {
+
+    storeBreach[detected]++;
+
+    // =============================
+    // HOURLY BREACH
+    // =============================
+    if (hourlyStats[detected][slotHour]) {
+        hourlyStats[detected][slotHour].breach++;
+    }
+
+    return;
+}
+
+// -------------------------
+// COUNT
+// -------------------------
+
+if (serviceDuration === 60) {
+
+    console.log("60 MIN", pincode, row["Reference ID"]);
+    storeBuckets[detected][60]++;
+
+}
+else if (serviceDuration === 90) {
+
+    console.log("90 MIN", pincode, row["Reference ID"]);
+    storeBuckets[detected][90]++;
+
+}
+else if (serviceDuration === 120) {
+
+    console.log("120 MIN", pincode, row["Reference ID"]);
+    storeBuckets[detected][120]++;
+
+}
+else {
+
+    console.log("OTHERS", pincode, row["Reference ID"]);
+    storeBuckets[detected].others++;
+
+}
+        });
+    }
+
+    
+     document.getElementById("reportCard2").style.display = "block";
+    fillHourlyTable(hourlyStats);
+}
+function fillHourlyTable(hourlyStats){
+
+    const tbody = document.querySelector("#hourlyTable tbody");
+
+    tbody.innerHTML = "";
+
+    const totals = {
+
+        Malad:{total:0,delivered:0,breach:0},
+        Ghatkopar:{total:0,delivered:0,breach:0},
+        Vashi:{total:0,delivered:0,breach:0}
+
+    };
+
+const currentHour = new Date().getHours();
+
+for (let h = 7; h <= Math.min(currentHour, 22); h++) {
+
+        const tr=document.createElement("tr");
+
+        const from =
+            String(h).padStart(2,"0")+":00";
+
+        const to =
+            String(h+1).padStart(2,"0")+":00";
+
+        tr.innerHTML=`
+
+        <td>${from}</td>
+        <td>${to}</td>
+
+        ${buildStore("Malad",h)}
+
+        ${buildStore("Ghatkopar",h)}
+
+        ${buildStore("Vashi",h)}
+
+        `;
+
+        tbody.appendChild(tr);
+
+    }
+
+    function buildStore(store,h){
+
+        const d=hourlyStats[store][h];
+
+        totals[store].total+=d.total;
+        totals[store].delivered+=d.delivered;
+        totals[store].breach+=d.breach;
+
+        const p=d.delivered
+            ?((d.breach/d.delivered)*100).toFixed(0)+"%"
+            :"--";
+
+        return `
+        <td>${d.total}</td>
+        <td>${d.delivered}</td>
+        <td>${d.breach}</td>
+        <td>${p}</td>
+        `;
+
+    }
+
+}
+
+function downloadHourlyReport() {
+
+    const report = document.getElementById("reportCard2");
+
+    const oldWidth = report.style.width;
+    const oldDisplay = report.style.display;
+
+    report.style.display = "inline-block";
+    report.style.width = "fit-content";
+
+    html2canvas(report, {
+        scale: 3,
+        useCORS: true,
+        backgroundColor: "#ffffff"
+    }).then(canvas => {
+
+        const link = document.createElement("a");
+        link.download = "Zippee_Hourly_Report.png";
+        link.href = canvas.toDataURL("image/png");
+        link.click();
+
+        report.style.width = oldWidth;
+        report.style.display = oldDisplay;
+
+    });
+
+}
+</script>
+
+</body>
+</html>
