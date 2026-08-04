@@ -1,0 +1,923 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+
+<title>Zippee – SDD EOD Dashboard</title>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+
+:root{
+    --primary-900:#003f8c;
+    --glass-bg:rgba(255,255,255,0.16);
+    --card-shadow:0 8px 30px rgba(0,0,0,0.25);
+}
+
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:"Segoe UI", Arial, sans-serif;
+}
+
+body{
+    background:url('https://images.unsplash.com/photo-1557683316-973673baf926?q=80&w=1920&auto=format&fit=crop') center/cover fixed no-repeat;
+    min-height:100vh;
+    padding:30px;
+}
+
+body::before{
+    content:"";
+    position:fixed;
+    inset:0;
+    background:rgba(255,255,255,.22);
+    backdrop-filter:blur(7px);
+    z-index:-1;
+}
+
+.container{
+    max-width:1500px;
+    margin:auto;
+}
+
+.header{
+    background:linear-gradient(90deg,rgba(0,63,140,.88),rgba(0,89,179,.88));
+    color:white;
+    padding:20px 35px;
+    border-radius:18px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    box-shadow:var(--card-shadow);
+    margin-bottom:28px;
+}
+
+.header h1{
+    font-size:30px;
+    font-weight:800;
+}
+
+.logo{
+    height:50px;
+}
+
+.main-card{
+    background:var(--glass-bg);
+    backdrop-filter:blur(10px) saturate(120%);
+    border-radius:22px;
+    padding:30px;
+    box-shadow:var(--card-shadow);
+}
+
+.upload-section{
+    margin-bottom:30px;
+}
+
+.upload-title{
+    font-size:22px;
+    font-weight:700;
+    color:var(--primary-900);
+    margin-bottom:16px;
+}
+
+input[type=file]{
+    width:100%;
+    padding:16px;
+    border-radius:14px;
+    border:2px dashed #5b7cff;
+    background:rgba(255,255,255,0.55);
+    font-size:15px;
+    cursor:pointer;
+}
+
+.cards{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(230px,1fr));
+    gap:22px;
+    margin-bottom:35px;
+}
+
+.card{
+    background:rgba(255,255,255,0.82);
+    backdrop-filter:blur(8px);
+    border-radius:20px;
+    padding:24px;
+    box-shadow:0 8px 20px rgba(0,0,0,0.12);
+    transition:0.3s;
+}
+
+.card:hover{
+    transform:translateY(-6px);
+}
+
+.card-title{
+    font-size:15px;
+    color:#666;
+    margin-bottom:12px;
+    font-weight:600;
+}
+
+.card-value{
+    font-size:42px;
+    font-weight:800;
+}
+
+.success{
+    color:#00a651;
+}
+
+.danger{
+    color:#e53935;
+}
+
+.info{
+    color:#1565c0;
+}
+
+.warning{
+    color:#ff9800;
+}
+
+.table-box{
+    overflow:auto;
+    margin-top:20px;
+}
+
+table{
+    width:100%;
+    border-collapse:collapse;
+    background:white;
+    border-radius:16px;
+    overflow:hidden;
+    box-shadow:0 8px 20px rgba(0,0,0,.12);
+}
+
+th{
+    background:#003f8c;
+    color:white;
+    padding:14px;
+    text-align:center;
+    font-size:14px;
+}
+
+td{
+    padding:13px;
+    font-size:14px;
+    text-align:center;
+    border:1px solid #808080;
+}
+
+tr:hover td{
+    background:#f8fbff;
+}
+
+.formula{
+    margin-top:24px;
+    background:rgba(255,255,255,0.72);
+    padding:20px;
+    border-radius:16px;
+    line-height:1.9;
+    box-shadow:0 6px 18px rgba(0,0,0,0.08);
+}
+/* Unique Rider Report */
+
+#uniqueRiderReport .eod-table{
+
+    width:420px;
+    margin:auto;
+
+}
+
+#uniqueRiderReport .eod-table th,
+#uniqueRiderReport .eod-table td{
+
+    min-width:unset;
+    padding:9px 12px;
+    font-size:13px;
+
+}
+
+#uniqueRiderReport .eod-table th:first-child,
+#uniqueRiderReport .eod-table td:first-child{
+
+    width:240px;
+
+}
+
+#uniqueRiderReport .eod-table th:last-child,
+#uniqueRiderReport .eod-table td:last-child{
+
+    width:120px;
+
+}
+.formula b{
+    color:#003f8c;
+}
+
+.eod-table{
+    margin-top:40px;
+    width:auto;
+    table-layout:auto;
+}
+.eod-table th,
+.eod-table td{
+    min-width:90px;
+    padding:12px;
+    border:1px solid #808080;
+}
+
+.eod-table th:first-child,
+.eod-table td:first-child{
+    min-width:160px;
+}
+.eod-title{
+    background:#355c8a !important;
+    color:white;
+    text-align:center;
+    font-size:22px;
+    font-weight:800;
+}
+
+.yellow{
+    background:#ffffff;
+    color:#000000;
+    font-weight:700;
+}
+
+.orange{
+    background:#f4a460;
+    font-weight:700;
+}
+
+.gray{
+    background:#f2f2f2;
+    font-weight:700;
+}
+
+.footer{
+    text-align:center;
+    margin-top:28px;
+    color:#ffffff;
+    font-weight:700;
+    font-size:13px;
+}
+
+@media(max-width:768px){
+
+    .header{
+        flex-direction:column;
+        gap:14px;
+        text-align:center;
+    }
+
+    .header h1{
+        font-size:24px;
+    }
+
+    .card-value{
+        font-size:34px;
+    }
+
+    .eod-table{
+        width:100%;
+    }
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <!-- HEADER -->
+
+    <div class="header">
+        <h1>Zippee – SDD EOD Dashboard</h1>
+
+        <img class="logo"
+        src="SASA.png"  >
+    </div>
+
+    <!-- MAIN CARD -->
+
+    <div class="main-card">
+
+        <!-- FILE UPLOAD -->
+
+        <div class="upload-section">
+
+            <div class="upload-title">
+                Upload Shipment CSV / Excel File
+            </div>
+            <div style="margin-bottom:15px;">
+
+    <label style="
+        font-weight:700;
+        color:#003f8c;
+        margin-right:10px;
+        font-size:16px;
+    ">
+        Select Report Date:
+    </label>
+
+    <input type="date"
+           id="reportDate"
+           style="
+            padding:10px;
+            border-radius:10px;
+            border:none;
+            font-size:15px;
+           ">
+
+</div>
+            
+
+            <input type="file"
+                   id="fileInput"
+                   accept=".xlsx,.xls,.csv">
+
+        </div>
+
+
+        <!-- SUMMARY TABLE -->
+
+        <div class="table-box">
+
+            <table>
+
+                <thead>
+                    <tr>
+                        <th>Metric</th>
+                        <th>Value</th>
+                        <th>Logic</th>
+                    </tr>
+                </thead>
+
+                <tbody id="summaryTable">
+                </tbody>
+
+            </table>
+
+</div>
+
+        </div>
+
+        <!-- FORMULA -->
+
+        <div class="formula">
+
+            <b>Metrics Logic:</b><br><br>
+
+            <b>Total Orders</b> = Count of all rows/orders<br>
+
+            <b>Not_D0_Dispatched Orders</b> = Current Status = READY<br>
+
+            <b>D0_Dispatched Orders</b> = Total Orders - (READY Orders with 0 attempt) <br>
+
+            <b>Cancelled Orders</b> = Current Status = CANCELLED<br>
+
+            <b>FASR</b> = (DELIVERED Orders having Attempt = 0 / Total Orders) × 100
+
+        </div>
+
+        <!-- FINAL EOD TABLE -->
+        <div style="text-align:right; margin-bottom:15px;">
+
+    <button onclick="downloadPNG()"
+        style="
+            background:#003f8c;
+            color:white;
+            border:none;
+            padding:12px 22px;
+            border-radius:10px;
+            font-size:15px;
+            font-weight:700;
+            cursor:pointer;
+        ">
+
+        Download Report PNG
+
+    </button>
+
+</div>
+        <div class="table-box" id="reportTable">
+</div>
+    </div>
+<div style="text-align:center; margin-top:35px; margin-bottom:15px;">
+
+    <button onclick="downloadUniqueRiderPNG()"
+        style="
+            background:#003f8c;
+            color:white;
+            border:none;
+            padding:12px 22px;
+            border-radius:10px;
+            font-size:15px;
+            font-weight:700;
+            cursor:pointer;
+        ">
+
+        Download Unique Rider Report PNG
+
+    </button>
+
+</div>
+
+<div
+    class="table-box"
+    id="uniqueRiderReport"
+    style="
+        display:flex;
+        justify-content:center;
+        margin-top:20px;
+    ">
+</div>
+    <!-- FOOTER -->
+
+    <div class="footer">
+        Powered by SASA Automation | Harshit Saini – Data Analyst, Zippee
+    </div>
+
+</div>
+
+<script>
+
+document.getElementById('fileInput')
+.addEventListener('change', handleFile);
+
+function handleFile(e){
+
+    const file = e.target.files[0];
+
+    const reader = new FileReader();
+
+    reader.onload = function(event){
+
+        const data = new Uint8Array(event.target.result);
+
+        const workbook = XLSX.read(data, {
+            type:'array'
+        });
+
+        const sheetName = workbook.SheetNames[0];
+
+        const sheet = workbook.Sheets[sheetName];
+
+        const json = XLSX.utils.sheet_to_json(sheet);
+
+        processData(json);
+    };
+
+    reader.readAsArrayBuffer(file);
+}
+
+function processData(data){
+
+    let totalOrders = data.length;
+
+    let readyOrders = 0;
+
+    let cancelledOrders = 0;
+
+    let d0DispatchedOrders = 0;
+    // ---------- REPORT DATE ----------
+const creationDates = data
+    .map(row => String(row["Creation Date"] || "").trim())
+    .filter(x => x);
+
+let maxDate = null;
+
+creationDates.forEach(dt => {
+
+    const datePart = dt.split(" ")[0];
+
+    const [dd, mm, yyyy] = datePart.split("/");
+
+    const currentDate = new Date(`${yyyy}-${mm}-${dd}`);
+
+    if(!maxDate || currentDate > maxDate){
+        maxDate = currentDate;
+    }
+
+});
+
+const selectedDate =
+    document.getElementById("reportDate").value;
+
+const formattedDate =
+    selectedDate
+        ? new Date(selectedDate).toLocaleDateString("en-GB")
+        : (
+            String(maxDate.getDate()).padStart(2,"0") + "/" +
+            String(maxDate.getMonth()+1).padStart(2,"0") + "/" +
+            maxDate.getFullYear()
+        );
+
+// ---------- DARKSTORE DATA ----------
+const darkstoreStats = {};
+const uniqueRiderStats = {};
+
+data.forEach(row => {
+
+    const status = String(row["Current Status"] || "")
+        .trim()
+        .toUpperCase();
+
+    const attempts = String(
+        row["No. of Attempts"] ||
+        row["No. of Attemp"] ||
+        row["No Of Attempts"] ||
+        row["Attempt"] ||
+        "0"
+    ).trim();
+
+    let darkstore = String(row["Darkstore"] || "").trim();
+    const allowedDarkstores = [
+    "zippee_okhla_sdd",
+    "zippee_ghaziabad_sdd",
+    "zippee_wazirpur_sdd",
+    "zippee_dwarka_sdd",
+    "zippee_gurugram_sdd",
+
+    "zippee_horamavu_sdd",
+    "zippee_koramangala_sdd",
+    "zippee_andheri_sdd",
+    "zippee_koregaonpark_sdd",
+    "zippee_matunga_valkyriesdd",
+    "zippee_kolkata_sdd",
+    "zippee_manikonda_sdd",
+    "zippee_periyamet_sdd",
+    "zippee_krishna_herbal_indorewh",
+    "zippee_krishna_herbal_jodhpurwh",
+    "zippee_kalyannagar_sdd",
+    "zippee_topsia_valkyriesdd"
+];
+
+if (!allowedDarkstores.includes(darkstore.toLowerCase())) {
+    return;
+}
+// ---------- UNIQUE RIDER REPORT (NO DELHI HUB) ----------
+
+if (!uniqueRiderStats[darkstore]) {
+
+    uniqueRiderStats[darkstore] = {
+        riderIds: new Set()
+    };
+
+}
+
+const originalRiderId = String(row["Rider ID"] || "").trim();
+
+if (originalRiderId !== "") {
+
+    uniqueRiderStats[darkstore].riderIds.add(originalRiderId);
+
+}
+
+    const delhiHubStores = [
+        "zippee_okhla_sdd",
+        "zippee_ghaziabad_sdd",
+        "zippee_wazirpur_sdd",
+        "zippee_dwarka_sdd",
+        "zippee_gurugram_sdd"
+    ];
+
+    if(delhiHubStores.includes(darkstore.toLowerCase())){
+        darkstore = "DEL_HUB";
+    }
+
+    if(!darkstoreStats[darkstore]){
+        darkstoreStats[darkstore] = {
+    total:0,
+    readyZeroAttempt:0,
+    cancelled:0,
+    fasrDelivered:0,
+    riderIds:new Set()
+};
+    }
+
+    const s = darkstoreStats[darkstore];
+    const riderId = String(row["Rider ID"] || "").trim();
+
+if (riderId !== "") {
+    s.riderIds.add(riderId);
+}
+
+    s.total++;
+
+    if(status==="READY" && attempts==="0")
+        s.readyZeroAttempt++;
+
+    if(status==="CANCELLED")
+        s.cancelled++;
+
+    if(status==="DELIVERED" && attempts==="0")
+        s.fasrDelivered++;
+});
+
+const eodTable =
+    document.getElementById("reportTable");
+
+const darkstores = Object.keys(darkstoreStats).sort((a, b) => {
+
+    if (a === "DEL_HUB") return -1;
+    if (b === "DEL_HUB") return 1;
+
+    return a.localeCompare(b);
+
+});
+let totalProcessed = 0;
+let totalD0Dispatched = 0;
+let totalCancelled = 0;
+let totalD0Pct = 0;
+let totalFasrPct = 0;
+let totalUniqueRiders = new Set();
+let html = `
+<table class="eod-table">
+    
+
+<tr>
+<th colspan="7"
+style="
+background:#4ea6d8;
+color:#000;
+font-size:24px;
+font-weight:800;
+">
+ZIPPEE ↔ EOD REPORT (${formattedDate})
+</th>
+</tr>
+
+<tr>
+<th>Darkstore</th>
+<th>Processed</th>
+<th>D0_Dispatched %</th>
+<th>D0_Dispatched</th>
+<th>FASR%</th>
+<th>Cancelled</th>
+<th>Unique Riders</th>
+</tr>
+`;
+
+darkstores.forEach(ds=>{
+
+
+    const s = darkstoreStats[ds];
+    const uniqueRiders = s.riderIds.size;
+
+s.riderIds.forEach(id => totalUniqueRiders.add(id));
+
+    const d0Pct = s.total
+        ? (((s.total-s.readyZeroAttempt)/s.total)*100).toFixed(0)
+        : 0;
+
+    const fasrPct = s.total
+        ? ((s.fasrDelivered/s.total)*100).toFixed(0)
+        : 0;
+totalProcessed += s.total;
+totalD0Dispatched += (s.total - s.readyZeroAttempt);
+totalCancelled += s.cancelled;
+
+totalD0Pct += Number(d0Pct);
+totalFasrPct += Number(fasrPct);
+    let name = ds;
+
+    if(name !== "DEL_HUB"){
+
+        name = name
+            .replace("zippee_","")
+            .replace(/_sdd$/i,"")
+            .replace(/_/g," ")
+            .replace(/\b\w/g,c=>c.toUpperCase());
+
+        if(name==="Matunga Valkyriesdd")
+            name="Matunga";
+    }
+
+    html += `
+    <tr>
+
+        <td><b>${name}</b></td>
+
+        <td>${s.total}</td>
+
+        <td>${d0Pct}%</td>
+
+        <td>${s.total-s.readyZeroAttempt}</td>
+
+        <td>${fasrPct}%</td>
+
+        <td>${s.cancelled}</td>
+<td>${uniqueRiders}</td>
+
+    </tr>
+    `;
+});
+
+const storeCount = darkstores.length;
+
+html += `
+<tr style="background:#d9edf7;font-weight:700;">
+
+    <td><b>Total</b></td>
+
+    <td><b>${totalProcessed}</b></td>
+
+    <td><b>${(totalD0Pct / storeCount).toFixed(0)}%</b></td>
+
+    <td><b>${totalD0Dispatched}</b></td>
+
+    <td><b>${(totalFasrPct / storeCount).toFixed(0)}%</b></td>
+
+    <td><b>${totalCancelled}</b></td>
+<td><b>${totalUniqueRiders.size}</b></td>
+
+</tr>
+`;
+
+html += `
+<tr>
+<td colspan="7"
+style="
+background:#D3D3D3;
+font-weight:700;
+text-align:center;
+">
+Powered by SASA Automation | Zippee
+</td>
+</tr>
+
+</table>
+`;
+
+eodTable.innerHTML = html;
+const uniqueTable =
+document.getElementById("uniqueRiderReport");
+
+const riderStores =
+Object.keys(uniqueRiderStats).sort();
+
+let totalRiders = new Set();
+
+let riderHtml = `
+<table class="eod-table">
+
+<tr>
+
+<th colspan="2"
+style="
+background:#4ea6d8;
+color:#000;
+padding:18px 10px;
+">
+
+<div style="
+    font-size:20px;
+    font-weight:800;
+    white-space:nowrap;
+">
+    ZIPPEE ↔ UNIQUE RIDER REPORT
+</div>
+
+<div style="
+    font-size:15px;
+    font-weight:700;
+    margin-top:6px;
+">
+    ${formattedDate}
+</div>
+
+</th>
+</tr>
+
+<tr>
+
+<th>Darkstore</th>
+
+<th>Unique Riders</th>
+
+</tr>
+`;
+riderStores.forEach(ds => {
+
+    let displayName = ds;
+
+    displayName = displayName
+        .replace("zippee_","")
+        .replace(/_sdd$/i,"")
+        .replace(/_/g," ")
+        .replace(/\b\w/g,c=>c.toUpperCase());
+
+    if(displayName==="Matunga Valkyriesdd")
+        displayName="Matunga";
+
+    const riderCount = uniqueRiderStats[ds].riderIds.size;
+
+    uniqueRiderStats[ds].riderIds.forEach(id=>{
+        totalRiders.add(id);
+    });
+
+    riderHtml += `
+<tr>
+
+<td><b>${displayName}</b></td>
+
+<td>${riderCount}</td>
+
+</tr>
+`;
+
+});
+riderHtml += `
+<tr style="background:#d9edf7;font-weight:700;">
+
+<td><b>Total</b></td>
+
+<td><b>${totalRiders.size}</b></td>
+
+</tr>
+
+<tr>
+
+<td colspan="2"
+style="
+background:#D3D3D3;
+font-weight:700;
+text-align:center;
+">
+
+Powered by SASA Automation | Zippee
+
+</td>
+
+</tr>
+
+</table>
+`;
+uniqueTable.innerHTML = riderHtml;
+}
+
+function downloadPNG(){
+
+    const report =
+        document.getElementById("reportTable");
+
+    html2canvas(report, {
+        scale:2
+    }).then(canvas => {
+
+        const link =
+            document.createElement("a");
+
+        link.download =
+            "Zippee_SDD_EOD_Report.png";
+
+        link.href =
+            canvas.toDataURL("image/png");
+
+        link.click();
+    });
+}
+function downloadUniqueRiderPNG(){
+
+    const report =
+        document.getElementById("uniqueRiderReport");
+
+    html2canvas(report,{
+        scale:2
+    }).then(canvas=>{
+
+        const link =
+            document.createElement("a");
+
+        link.download =
+            "Zippee_Unique_Rider_Report.png";
+
+        link.href =
+            canvas.toDataURL("image/png");
+
+        link.click();
+
+    });
+
+}
+window.addEventListener("load", () => {
+
+    const yesterday = new Date();
+
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    document.getElementById("reportDate").value =
+        yesterday.getFullYear() + "-" +
+        String(yesterday.getMonth() + 1).padStart(2,"0") + "-" +
+        String(yesterday.getDate()).padStart(2,"0");
+});
+</script>
+
+</body>
+</html>
