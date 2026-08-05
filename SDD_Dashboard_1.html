@@ -227,8 +227,8 @@ input:focus{
    KPI GRID
 ========================================================= */
 .kpi-grid{
-    display:grid;
-    grid-template-columns:repeat(9,1fr);
+  display:grid;
+    grid-template-columns:repeat(8,1fr);
     gap:13px;
     margin-bottom:20px;
 }
@@ -742,12 +742,7 @@ tbody tr:hover{
     <div class="kpi-value" id="kpiFASR">0%</div>
     <div class="kpi-sub">Delivered in 0 Attempts</div>
 </div>
-        <div class="kpi cyan">
-            <!--<div class="kpi-label">Avg Delivery TAT</div>-->
-            <div class="kpi-value" id="kpiTat">0h</div>
-            <div class="kpi-sub">Order to delivery</div>
-        </div>
-
+   
     </section>
 
     <!-- INSIGHTS -->
@@ -1592,8 +1587,7 @@ function updateKPIs(){
 
     document.getElementById("kpiFASR").textContent =
         safeFixed(pct(fasrDelivered, delivered), 1) + "%";
-    document.getElementById("kpiTat").textContent =
-        safeFixed(avgTat,1) + "h";
+
 }
 
 /* =========================================================
