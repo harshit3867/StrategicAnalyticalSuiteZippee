@@ -145,6 +145,8 @@ input[type=file]{
 .table-box{
     overflow:auto;
     margin-top:20px;
+    display:inline-block;
+    width:auto;
 }
 
 table{
@@ -352,9 +354,6 @@ tr:hover td{
 
                 <thead>
                     <tr>
-                        <th>Metric</th>
-                        <th>Value</th>
-                        <th>Logic</th>
                     </tr>
                 </thead>
 
@@ -867,8 +866,7 @@ uniqueTable.innerHTML = riderHtml;
 function downloadPNG(){
 
     const report =
-        document.getElementById("reportTable");
-
+    document.querySelector("#reportTable table");
     html2canvas(report, {
         scale:2
     }).then(canvas => {
@@ -887,12 +885,13 @@ function downloadPNG(){
 }
 function downloadUniqueRiderPNG(){
 
-    const report =
-        document.getElementById("uniqueRiderReport");
-
+const report =
+    document.querySelector("#uniqueRiderReport table");
     html2canvas(report,{
-        scale:2
-    }).then(canvas=>{
+    scale:2,
+    backgroundColor:null,
+    useCORS:true
+}).then(canvas=>{
 
         const link =
             document.createElement("a");
