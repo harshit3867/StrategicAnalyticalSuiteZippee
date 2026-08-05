@@ -924,8 +924,11 @@ if (
 }
 if (isBreach) {
 
-    storeBreach[detected]++;
-
+    // Count Breach KPI only for Delivered Orders
+    if (status === "DELIVERED") {
+        storeBreach[detected]++;
+    }
+    
     let orderTime = String(row["Delivery Slot"] || "").split("-")[0];
 
 let manifestedTime = "";
