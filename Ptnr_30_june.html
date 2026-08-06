@@ -295,8 +295,11 @@ if(typeof r[6] === "number"){
 let orderDate = parseIndianDate(r[6]);
 console.log("Parsed Order Date:", orderDate);
 
-let city=(r[21]+"").split(" ").slice(2).join(" ")
+let city = (r[21] + "").split(" ").slice(2).join(" ");
 
+if (city === "Badshahpur New") {
+    city = "Badshahpur";
+}
 if(!city) return
 
 if(!cities[city]){
