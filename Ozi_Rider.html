@@ -1553,9 +1553,13 @@ document.getElementById(diffId).innerText =
         : difference;
 }
 
-        plannedTotal += plannedValue;
-        activeTotal += activeValue;
-        diffTotal += (activeValue - plannedValue);
+       plannedTotal += plannedValue;
+activeTotal += activeValue;
+
+// Do not include Night Shift in Difference
+if (shift !== "Night Shift") {
+    diffTotal += (activeValue - plannedValue);
+}
 
     });
 
