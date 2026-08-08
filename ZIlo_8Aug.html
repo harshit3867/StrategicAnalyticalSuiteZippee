@@ -419,6 +419,12 @@ function isTodayOrBlank(value) {
         value.getFullYear() === today.getFullYear()
     );
 }
+let breachOrders = {
+    Ghatkopar: [],
+    Malad: [],
+    Vashi: []
+};
+
 async function generateReport(){
     updateDateTime();
     const today = formatDate(new Date());
@@ -510,7 +516,7 @@ let storeBreach = {
     Vashi: 0
 };
 
-let breachOrders = {
+breachOrders = {
     Ghatkopar: [],
     Malad: [],
     Vashi: []
@@ -1291,10 +1297,9 @@ margin-bottom:8px;
 
     <h3 style="margin:0;">${store}</h3>
 
-    <button onclick="copyStore('${store}')">
-        📋 Copy
-    </button>
-
+    <button onclick="copyStore('${store}', this)">
+    📋 Copy
+</button>
 </div>
 
         <table style="margin-bottom:25px;">
@@ -1450,21 +1455,21 @@ report.style.display = oldDisplay;
     });
 
 }
-function copyStore(store){
+async function copyStore(store, button) {
 
     const orders = breachOrders[store];
 
-    if(!orders.length){
+    if (!orders || !orders.length) {
         alert("No Breach Orders found for " + store);
         return;
     }
 
+    // Create Excel-compatible TSV data
     let text = "";
 
-    orders.forEach(order=>{
+    orders.forEach(order => {
 
-        text += [
-
+        const row = [
             order.referenceId,
             order.fulfillmentStatus,
             order.orderTime,
@@ -1480,17 +1485,68 @@ function copyStore(store){
             order.deepPain,
             order.riderName,
             order.riderId
+        ];
 
-        ].join("\t");
-
-        text += "\n";
-
+        text += row.join("\t") + "\n";
     });
 
-    navigator.clipboard.writeText(text);
+    let copied = false;
 
-    alert(store + " copied successfully.");
+    try {
 
+        // Modern clipboard method
+        if (navigator.clipboard && window.isSecureContext) {
+
+            await navigator.clipboard.writeText(text);
+            copied = true;
+
+        } else {
+
+            // Fallback for local HTML files
+            const textarea = document.createElement("textarea");
+
+            textarea.value = text;
+
+            textarea.style.position = "fixed";
+            textarea.style.left = "-9999px";
+            textarea.style.top = "0";
+
+            document.body.appendChild(textarea);
+
+            textarea.focus();
+            textarea.select();
+
+            copied = document.execCommand("copy");
+
+            document.body.removeChild(textarea);
+        }
+
+    } catch (error) {
+
+        console.error("Copy failed:", error);
+        copied = false;
+    }
+
+    // Show "Copied" ONLY if copying actually succeeded
+    if (copied) {
+
+        const originalText = button.innerHTML;
+
+        button.innerHTML = "✓ Copied";
+        button.disabled = true;
+
+        setTimeout(() => {
+
+            button.innerHTML = originalText;
+            button.disabled = false;
+
+        }, 2000);
+
+    } else {
+
+        alert("Copy failed. Please try again.");
+
+    }
 }
 </script>
 
