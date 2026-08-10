@@ -1366,7 +1366,9 @@ function generateTable() {
             Active Riders
         </td>`;
 
-    const totalActive = reportData.length;
+    const totalActive = visibleShifts.reduce((total, shift) => {
+    return total + shiftSummary[shift];
+}, 0);
 
 let shownShiftTotal = 0;
 
@@ -1553,13 +1555,9 @@ document.getElementById(diffId).innerText =
         : difference;
 }
 
-       plannedTotal += plannedValue;
-activeTotal += activeValue;
-
-// Do not include Night Shift in Difference
-if (shift !== "Night Shift") {
-    diffTotal += (activeValue - plannedValue);
-}
+        plannedTotal += plannedValue;
+        activeTotal += activeValue;
+        diffTotal += (activeValue - plannedValue);
 
     });
 
