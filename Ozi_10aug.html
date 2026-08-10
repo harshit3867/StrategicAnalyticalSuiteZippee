@@ -1,0 +1,1839 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Zippee OZI Rider Report</title>
+
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+
+<style>
+
+:root {
+    --primary-900: #003f8c;
+    --glass-bg: rgba(255, 255, 255, 0.16);
+    --card-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html,
+body {
+    margin: 0;
+    padding: 0;
+    font-family: "Segoe UI", Arial, sans-serif;
+}
+
+body {
+    min-height: 100vh;
+    background: url('Zippee.png') center/cover fixed no-repeat;
+}
+
+body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background: rgba(255, 255, 255, 0.24);
+    backdrop-filter: blur(6px);
+    z-index: -1;
+}
+
+
+/* ===============================
+   HEADER
+================================ */
+
+.header {
+    background: linear-gradient(
+        90deg,
+        rgba(0, 63, 140, 0.85),
+        rgba(0, 89, 179, 0.85)
+    );
+
+    color: white;
+
+    padding: 18px 36px;
+
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.header h1 {
+    margin: 0;
+    font-size: 26px;
+}
+
+.logo {
+    height: 48px;
+}
+
+
+/* ===============================
+   MAIN CARD
+================================ */
+
+.card {
+    background: var(--glass-bg);
+
+    backdrop-filter: blur(10px) saturate(120%);
+
+    margin: 30px auto;
+
+    max-width: 1300px;
+
+    padding: 30px;
+
+    border-radius: 18px;
+
+    box-shadow: var(--card-shadow);
+}
+
+.title {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--primary-900);
+}
+
+
+/* ===============================
+   FILE INPUT
+================================ */
+
+.upload-area {
+    margin-top: 15px;
+
+    padding: 20px;
+
+    border: 2px dashed rgba(0, 102, 204, 0.55);
+
+    border-radius: 12px;
+
+    background: rgba(255, 255, 255, 0.35);
+}
+
+#fileInput {
+    width: 100%;
+    font-size: 14px;
+}
+
+.file-name {
+    margin-top: 10px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #333;
+}
+
+
+/* ===============================
+   CONTROLS
+================================ */
+
+.controls {
+    display: flex;
+
+    gap: 8px;
+
+    flex-wrap: wrap;
+
+    margin-top: 12px;
+}
+
+.button {
+    background: linear-gradient(135deg, #0A66C2, #0078FF);
+
+    border: none;
+
+    border-radius: 10px;
+
+    padding: 10px 16px;
+
+    color: white;
+
+    cursor: pointer;
+
+    font-weight: 700;
+}
+
+.button:hover {
+    opacity: 0.9;
+}
+
+.download-button {
+    background: linear-gradient(135deg, #087b3d, #00a651);
+}
+
+#errorMessage {
+    margin-top: 10px;
+    color: #b00020;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+
+/* ===============================
+   REPORT
+================================ */
+
+#reportContainer {
+    display: none;
+
+    margin-top: 25px;
+
+    text-align: center;
+}
+
+#captureBox {
+    position: relative;
+    display: inline-block;
+    width: fit-content;
+    max-width: 100%;
+    margin: auto;
+    background: #ffffff;
+    padding: 8px 0 6px 0;
+}
+
+
+/* ===============================
+   REPORT HEADING
+================================ */
+
+.report-heading {
+    text-align: center;
+    margin-bottom: 7px;
+    width: 100%;
+}
+
+.report-title {
+    font-size: 15px;
+    font-weight: 800;
+}
+
+.report-date {
+    margin-top: 2px;
+    font-size: 10px;
+}
+
+
+/* ===============================
+   TABLE
+================================ */
+
+.table-wrapper{
+    display:inline-block;
+    overflow:visible;
+}
+
+table {
+    border-collapse: collapse;
+    background: white;
+    table-layout: auto;
+    width: fit-content;
+    margin: 0 auto;
+}
+
+th {
+    background: #f4f6f8;
+
+    font-weight: 700;
+}
+
+th,
+td {
+    border: 1px solid #ddd;
+    padding: 4px 5px;
+    font-size: 10px;
+    text-align: center;
+    vertical-align: middle;
+    white-space: nowrap;
+}
+
+
+/* AUTO COLUMN WIDTH */
+
+th,
+td {
+    padding: 4px 10px;
+    white-space: nowrap;
+}
+
+th:first-child,
+td:first-child {
+    width: 90px;
+    font-weight: 700;
+}
+tbody tr:hover {
+    background: #eefaff;
+}
+
+
+/* ===============================
+   STATUS
+================================ */
+
+.status-active {
+    font-weight: 700;
+    color: #087b3d;
+}
+
+.status-completed {
+    font-weight: 700;
+    color: #1257a6;
+}
+
+.status-auto {
+    font-weight: 700;
+    color: #b02727;
+}
+
+
+/* ===============================
+   ORDER INPUT
+================================ */
+
+.order-input {
+    width: 80px;
+
+    padding: 5px 6px;
+
+    border: 1.5px solid #0aaee5;
+
+    border-radius: 5px;
+
+    outline: none;
+
+    text-align: center;
+
+    font-size: 13px;
+
+    font-weight: 700;
+
+    background: #f5fcff;
+}
+
+.order-input:focus {
+    border-color: #007fa8;
+
+    background: white;
+
+    box-shadow: 0 0 5px rgba(10, 174, 229, 0.5);
+}
+.png-order-value {
+    display: inline-block;
+    min-width: 50px;
+    padding: 3px 4px;
+    font-size: 10px;
+    font-weight: 700;
+    text-align: center;
+}
+.phone-cell {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+}
+
+.copy-phone-btn {
+    border: none;
+    background: #0A66C2;
+    color: white;
+    border-radius: 4px;
+    padding: 3px 6px;
+    font-size: 10px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.copy-phone-btn:hover {
+    background: #004f9e;
+}
+
+/* ===============================
+   FOOTER
+================================ */
+
+.footer-watermark {
+    width: 100%;
+
+    display: flex;
+
+    justify-content: center;
+
+    align-items: center;
+
+    margin-top: 10px;
+
+    font-size: 11px;
+
+    font-weight: 700;
+
+    color: #000;
+
+    letter-spacing: 1px;
+
+    text-transform: uppercase;
+}
+
+
+/* ===============================
+   RESPONSIVE
+================================ */
+
+@media(max-width: 700px) {
+
+    .header {
+        padding: 15px 20px;
+    }
+
+    .header h1 {
+        font-size: 20px;
+    }
+
+    .logo {
+        height: 38px;
+    }
+
+    .card {
+        margin: 15px;
+        padding: 18px;
+    }
+
+}
+
+</style>
+</head>
+
+
+<body>
+
+
+<!-- ===============================
+     HEADER
+================================ -->
+
+<div class="header">
+
+    <h1>Zippee – OZI Rider Report</h1>
+
+    <img
+        class="logo"
+        src="SASA.png"
+    >
+
+</div>
+
+
+
+<!-- ===============================
+     MAIN CARD
+================================ -->
+
+<div class="card">
+
+    <div class="title">
+        Upload Attendance Dataset
+    </div>
+
+
+    <div class="upload-area">
+
+        <input
+            type="file"
+            id="fileInput"
+            accept=".xlsx,.xls,.csv"
+        >
+
+        <div
+            class="file-name"
+            id="fileName"
+        >
+            No file selected
+        </div>
+
+        <div id="errorMessage"></div>
+
+    </div>
+
+
+    <div class="controls">
+
+        <button
+            class="button"
+            onclick="generateReport()"
+        >
+            Generate Report
+        </button>
+
+        <button
+    class="button download-button"
+    id="downloadSummaryButton"
+    onclick="downloadSummaryPNG()"
+    style="display:none;"
+>
+    Download Summary
+</button>
+
+<button
+    class="button download-button"
+    id="downloadOutsideButton"
+    onclick="downloadOutsidePNG()"
+    style="display:none;"
+>
+    Download Night Shift
+</button>
+
+    </div>
+
+
+
+    <!-- ===============================
+         REPORT
+    ================================ -->
+
+    <div id="reportContainer">
+
+        <div id="summaryCapture"
+     style="
+        display:inline-block;
+        background:#fff;
+        width:auto;
+        margin:auto;
+     ">
+
+
+            <!-- REPORT HEADING -->
+
+            <div class="report-heading">
+
+                <div class="report-title">
+                    ZIPPEE &lt;&gt; OZI Rider Report
+                </div>
+
+                <div
+                    class="report-date"
+                    id="reportDate"
+                ></div>
+
+            </div>
+
+
+
+            <!-- TABLE -->
+
+            <div class="table-wrapper">
+
+    <table>
+
+        <thead>
+
+            <tr>
+                <th colspan="9"
+                    style="
+background:#0A66C2;
+color:#ffffff;
+font-size:18px;
+text-align:center;
+padding:10px;
+font-weight:bold;
+">
+                    OZI &lt;&gt; Active Rider Report
+                </th>
+            </tr>
+
+        </thead>
+
+        <tbody id="reportBody"></tbody>
+
+    </table>
+
+</div>
+</div>
+
+
+<!-- ===========================
+     Night Shift TABLE
+=========================== -->
+
+<div id="outsideCapture"
+     style="
+        display:inline-block;
+        background:#fff;
+        width:auto;
+        margin:auto;
+     ">
+
+<div class="table-wrapper" style="margin-top:20px;">
+
+    <table>
+
+        <thead>
+
+            <tr>
+                <th colspan="6"
+                    style="
+background:#0A66C2;
+color:white;
+font-size:16px;
+text-align:center;
+padding:8px;
+font-weight:bold;
+">
+                    Night Shift Riders
+                </th>
+            </tr>
+
+            <tr>
+
+                <th>Rider ID</th>
+                <th>Rider Name</th>
+                <th>Phone</th>
+                <th>Shift</th>
+                <th>Punch In</th>
+                <th>Active Hour</th>
+
+            </tr>
+
+        </thead>
+
+        <tbody id="outsideShiftBody">
+
+        </tbody>
+
+    </table>
+
+</div>
+</div>
+
+
+<!-- FOOTER -->
+
+<div class="footer-watermark">
+
+    Powered by SASA Automation | Zippee
+
+</div>
+
+
+<script>
+
+const fileInput = document.getElementById("fileInput");
+
+let uploadedRows = [];
+
+let reportData = [];
+let reportDateKey = "";
+
+    const plannedRiders = {
+
+    "19/07/26": { "5 AM":3, "6 AM":11, "8 AM":14, "10 AM":14, "3 PM":34, "5 PM":5 },
+
+    "20/07/26": { "5 AM":3, "6 AM":9,  "8 AM":11, "10 AM":11, "3 PM":27, "5 PM":4 },
+
+    "21/07/26": { "5 AM":3, "6 AM":9,  "8 AM":11, "10 AM":11, "3 PM":28, "5 PM":4 },
+
+    "22/07/26": { "5 AM":3, "6 AM":10, "8 AM":12, "10 AM":12, "3 PM":30, "5 PM":4 },
+
+    "23/07/26": { "5 AM":3, "6 AM":11, "8 AM":13, "10 AM":13, "3 PM":32, "5 PM":4 },
+
+    "24/07/26": { "5 AM":3, "6 AM":11, "8 AM":13, "10 AM":13, "3 PM":32, "5 PM":4 },
+
+    "25/07/26": { "5 AM":3, "6 AM":12, "8 AM":14, "10 AM":14, "3 PM":36, "5 PM":5 },
+
+    "26/07/26": { "5 AM":3, "6 AM":12, "8 AM":14, "10 AM":14, "3 PM":35, "5 PM":5 },
+
+    "27/07/26": { "5 AM":3, "6 AM":9,  "8 AM":11, "10 AM":11, "3 PM":27, "5 PM":4 },
+
+    "28/07/26": { "5 AM":3, "6 AM":10, "8 AM":12, "10 AM":12, "3 PM":30, "5 PM":4 },
+
+    "29/07/26": { "5 AM":3, "6 AM":10, "8 AM":13, "10 AM":13, "3 PM":31, "5 PM":4 },
+
+    "30/07/26": { "5 AM":3, "6 AM":11, "8 AM":14, "10 AM":14, "3 PM":34, "5 PM":5 },
+    "01/08/26": { "5 AM":3, "6 AM":10, "8 AM":15, "10 AM":15, "3 PM":36, "5 PM":5 },
+"02/08/26": { "5 AM":3, "6 AM":10, "8 AM":15, "10 AM":15, "3 PM":35, "5 PM":5 },
+"03/08/26": { "5 AM":3, "6 AM":8, "8 AM":12, "10 AM":12, "3 PM":29, "5 PM":4 },
+"04/08/26": { "5 AM":3, "6 AM":7, "8 AM":11, "10 AM":11, "3 PM":25, "5 PM":4 },
+"05/08/26": { "5 AM":3, "6 AM":8, "8 AM":13, "10 AM":13, "3 PM":30, "5 PM":4 },
+"06/08/26": { "5 AM":3, "6 AM":10, "8 AM":14, "10 AM":14, "3 PM":34, "5 PM":5 },
+"07/08/26": { "5 AM":3, "6 AM":9, "8 AM":14, "10 AM":14, "3 PM":33, "5 PM":5 },
+"08/08/26": { "5 AM":3, "6 AM":10, "8 AM":15, "10 AM":15, "3 PM":37, "5 PM":5 },
+"09/08/26": { "5 AM":3, "6 AM":10, "8 AM":15, "10 AM":15, "3 PM":35, "5 PM":5 },
+"10/08/26": { "5 AM":3, "6 AM":8, "8 AM":12, "10 AM":12, "3 PM":29, "5 PM":4 },
+"11/08/26": { "5 AM":3, "6 AM":8, "8 AM":12, "10 AM":12, "3 PM":29, "5 PM":4 },
+"12/08/26": { "5 AM":3, "6 AM":9, "8 AM":13, "10 AM":13, "3 PM":31, "5 PM":4 },
+"13/08/26": { "5 AM":3, "6 AM":9, "8 AM":14, "10 AM":14, "3 PM":33, "5 PM":5 },
+"14/08/26": { "5 AM":3, "6 AM":10, "8 AM":14, "10 AM":14, "3 PM":35, "5 PM":5 },
+"15/08/26": { "5 AM":3, "6 AM":11, "8 AM":17, "10 AM":17, "3 PM":40, "5 PM":6 },
+"16/08/26": { "5 AM":3, "6 AM":11, "8 AM":16, "10 AM":16, "3 PM":38, "5 PM":5 },
+"17/08/26": { "5 AM":3, "6 AM":8, "8 AM":12, "10 AM":12, "3 PM":29, "5 PM":4 },
+"18/08/26": { "5 AM":3, "6 AM":8, "8 AM":12, "10 AM":12, "3 PM":29, "5 PM":4 },
+"19/08/26": { "5 AM":3, "6 AM":9, "8 AM":14, "10 AM":14, "3 PM":34, "5 PM":5 },
+"20/08/26": { "5 AM":3, "6 AM":9, "8 AM":14, "10 AM":14, "3 PM":33, "5 PM":5 },
+"21/08/26": { "5 AM":3, "6 AM":9, "8 AM":13, "10 AM":13, "3 PM":32, "5 PM":4 },
+"22/08/26": { "5 AM":3, "6 AM":10, "8 AM":16, "10 AM":16, "3 PM":38, "5 PM":5 },
+"23/08/26": { "5 AM":3, "6 AM":10, "8 AM":15, "10 AM":15, "3 PM":36, "5 PM":5 },
+"24/08/26": { "5 AM":3, "6 AM":8, "8 AM":12, "10 AM":12, "3 PM":30, "5 PM":4 },
+"25/08/26": { "5 AM":3, "6 AM":8, "8 AM":11, "10 AM":11, "3 PM":27, "5 PM":4 },
+"26/08/26": { "5 AM":3, "6 AM":9, "8 AM":13, "10 AM":13, "3 PM":32, "5 PM":4 },
+"27/08/26": { "5 AM":3, "6 AM":9, "8 AM":14, "10 AM":14, "3 PM":34, "5 PM":5 },
+"28/08/26": { "5 AM":3, "6 AM":9, "8 AM":14, "10 AM":14, "3 PM":33, "5 PM":5 },
+"29/08/26": { "5 AM":3, "6 AM":11, "8 AM":16, "10 AM":16, "3 PM":38, "5 PM":5 },
+"30/08/26": { "5 AM":3, "6 AM":10, "8 AM":15, "10 AM":15, "3 PM":37, "5 PM":5 },
+"31/08/26": { "5 AM":3, "6 AM":9, "8 AM":14, "10 AM":14, "3 PM":33, "5 PM":5 }
+
+};
+let shiftSummary = {
+    "5 AM": 0,
+    "6 AM": 0,
+    "8 AM": 0,
+    "10 AM": 0,
+    "3 PM": 0,
+    "5 PM": 0,
+    "Night Shift": 0
+};
+
+
+/* ===============================
+   FILE UPLOAD
+================================ */
+
+fileInput.addEventListener("change", function(event) {
+
+    const file = event.target.files[0];
+
+    if (!file) {
+        return;
+    }
+
+
+    document.getElementById("fileName").innerText = file.name;
+
+    document.getElementById("errorMessage").innerText = "";
+
+
+    const reader = new FileReader();
+
+
+    reader.onload = function(e) {
+
+        try {
+
+            const data = new Uint8Array(e.target.result);
+
+
+            const workbook = XLSX.read(
+                data,
+                {
+                    type: "array",
+                    cellDates: true
+                }
+            );
+
+
+            const sheetName = workbook.SheetNames[0];
+
+
+            const worksheet = workbook.Sheets[sheetName];
+
+
+            uploadedRows = XLSX.utils.sheet_to_json(
+                worksheet,
+                {
+                    header: 1,
+                    defval: "",
+                    raw: false
+                }
+            );
+
+
+            if (uploadedRows.length <= 1) {
+
+                uploadedRows = [];
+
+                showError(
+                    "Excel file contains no attendance records."
+                );
+
+                return;
+
+            }
+
+
+            document.getElementById(
+                "fileName"
+            ).innerText =
+
+                file.name + " — Ready to generate";
+
+
+        }
+
+        catch (error) {
+
+            console.error(error);
+
+            uploadedRows = [];
+
+            showError(
+                "Unable to process Excel file."
+            );
+
+        }
+
+    };
+
+
+    reader.readAsArrayBuffer(file);
+
+});
+
+
+
+/* ===============================
+   GENERATE REPORT
+================================ */
+
+function generateReport() {
+
+    if (uploadedRows.length === 0) {
+
+        showError(
+            "Please select a valid attendance Excel file."
+        );
+
+        return;
+
+    }
+
+
+    document.getElementById(
+        "errorMessage"
+    ).innerText = "";
+
+
+    processData(uploadedRows);
+
+
+    updateReportDate();
+
+
+    document.getElementById(
+        "reportContainer"
+    ).style.display = "block";
+
+
+document.getElementById(
+    "downloadSummaryButton"
+).style.display = "inline-block";
+
+document.getElementById(
+    "downloadOutsideButton"
+).style.display = "inline-block";
+}
+
+
+
+/* ===============================
+   PROCESS DATA
+================================ */
+
+function processData(rows) {
+
+    reportData = [];
+    reportDateKey = "";
+    shiftSummary = {
+    "5 AM": 0,
+    "6 AM": 0,
+    "8 AM": 0,
+    "10 AM": 0,
+    "3 PM": 0,
+    "5 PM": 0,
+    "Night Shift": 0
+};
+
+
+    for (let i = 1; i < rows.length; i++) {
+
+        const row = rows[i];
+
+
+        if (
+            !row ||
+            row.every(cell => cell === "")
+        ) {
+
+            continue;
+
+        }
+
+
+        const riderID = row[0];
+
+        const riderName = row[1];
+
+
+
+        const phone = row[2];
+
+        const status = row[4];
+
+        const punchIn = row[5];
+        if (!reportDateKey && punchIn) {
+
+    const d = parseExcelDate(punchIn);
+
+    if (d) {
+
+        reportDateKey =
+            String(d.getDate()).padStart(2,"0") + "/" +
+            String(d.getMonth()+1).padStart(2,"0") + "/" +
+            String(d.getFullYear()).slice(-2);
+
+    }
+}
+
+
+        const punchOut =
+
+            row[6] === "" ||
+            row[6] == null
+
+            ? "Null"
+
+            : row[6];
+
+
+        if (riderID === "") {
+
+            continue;
+
+        }
+
+
+        const activeHour = calculateActiveHour(
+            punchIn,
+            punchOut
+        );
+const shift = calculateShift(punchIn);
+shiftSummary[shift]++;
+
+        reportData.push({
+
+    riderID: riderID,
+
+    riderName: riderName,
+
+    phone: phone,
+
+    status: status,
+
+    punchIn: punchIn,
+
+    punchOut: punchOut,
+
+    activeHour: activeHour,
+
+    shift: shift,
+
+});
+    }
+
+
+    generateTable();
+
+}
+
+
+
+/* ===============================
+   ACTIVE HOUR
+================================ */
+
+function calculateActiveHour(
+    punchIn,
+    punchOut
+) {
+
+    if (!punchIn) {
+
+        return "";
+
+    }
+
+
+    const start = parseExcelDate(punchIn);
+
+
+    if (!start) {
+
+        return "";
+
+    }
+
+
+    let end;
+
+
+    /*
+    PUNCH OUT NULL
+    CURRENT IST - PUNCH IN
+    */
+
+    if (
+
+        !punchOut ||
+
+        String(punchOut)
+            .trim()
+            .toLowerCase() === "null"
+
+    ) {
+
+        end = getCurrentISTDate();
+
+    }
+
+    else {
+
+        end = parseExcelDate(punchOut);
+
+    }
+
+
+    if (!end) {
+
+        return "";
+
+    }
+
+
+    const difference =
+
+        end.getTime() -
+
+        start.getTime();
+
+
+    if (difference < 0) {
+
+        return "";
+
+    }
+
+
+    const totalSeconds =
+
+        Math.floor(
+            difference / 1000
+        );
+
+
+    const hours =
+
+        Math.floor(
+            totalSeconds / 3600
+        );
+
+
+    const minutes =
+
+        Math.floor(
+            (totalSeconds % 3600) / 60
+        );
+
+
+    const seconds =
+
+        totalSeconds % 60;
+
+
+    return (
+
+        String(hours).padStart(2, "0")
+
+        + ":" +
+
+        String(minutes).padStart(2, "0")
+
+        + ":" +
+
+        String(seconds).padStart(2, "0")
+
+    );
+
+}
+
+
+/* ===============================
+   SHIFT CALCULATION
+================================ */
+
+/* ===============================
+   SHIFT CALCULATION
+================================ */
+
+function calculateShift(punchIn) {
+
+    const date = parseExcelDate(punchIn);
+
+    if (!date) {
+        return "Night Shift";
+    }
+
+    const minutes = date.getHours() * 60 + date.getMinutes();
+
+    // 5 AM Shift : After 4:15 AM and Before 5:30 AM
+    if (minutes >= 255 && minutes <= 330)
+        return "5 AM";
+
+    // 6 AM Shift : After 5:30 AM and Before 6:30 AM
+    if (minutes >= 330 && minutes <= 390)
+        return "6 AM";
+
+    // 8 AM Shift : After 7:30 AM and Before 8:30 AM
+    if (minutes >= 450 && minutes <= 510)
+        return "8 AM";
+
+    // 10 AM Shift : After 9:30 AM and Before 10:30 AM
+    if (minutes >= 570 && minutes <= 630)
+        return "10 AM";
+
+    // 3 PM Shift : After 2:30 PM and Before 3:30 PM
+    if (minutes >= 870 && minutes <= 930)
+        return "3 PM";
+
+    // 5 PM Shift : After 4:30 PM and Before 5:30 PM
+    if (minutes >= 990 && minutes <= 1050)
+        return "5 PM";
+
+    return "Night Shift";
+}
+/* ===============================
+   SHIFT VISIBILITY
+================================ */
+
+function isShiftCompleted(shift) {
+
+    const now = getCurrentISTDate();
+
+    const minutes = now.getHours() * 60 + now.getMinutes();
+
+    switch (shift) {
+
+        case "5 AM":
+            return minutes >= 330;   // 5:30 AM
+
+        case "6 AM":
+            return minutes >= 390;   // 6:30 AM
+
+        case "8 AM":
+            return minutes >= 510;   // 8:30 AM
+
+        case "10 AM":
+            return minutes >= 630;   // 10:30 AM
+
+        case "3 PM":
+            return minutes >= 930;   // 3:30 PM
+
+        case "5 PM":
+            return minutes >= 1020;  // 5:30 PM
+
+        case "Night Shift":
+            return true;
+
+        default:
+            return false;
+    }
+
+}
+function getVisibleShifts() {
+
+    const now = getCurrentISTDate();
+
+    const minutes = now.getHours() * 60 + now.getMinutes();
+
+    const shifts = [];
+
+    if (minutes >= 300) shifts.push("5 AM");     // 5:00 AM
+if (minutes >= 360) shifts.push("6 AM");     // 6:00 AM
+if (minutes >= 480) shifts.push("8 AM");     // 8:00 AM
+if (minutes >= 600) shifts.push("10 AM");    // 10:00 AM
+if (minutes >= 900) shifts.push("3 PM");     // 3:00 PM
+if (minutes >= 1020) shifts.push("5 PM");    // 5:00 PM
+    // Always show Night Shift column
+//shifts.push("Night Shift");
+    return shifts;
+}
+/* ===============================
+   CURRENT IST
+================================ */
+
+function getCurrentISTDate() {
+
+    const now = new Date();
+
+
+    const istParts =
+
+        new Intl.DateTimeFormat(
+
+            "en-CA",
+
+            {
+
+                timeZone: "Asia/Kolkata",
+
+                year: "numeric",
+
+                month: "2-digit",
+
+                day: "2-digit",
+
+                hour: "2-digit",
+
+                minute: "2-digit",
+
+                second: "2-digit",
+
+                hourCycle: "h23"
+
+            }
+
+        ).formatToParts(now);
+
+
+    const parts = {};
+
+
+    istParts.forEach(part => {
+
+        parts[part.type] = part.value;
+
+    });
+
+
+    return new Date(
+
+        Number(parts.year),
+
+        Number(parts.month) - 1,
+
+        Number(parts.day),
+
+        Number(parts.hour),
+
+        Number(parts.minute),
+
+        Number(parts.second)
+
+    );
+
+}
+
+
+
+/* ===============================
+   DATE PARSER
+================================ */
+
+function parseExcelDate(value) {
+
+    if (!value) {
+
+        return null;
+
+    }
+
+
+    if (value instanceof Date) {
+
+        return value;
+
+    }
+
+
+    const text = String(value).trim();
+
+
+    const match = text.match(
+
+        /^(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2}):(\d{2})$/
+
+    );
+
+
+    if (match) {
+
+        return new Date(
+
+            Number(match[1]),
+
+            Number(match[2]) - 1,
+
+            Number(match[3]),
+
+            Number(match[4]),
+
+            Number(match[5]),
+
+            Number(match[6])
+
+        );
+
+    }
+
+
+    const date = new Date(text);
+
+
+    if (isNaN(date.getTime())) {
+
+        return null;
+
+    }
+
+
+    return date;
+
+}
+
+
+
+function generateTable() {
+
+    const tbody = document.getElementById("reportBody");
+
+    const visibleShifts = getVisibleShifts();
+
+    let html = "";
+
+    // ===========================
+    // Planned Rider
+    // ===========================
+
+    html += `<tr>
+        <td style="background:#0A66C2;color:white;font-weight:bold;">
+            Planned Rider
+        </td>`;
+
+    visibleShifts.forEach(shift => {
+
+        const id = {
+            "5 AM":"plan5",
+            "6 AM":"plan6",
+            "8 AM":"plan8",
+            "10 AM":"plan10",
+            "3 PM":"plan3",
+            "5 PM":"plan5pm",
+            "Night Shift":"planOutsideShift"
+        }[shift];
+
+        html += `<td id="${id}"></td>`;
+
+    });
+
+    html += `<td id="plannedTotal"></td></tr>`;
+
+
+    // ===========================
+    // Shift Row
+    // ===========================
+
+    html += `<tr>
+        <td style="background:#0A66C2;color:white;font-weight:bold;">
+            Shift
+        </td>`;
+
+    visibleShifts.forEach(shift => {
+
+        html += `<td>${shift}</td>`;
+
+    });
+
+    html += `<td>Total Riders</td></tr>`;
+
+
+    // ===========================
+    // Active Rider
+    // ===========================
+
+    html += `<tr>
+        <td style="background:#0A66C2;color:white;font-weight:bold;">
+            Active Riders
+        </td>`;
+
+    const totalActive = visibleShifts.reduce((total, shift) => {
+    return total + shiftSummary[shift];
+}, 0);
+
+let shownShiftTotal = 0;
+
+visibleShifts.forEach(shift => {
+
+    let value;
+
+    if (shift === "Night Shift") {
+
+        value = totalActive - shownShiftTotal;
+
+    } else {
+
+        value = shiftSummary[shift];
+        shownShiftTotal += value;
+
+    }
+
+    html += `<td>${value}</td>`;
+
+});
+
+html += `<td>${totalActive}</td></tr>`;
+
+    // ===========================
+    // Difference
+    // ===========================
+
+    html += `<tr>
+        <td style="background:#0A66C2;color:white;font-weight:bold;">
+            Difference
+        </td>`;
+
+    visibleShifts.forEach(shift => {
+
+        const id = {
+            "5 AM":"diff5",
+            "6 AM":"diff6",
+            "8 AM":"diff8",
+            "10 AM":"diff10",
+            "3 PM":"diff3",
+            "5 PM":"diff5pm",
+            "Night Shift":"diffOutsideShift"
+        }[shift];
+
+        html += `<td id="${id}"></td>`;
+
+    });
+
+    html += `<td id="diffTotal"></td></tr>`;
+
+    tbody.innerHTML = html;
+
+calculateDifference();
+
+generateOutsideShiftTable();}   
+function generateOutsideShiftTable() {
+
+    const tbody = document.getElementById("outsideShiftBody");
+
+    const visibleShifts = getVisibleShifts();
+
+    const outsideShiftRiders = reportData.filter(rider => {
+
+    if (rider.shift === "Night Shift") {
+        return true;
+    }
+
+    return !visibleShifts.includes(rider.shift);
+
+});
+    let html = "";
+
+    outsideShiftRiders.forEach(rider => {
+
+        html += `
+        <tr>
+            <td>${rider.riderID}</td>
+            <td>${rider.riderName}</td>
+            <td>${rider.phone}</td>
+            <td>${rider.shift}</td>
+            <td>${rider.punchIn}</td>
+            <td>${rider.activeHour}</td>
+        </tr>`;
+
+    });
+
+    if (outsideShiftRiders.length === 0) {
+
+        html = `
+        <tr>
+            <td colspan="6">
+                No Night Shift Riders
+            </td>
+        </tr>`;
+
+    }
+
+    tbody.innerHTML = html;
+
+}
+function calculateDifference() {
+
+    const planned = plannedRiders[reportDateKey] || {
+
+        "5 AM": 0,
+        "6 AM": 0,
+        "8 AM": 0,
+        "10 AM": 0,
+        "3 PM": 0,
+        "5 PM": 0
+
+    };
+
+    const visibleShifts = getVisibleShifts();
+
+    let plannedTotal = 0;
+    let activeTotal = 0;
+    let diffTotal = 0;
+
+    visibleShifts.forEach(shift => {
+
+        const planId = {
+            "5 AM": "plan5",
+            "6 AM": "plan6",
+            "8 AM": "plan8",
+            "10 AM": "plan10",
+            "3 PM": "plan3",
+            "5 PM": "plan5pm",
+            "Night Shift": "planOutsideShift"
+        }[shift];
+
+        const diffId = {
+            "5 AM": "diff5",
+            "6 AM": "diff6",
+            "8 AM": "diff8",
+            "10 AM": "diff10",
+            "3 PM": "diff3",
+            "5 PM": "diff5pm",
+            "Night Shift": "diffOutsideShift"
+        }[shift];
+
+        const plannedValue =
+            shift === "Night Shift"
+                ? 0
+                : planned[shift];
+
+        let activeValue;
+
+if (shift === "Night Shift") {
+
+    let shownShiftTotal = 0;
+
+    visibleShifts.forEach(s => {
+
+        if (s !== "Night Shift") {
+            shownShiftTotal += shiftSummary[s];
+        }
+
+    });
+
+    activeValue = reportData.length - shownShiftTotal;
+
+}
+else {
+
+    activeValue = shiftSummary[shift];
+
+}
+
+        document.getElementById(planId).innerText = plannedValue;
+
+        if (shift === "Night Shift") {
+
+    document.getElementById(diffId).innerText = activeValue;
+
+} else {
+
+    const difference = activeValue - plannedValue;
+
+document.getElementById(diffId).innerText =
+    difference > 0
+        ? `+${difference}`
+        : difference;
+}
+
+        plannedTotal += plannedValue;
+        activeTotal += activeValue;
+        diffTotal += (activeValue - plannedValue);
+
+    });
+
+    document.getElementById("plannedTotal").innerText = plannedTotal;
+    document.getElementById("diffTotal").innerText =
+    diffTotal > 0
+        ? `+${diffTotal}`
+        : diffTotal;
+
+}
+
+/* ===============================
+   COPY PHONE NUMBER
+================================ */
+
+async function copyPhone(phone, button) {
+
+    try {
+
+        await navigator.clipboard.writeText(phone);
+
+        const oldText = button.innerText;
+
+        button.innerText = "Copied";
+
+        setTimeout(() => {
+            button.innerText = oldText;
+        }, 1000);
+
+    } catch (error) {
+
+        console.error(error);
+
+        alert("Unable to copy phone number.");
+
+    }
+
+}
+
+
+
+/* ===============================
+   STATUS CLASS
+================================ */
+
+function getStatusClass(status) {
+
+    const value = String(
+        status
+    ).toUpperCase();
+
+
+    if (value === "ACTIVE") {
+
+        return "status-active";
+
+    }
+
+
+    if (value === "COMPLETED") {
+
+        return "status-completed";
+
+    }
+
+
+    if (value === "AUTO_CLOSED") {
+
+        return "status-auto";
+
+    }
+
+
+    return "";
+
+}
+
+
+
+/* ===============================
+   REPORT DATE
+================================ */
+
+function updateReportDate() {
+
+    const now = new Date();
+
+
+    const date = now.toLocaleDateString(
+
+        "en-GB",
+
+        {
+
+            timeZone: "Asia/Kolkata",
+
+            day: "2-digit",
+
+            month: "short",
+
+            year: "numeric"
+
+        }
+
+    );
+
+
+    const time = now.toLocaleTimeString(
+
+        "en-US",
+
+        {
+
+            timeZone: "Asia/Kolkata",
+
+            hour: "numeric",
+
+            minute: "2-digit",
+
+            hour12: true
+
+        }
+
+    );
+
+
+    document.getElementById(
+        "reportDate"
+    ).innerHTML =
+
+        "Date: " + date +
+
+        "&nbsp;&nbsp; Time: " + time;
+
+}
+
+
+
+async function downloadCapture(elementId, fileName) {
+
+    if (reportData.length === 0) {
+        alert("No report data available.");
+        return;
+    }
+
+    reportData.forEach(item => {
+        item.activeHour = calculateActiveHour(item.punchIn, item.punchOut);
+    });
+
+    calculateDifference();
+    updateReportDate();
+
+    await new Promise(r => setTimeout(r,150));
+
+    const element = document.getElementById(elementId);
+
+    // Save current styles
+    const oldStyle = element.style.cssText;
+
+    // Force element to shrink to content
+    element.style.display = "inline-block";
+    element.style.position = "absolute";
+    element.style.left = "0";
+    element.style.top = "0";
+    element.style.margin = "0";
+    element.style.padding = "0";
+
+    const canvas = await html2canvas(element,{
+        scale:3,
+        backgroundColor:"#ffffff",
+        useCORS:true,
+        logging:false
+    });
+    // Create a new canvas with extra space at the bottom
+const finalCanvas = document.createElement("canvas");
+
+finalCanvas.width = canvas.width;
+finalCanvas.height = canvas.height + 80;
+
+const ctx = finalCanvas.getContext("2d");
+
+// White background
+ctx.fillStyle = "#ffffff";
+ctx.fillRect(0, 0, finalCanvas.width, finalCanvas.height);
+
+// Draw original image
+ctx.drawImage(canvas, 0, 0);
+
+// Watermark
+ctx.font = "bold 30px Segoe UI";
+ctx.fillStyle = "#000000";
+ctx.textAlign = "center";
+ctx.textBaseline = "middle";
+
+ctx.fillText(
+    "POWERED BY SASA AUTOMATION | ZIPPEE",
+    finalCanvas.width / 2,
+    canvas.height + 40
+);
+
+    // Restore original styles
+    element.style.cssText = oldStyle;
+
+    const link = document.createElement("a");
+    link.href = finalCanvas.toDataURL("image/png");
+    link.download = fileName;
+    link.click();
+}
+function downloadSummaryPNG(){
+
+    downloadCapture(
+        "summaryCapture",
+        "Summary_Report.png"
+    );
+
+}
+function downloadOutsidePNG(){
+
+    downloadCapture(
+        "outsideCapture",
+        "Outside_Shift_Riders.png"
+    );
+
+}
+
+
+/* ===============================
+   ESCAPE HTML
+================================ */
+
+function escapeHTML(value) {
+
+    return String(value ?? "")
+
+        .replace(/&/g, "&amp;")
+
+        .replace(/</g, "&lt;")
+
+        .replace(/>/g, "&gt;")
+
+        .replace(/"/g, "&quot;")
+
+        .replace(/'/g, "&#039;");
+
+}
+
+
+
+/* ===============================
+   ERROR
+================================ */
+
+function showError(message) {
+
+    document.getElementById(
+        "errorMessage"
+    ).innerText = message;
+
+
+    document.getElementById(
+        "reportContainer"
+    ).style.display = "none";
+
+
+   document.getElementById(
+    "downloadSummaryButton"
+).style.display = "none";
+
+document.getElementById(
+    "downloadOutsideButton"
+).style.display = "none";
+
+}
+
+</script>
+
+</body>
+
+</html>
