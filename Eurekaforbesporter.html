@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Zippee <> Eureka Forbes | Porter EOD Report</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f4f7fb;font-family:Arial,Helvetica,sans-serif;color:#101828}
+.page{max-width:1500px;margin:auto;background:#fff;min-height:100vh}
+.top{height:90px;background:linear-gradient(100deg,#08285f,#001944);color:#fff;display:flex;align-items:center;justify-content:space-between;padding:0 38px}
+.company-logos{
+    display:flex;
+    align-items:center;
+    gap:30px;
+    height:80px;
+}
+
+.company-logos img{
+    height:68px;
+    width:auto;
+    max-width:220px;
+    object-fit:contain;
+}
+
+.company-logos span{
+    color:#fff;
+    font-size:34px;
+    font-weight:900;
+    margin:0 5px;
+}
+.top h1{font-size:36px;margin:0;font-weight:800;letter-spacing:-1px}
+.datebox{display:flex;gap:14px;align-items:center;font-size:20px}
+.cal{font-size:38px}
+.datebox input{background:transparent;border:0;color:#fff;font-size:20px;font-weight:600;width:150px;outline:none}
+.datebox input::-webkit-calendar-picker-indicator{filter:invert(1)}
+.view{display:none;padding:20px 18px}
+.view.active{display:block}
+.input-shell{max-width:850px;margin:20px auto}
+.entry-title{background:#092b66;color:#fff;padding:14px 18px;border-radius:10px 10px 0 0;font-size:20px;font-weight:800}
+.input-table{width:100%;border-collapse:collapse;background:#fff;box-shadow:0 4px 18px #00000012}
+.input-table th{background:#f7c75e;border:1px solid #222;padding:10px;font-size:16px}
+.input-table td{border:1px solid #999;padding:4px;height:38px}
+.input-table .sno{background:#9ad7eb;font-weight:800;text-align:center;width:75px}
+.input-table input{width:100%;border:0;outline:0;text-align:center;font-size:16px;background:transparent}
+.input-table td:nth-child(2){font-weight:600;padding-left:12px}
+.input-table .auto{background:#dff0d3}
+.input-table .red{background:#ff1717;color:#111;font-weight:800}
+.input-table .yellow{background:#fff900}
+.actions{text-align:center;margin:18px}
+.btn{border:0;border-radius:7px;padding:12px 24px;font-size:15px;font-weight:800;cursor:pointer;margin:4px}
+.generate{background:#092b66;color:#fff}.back{background:#e5e7eb;color:#111}
+.dashboard{
+    display:grid;
+    grid-template-columns:205px 1fr;
+    gap:14px;
+}
+.sidebar{
+    background:linear-gradient(180deg,#06265e,#052258);
+    color:#fff;
+    border-radius:12px;
+    padding:22px 18px;
+    min-height:760px;
+    text-align:center;
+}
+.side-icon{width:76px;height:76px;background:#fff;color:#0a3474;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;font-size:38px}
+.sidebar h2{font-size:22px;margin:8px 0 20px}.sidebar p{font-size:18px;line-height:1.75;text-align:left}
+.divider{border-top:1px solid #8aa0c5;margin:35px 0}
+.trophy{font-size:35px}.take{font-size:15px;letter-spacing:.5px}.big{font-size:34px;font-weight:800;margin:14px 0 2px}.small{font-size:17px;line-height:1.5}
+.main{min-width:0}
+.cards{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:14px}
+.card{
+    border:1px solid #dce3eb;
+    border-radius:11px;
+    padding:14px 13px;
+    display:flex;
+    align-items:center;
+    gap:12px;
+    min-height:105px;
+    box-shadow:0 2px 7px #00000009;
+}
+.card-icon{width:60px;height:60px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:34px;flex:none}
+.blue{background:#e5efff;color:#1359a7}.green{background:#edf6e9;color:#3b9624}.orange{background:#fff0e3;color:#ef6e00}.purple{background:#f2eafa;color:#6e3fa3}.teal{background:#e9f5f2;color:#0798a6}
+.card-label{font-weight:800;font-size:15px;text-transform:uppercase}.card-num{font-size:36px;font-weight:800;margin-top:5px;color:#1454a0}.card:nth-child(2) .card-num{color:#3f972b}.card:nth-child(3) .card-num{color:#ed7200}.card:nth-child(4) .card-num{color:#7040a3}.card:nth-child(5) .card-num{color:#0a9ba9}
+.content-grid{display:grid;grid-template-columns:1fr 1.25fr;gap:14px}
+.panel{border:1px solid #dce3eb;border-radius:11px;overflow:hidden;background:#fff}
+.panel-head{background:linear-gradient(90deg,#06275f,#06235a);color:#fff;text-align:center;font-size:18px;font-weight:800;padding:11px}
+.kpi-table{
+    width:100%;
+    border-collapse:collapse
+}
+.kpi-table td,
+.kpi-table th{
+    padding-top:7px;
+    padding-bottom:7px;
+}
+
+.kpi-table td:first-child{
+    line-height:26px;
+}
+.kpi-table th{
+    background:#f7f9fc;
+    padding:10px;
+    border:1px solid #e0e5ec
+}
+
+.kpi-table td{
+    padding:8px;
+    border:1px solid #e0e5ec
+}
+
+.kpi-table td:first-child{
+    text-align:center;
+    font-weight:800;
+    width:75px;
+    color:#fff;
+    padding:8px 4px;
+    line-height:30px;
+    white-space:nowrap;
+    position:relative;
+    z-index:0;
+}
+
+.kpi-table td:first-child::before{
+    content:"";
+    position:absolute;
+    top:50%;
+    left:50%;
+    transform:translate(-50%,-50%);
+    width:calc(100% - 8px);
+    height:30px;
+    background:#1252a0;
+    border-radius:50%;
+    z-index:-1;
+}.kpi-table td:last-child{text-align:center;font-weight:800;width:105px;color:#1454a0}.kpi-green td:nth-child(3){background:#e8f5e4;color:#138b36}.kpi-red td:nth-child(2),.kpi-red td:nth-child(3){background:#ffdada;color:#e00000}.kpi-yellow td:nth-child(2),.kpi-yellow td:nth-child(3){background:#fff2cc;color:#d05d00}
+.visual{padding:15px}.funnel-row{display:flex;align-items:center;gap:12px;margin:7px 0}.funnel-label{width:180px;font-weight:700;font-size:14px}.funnel-bar{
+    height:38px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    color:#fff;
+    font-weight:800;
+    padding-right:0;
+    clip-path:polygon(3% 0,97% 0,92% 100%,8% 100%);
+    min-width:70px;
+}.f1{background:#1258ae}.f2{background:#45a326}.f3{background:#f47b00}.f4{background:#7041a4}.f5{background:#5a2299}.f6{background:#0c9ca7}.funnel-wrap{
+    width:100%;
+    max-width:620px;
+    margin:0 auto;
+}
+.performance-icon{
+    width:42px;
+    height:42px;
+    border:3px solid #fff;
+    border-radius:50%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    color:#fff;
+    font-size:24px;
+    font-weight:800;
+}
+.funnel-row{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    margin:6px 0;
+}
+
+.funnel-label{
+    width:180px;
+    flex-shrink:0;
+    font-weight:700;
+    font-size:14px;
+}
+
+.funnel-bar{
+    height:34px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    color:#fff;
+    font-weight:800;
+    padding:0;
+    margin-left:auto;
+    margin-right:auto;
+    clip-path:polygon(3% 0,97% 0,92% 100%,8% 100%);
+    min-width:70px;
+}
+.bottom-grid{display:grid;grid-template-columns:1.1fr 1fr;gap:14px;margin-top:14px}.success-wrap{display:grid;grid-template-columns:repeat(3,1fr);padding:22px 14px;gap:12px}.circle{width:102px;height:102px;border-radius:50%;margin:auto;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:800;border:12px solid #1471c9;box-shadow:inset 0 0 0 4px #fff}.c2{border-color:#0aa2af}.c3{border-color:#087a63}.circle-label{text-align:center;font-weight:700;line-height:1.4;margin-top:10px}.donut-box{
+    padding:12px;
+    display:grid;
+    grid-template-columns:55% 45%;
+    align-items:center;
+    gap:5px;
+}
+
+.chart-holder{
+    height:230px;
+    width:100%;
+}
+
+.legend{
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    padding-left:5px;
+    min-width:0;
+}
+
+.legend div{
+    margin:8px 0;
+    font-size:12px;
+    line-height:1.25;
+    font-weight:600;
+    display:grid;
+    grid-template-columns:12px 1fr auto;
+    align-items:center;
+    gap:6px;
+}
+
+.legend strong{
+    font-size:14px;
+    color:#123f7d;
+}
+
+.dot{
+    display:inline-block;
+    width:11px;
+    height:11px;
+    border-radius:50%;
+    margin-right:7px;
+    vertical-align:middle;
+}.bottom-strip{
+    margin-top:14px;
+    border:1px solid #0b3676;
+    border-radius:10px;
+    display:grid;
+    grid-template-columns:75px 175px 1fr 1fr 1fr;
+    align-items:center;
+    min-height:75px;
+    overflow:hidden;
+}
+
+.strip-icon{
+    height:75px;
+    background:#08295f;
+    color:#fff;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:30px;
+}
+
+.strip-title{
+    font-weight:800;
+    color:#15366d;
+    padding:0 18px;
+    font-size:14px;
+}
+
+.highlight{
+    padding:8px 20px;
+    border-left:1px solid #cbd5e1;
+    font-size:13px;
+    line-height:1.45;
+    min-height:55px;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+}
+
+.highlight b{
+    font-size:18px;
+    color:#15905a;
+}.strip-icon{height:90px;background:#08295f;color:#fff;display:flex;align-items:center;justify-content:center;font-size:35px}.strip-title{font-weight:800;color:#15366d}.highlight{padding:10px 20px;border-left:1px solid #cbd5e1;font-size:14px;line-height:1.5}.highlight b{font-size:20px;color:#15905a}
+@media(max-width:1100px){.cards{grid-template-columns:repeat(3,1fr)}.dashboard{grid-template-columns:180px 1fr}.bottom-strip{grid-template-columns:70px 180px 1fr}.highlight:nth-last-child(-n+2){display:none}}
+@media(max-width:800px){.dashboard,.content-grid,.bottom-grid{grid-template-columns:1fr}.sidebar{min-height:auto}.cards{grid-template-columns:repeat(2,1fr)}.bottom-strip{display:block}.strip-icon{height:60px}.highlight{border-top:1px solid #ddd;border-left:0}.top h1{font-size:24px}.top{padding:0 18px}}
+</style>
+</head>
+<body>
+<div class="page">
+<header class="top">
+  <div class="company-logos">
+    <img src="zippee.png" alt="Zippee">
+    <span>&lt;&gt;</span>
+    <img src="eureka-forbes.png" alt="Eureka Forbes">
+</div>
+  <div class="datebox"><span class="cal">▣</span><div>Porter EOD Report<br><input id="reportDate" type="date"></div></div>
+</header>
+
+<section id="inputView" class="view active">
+  <div class="input-shell">
+    <div class="entry-title">Manual KPI Entry</div>
+    <table class="input-table">
+      <thead><tr><th class="sno">S. No</th><th>KPI</th><th>Values</th></tr></thead>
+      <tbody>
+        <tr><td class="sno">1</td><td>Total Orders</td><td><input id="totalOrders" type="number" min="0"></td></tr>
+        <tr><td class="sno">2</td><td>Total Calls</td><td><input type="number" min="0" data-key="calls"></td></tr>
+        <tr>
+  <td class="sno">2.2</td>
+  <td>Avg. Trip Distance</td>
+  <td><input id="avgTripDistance" type="text" placeholder="0 KM"></td>
+</tr>
+        <tr>
+  <td class="sno">2.1</td>
+  <td>Avg Del. Time</td>
+  <td><input id="avgDelTime" type="text" placeholder="HH:MM"></td>
+</tr>
+        <tr><td class="sno">3</td><td>Customer Available</td><td><input type="number" min="0" data-key="available"></td></tr>
+        <tr><td class="sno">4</td><td>CX ready to accept porter</td><td><input type="number" min="0" data-key="ready"></td></tr>
+        <tr><td class="sno">4.1</td><td>Porter Booked</td><td><input id="booked" type="number" min="0"></td></tr>
+        <tr>
+  <td class="sno">4.1.1</td>
+  <td>CPO</td>
+  <td>
+    <input id="cpo" type="number" min="0" step="0.01">
+  </td>
+</tr>
+        <tr><td class="sno">4.2</td><td>Porter booked %</td><td class="auto"><input id="bookedPct" readonly></td></tr>
+        <tr>
+  <td class="sno">4.2.1</td>
+  <td>Avg Waiting Time</td>
+  <td>
+    <input id="avgTime" type="text" placeholder="HH:MM">
+  </td>
+</tr>
+
+<tr>
+  <td class="sno">4.2.2</td>
+  <td>Delivered Orders</td>
+  <td>
+    <input id="delivered" type="number" min="0">
+  </td>
+</tr>
+        <tr><td class="sno">4.2.3</td><td>Delivery%</td><td class="auto"><input id="deliveryPct" readonly></td></tr>
+        <tr><td class="sno">5</td><td>CX Rejected Porter</td><td><input type="number" min="0" data-key="rejected"></td></tr>
+        <tr><td class="sno">5.1</td><td class="red">Cx not willing to handover</td><td class="red"><input type="number" min="0" data-key="notWilling"></td></tr>
+        <tr><td class="sno">5.2</td><td class="yellow">Reschedule</td><td class="yellow"><input type="number" min="0" data-key="reschedule"></td></tr>
+        <tr><td class="sno">6</td><td>Cx Unavailable</td><td><input type="number" min="0" data-key="unavailable"></td></tr>
+        <tr>
+  <td class="sno">D1-1</td>
+  <td>D-1 Total Orders</td>
+  <td><input id="d1TotalOrders" type="number" min="0"></td>
+</tr>
+
+<tr>
+  <td class="sno">D1-2</td>
+  <td>D-1 Total Calls</td>
+  <td><input id="d1Calls" type="number" min="0"></td>
+</tr>
+
+<tr>
+  <td class="sno">D1-3</td>
+  <td>D-1 Customer Available</td>
+  <td><input id="d1Available" type="number" min="0"></td>
+</tr>
+
+<tr>
+  <td class="sno">D1-4</td>
+  <td>D-1 CX Ready to Accept Porter</td>
+  <td><input id="d1Ready" type="number" min="0"></td>
+</tr>
+
+<tr>
+  <td class="sno">D1-5</td>
+  <td>D-1 Porter Booked</td>
+  <td><input id="d1Booked" type="number" min="0"></td>
+</tr>
+
+<tr>
+  <td class="sno">D1-6</td>
+  <td>D-1 Delivered Orders</td>
+  <td><input id="d1Delivered" type="number" min="0"></td>
+</tr>
+      </tbody>
+    </table>
+    <div class="actions"><button class="generate btn" onclick="generateDashboard()">GENERATE DASHBOARD</button></div>
+  </div>
+</section>
+
+<section id="dashboardView" class="view">
+<div class="dashboard">
+<aside class="sidebar">
+  <div class="side-icon">▣</div>
+  <h2>OVERVIEW</h2>
+  <p>Today's porter operations overview across key milestones from calls to delivery.</p>
+  <div class="divider"></div>
+  <div class="trophy">🏆</div><div class="take">KEY TAKEAWAY</div>
+  <div class="big" id="sideBooked">0%</div><div class="small">Porter Booked %<br>(of Total Orders)</div>
+  <div class="divider"></div>
+  <div class="big" id="sideDelivery">0%</div><div class="small">Delivery %<br>(of Total Orders)</div>
+</aside>
+
+<main class="main">
+  <div class="cards">
+    <div class="card"><div class="card-icon blue">🛍</div><div><div class="card-label">Total Orders</div><div class="card-num" id="dOrders">0</div></div></div>
+    <div class="card"><div class="card-icon green">📍</div><div><div class="card-label">Avg. Trip Distance</div><div class="card-num" id="dAvgTripDistance">0 KM</div></div></div>
+    <div class="card"><div class="card-icon orange">⏱</div><div><div class="card-label">Avg Del. Time</div><div class="card-num" id="dAvgDelTime">00:00</div></div></div>
+    <div class="card">
+  <div class="card-icon purple">₹</div>
+  <div>
+    <div class="card-label">CPO</div>
+    <div class="card-num" id="dCPO">₹0</div>
+  </div>
+</div>
+<div class="card">
+  <div class="card-icon teal">⏱</div>
+  <div>
+    <div class="card-label">Avg Waiting Time</div>
+    <div class="card-num" id="dAvgTime">00:00</div>
+  </div>
+</div>
+  </div>
+
+  <div class="content-grid">
+    <div class="panel">
+      <div class="panel-head">KPI SUMMARY</div>
+      <table class="kpi-table">
+        <thead><tr><th>S. No</th><th>KPI</th><th>Values</th></tr></thead>
+        <tbody id="summary"></tbody>
+      </table>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head" id="d1Heading">PENDING ORDER BIFURCATION</div>
+      <div class="visual">
+        <h3 style="margin:2px 0 12px;font-size:16px">FUNNEL VIEW</h3>
+        <div class="funnel-wrap" id="funnel"></div>
+        <div style="text-align:center;font-size:13px;font-weight:700;margin-top:8px">Delivered / Total Orders: <b id="funnelPct">0%</b></div>
+      </div>
+
+      <div class="bottom-grid">
+        <div class="panel" style="margin:0">
+          <div class="panel-head">SUCCESS METRICS</div>
+
+          <div style="background:#f28c00;color:#fff;text-align:center;
+                      font-weight:800;padding:7px;font-size:16px;">
+            CLOSING BALANCE
+          </div>
+
+          <table style="width:100%;border-collapse:collapse;">
+            <thead>
+              <tr>
+                <th style="text-align:left;padding:9px;border:1px solid #ddd;">Metric</th>
+                <th style="text-align:center;padding:9px;border:1px solid #ddd;">Count</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="padding:8px;border:1px solid #ddd;">Total Orders</td>
+                <td id="successTotalOrders" style="padding:8px;border:1px solid #ddd;text-align:center;font-weight:800;color:#1454a0;">0</td>
+              </tr>
+              <tr>
+                <td style="padding:8px;border:1px solid #ddd;">Orders Delivered</td>
+                <td id="successDelivered" style="padding:8px;border:1px solid #ddd;text-align:center;font-weight:800;color:#1454a0;">0</td>
+              </tr>
+              <tr>
+                <td class="closing-highlight" style="padding:8px;border:1px solid #ddd;">
+    Closing Balance
+</td>
+
+<td id="successClosing"
+    class="closing-value"
+    style="padding:8px;border:1px solid #ddd;text-align:center;">
+    0
+</td>
+              </tr>
+              <tr>
+                <td style="padding:8px;border:1px solid #ddd;">Closing Balance %</td>
+                <td id="successClosingPct" style="padding:8px;border:1px solid #ddd;text-align:center;font-weight:800;color:#078c8c;">0%</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="panel" style="margin:0">
+          <div class="panel-head">CX OUTCOMES BREAKDOWN</div>
+          <div class="donut-box">
+            <div class="chart-holder"><canvas id="donut"></canvas></div>
+            <div class="legend" id="legend"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="bottom-strip">
+
+    <div class="strip-icon">
+    <span class="performance-icon">▥</span>
+</div>
+
+    <div class="strip-title">
+        PERFORMANCE HIGHLIGHTS
+    </div>
+
+    <div class="highlight">
+        <b id="hBooked">0%</b>
+        <span>of orders booked with Porter</span>
+        <span id="hBookedText">No drop between booking & delivery</span>
+    </div>
+
+    <div class="highlight">
+        <b id="hReady">0%</b>
+        <span>customers were ready to accept porter</span>
+        <span id="hReadyText">(0 out of 0 available)</span>
+    </div>
+
+    <div class="highlight">
+        <b id="hRejected">0</b>
+        <span>customer rejections handled</span>
+        <span id="hRejectedText">(0 rescheduled, 0 not willing)</span>
+    </div>
+
+</div>
+  <div class="actions">
+    <button class="generate btn" onclick="downloadDashboardPNG()">
+        DOWNLOAD DASHBOARD PNG
+    </button>
+
+    <button class="back btn" onclick="showInput()">
+        EDIT MANUAL ENTRY
+    </button>
+</div>
+</main>
+</div>
+</section>
+</div>
+
+<script>
+let donutChart;
+
+function pct(n,total){return total>0 ? ((n/total)*100).toFixed(2).replace(/\.00$/,'')+'%' : '0%'}
+function val(key){return Number(document.querySelector(`[data-key="${key}"]`)?.value)||0}
+function getData(){
+  const total=Number(document.getElementById('totalOrders').value)||0;
+  const booked=Number(document.getElementById('booked').value)||0;
+  const delivered=Number(document.getElementById('delivered').value)||0;
+  const cpo = Number(document.getElementById('cpo').value) || 0;
+  const avgTime = document.getElementById('avgTime').value || '00:00';
+const avgDelTime = document.getElementById('avgDelTime').value || '00:00';
+const avgTripDistance = document.getElementById('avgTripDistance').value || '0 KM';
+const d1TotalOrders = Number(document.getElementById('d1TotalOrders').value) || 0;
+const d1Calls = Number(document.getElementById('d1Calls').value) || 0;
+const d1Available = Number(document.getElementById('d1Available').value) || 0;
+const d1Ready = Number(document.getElementById('d1Ready').value) || 0;
+const d1Booked = Number(document.getElementById('d1Booked').value) || 0;
+const d1Delivered = Number(document.getElementById('d1Delivered').value) || 0;
+  return {
+  total,
+  calls: val('calls'),
+  available: val('available'),
+  ready: val('ready'),
+  booked,
+  cpo,
+  avgTime,
+avgDelTime,
+avgTripDistance,
+bookedPct: pct(booked, total),
+  delivered,
+  deliveryPct: pct(delivered, total),
+  rejected: val('rejected'),
+  notWilling: val('notWilling'),
+  reschedule: val('reschedule'),
+  unavailable: val('unavailable'),
+
+d1: {
+  total: d1TotalOrders,
+  calls: d1Calls,
+  available: d1Available,
+  ready: d1Ready,
+  booked: d1Booked,
+  delivered: d1Delivered
+}
+};
+}
+function calculate(){
+  const d=getData();
+  const reportDate = document.getElementById('reportDate').value;
+
+if (reportDate) {
+  const date = new Date(reportDate + 'T00:00:00');
+  date.setDate(date.getDate() - 1);
+
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = date.toLocaleString('en-US', { month: 'short' }).toUpperCase();
+  const year = date.getFullYear();
+
+  document.getElementById('d1Heading').textContent =
+    `${day}-${month}-${year} PENDING ORDER BIFURCATION`;
+}
+  document.getElementById('bookedPct').value=d.bookedPct;
+  document.getElementById('deliveryPct').value=d.deliveryPct;
+}
+['totalOrders','booked','delivered'].forEach(id=>document.getElementById(id).addEventListener('input',calculate));
+
+function generateDashboard(){
+  calculate();
+  const d=getData();
+  document.getElementById('inputView').classList.remove('active');
+  document.getElementById('dashboardView').classList.add('active');
+
+  document.getElementById('dOrders').textContent=d.total;
+  document.getElementById('dAvgTripDistance').textContent = d.avgTripDistance;
+  document.getElementById('dAvgDelTime').textContent = d.avgDelTime;
+  document.getElementById('dCPO').textContent =
+  '₹' + d.cpo.toFixed(0);
+  document.getElementById('dAvgTime').textContent = d.avgTime;
+  document.getElementById('sideBooked').textContent=d.bookedPct;
+  document.getElementById('sideDelivery').textContent=d.deliveryPct;
+  document.getElementById('funnelPct').textContent =
+  d.d1.total > 0
+    ? ((d.d1.delivered / d.d1.total) * 100).toFixed(2).replace(/\.00$/,'') + '%'
+    : '0%';
+
+  const rows=[
+    ['1','Total Orders',d.total,''],
+    ['2','Total Calls',d.calls,''],
+    ['3','Customer Available',d.available,''],
+    ['4','CX ready to accept porter',d.ready,''],
+    ['4.1','Porter Booked',d.booked,''],
+    ['4.2','Porter booked % (of Total Orders)',d.bookedPct,'kpi-green'],
+    ['4.2.1','Delivered Orders',d.delivered,'kpi-green'],
+    ['4.2.1.2','Delivery % (of Total Orders)',d.deliveryPct,'kpi-green'],
+    ['5','CX Rejected Porter',d.rejected,''],
+    ['5.1','Cx not willing to handover',d.notWilling,'kpi-red'],
+    ['5.2','Reschedule',d.reschedule,'kpi-yellow'],
+    ['6','Cx Unavailable',d.unavailable,'']
+  ];
+  document.getElementById('summary').innerHTML=rows.map(r=>`<tr class="${r[3]}"><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td></tr>`).join('');
+
+  const funnel = [
+  ['🛍','Pending Orders',d.d1.total,'f1'],
+  ['☎','Total Calls',d.d1.calls,'f2'],
+  ['●','Customer Available',d.d1.available,'f3'],
+  ['🤝','CX ready to accept porter',d.d1.ready,'f4'],
+  ['🛵','Porter Booked',d.d1.booked,'f5'],
+  ['✓','Delivered Orders',d.d1.delivered,'f6']
+];
+
+const max = Math.max(
+  d.d1.total,
+  d.d1.calls,
+  d.d1.available,
+  d.d1.ready,
+  d.d1.booked,
+  d.d1.delivered,
+  1
+);
+
+document.getElementById('funnel').innerHTML =
+  funnel.map(x =>
+    `<div class="funnel-row">
+      <div class="funnel-label">${x[0]} &nbsp; ${x[1]}</div>
+      <div class="funnel-bar ${x[3]}"
+           style="width:${Math.max(18,(x[2]/max)*100)}%">
+        ${x[2]}
+      </div>
+    </div>`
+  ).join('');
+  const closingBalance = Math.max(0, d.total - d.delivered);
+  const closingBalancePct = d.total > 0
+    ? ((closingBalance / d.total) * 100).toFixed(2).replace(/\.00$/,'') + '%'
+    : '0%';
+
+  document.getElementById('successTotalOrders').textContent = d.total;
+  document.getElementById('successDelivered').textContent = d.delivered;
+  document.getElementById('successClosing').textContent = closingBalance;
+  document.getElementById('successClosingPct').textContent = closingBalancePct;
+
+  const bookingToDeliveryPct = d.booked > 0
+    ? ((d.delivered / d.booked) * 100).toFixed(2).replace(/\.00$/,'') + '%'
+    : '0%';
+
+const readyPct = d.available > 0
+    ? ((d.ready / d.available) * 100).toFixed(2).replace(/\.00$/,'') + '%'
+    : '0%';
+
+document.getElementById('hBooked').textContent = d.bookedPct;
+
+document.getElementById('hBookedText').textContent =
+    bookingToDeliveryPct + ' of booked orders delivered';
+
+document.getElementById('hReady').textContent = readyPct;
+
+document.getElementById('hReadyText').textContent =
+    `(${d.ready} out of ${d.available} available)`;
+
+document.getElementById('hRejected').textContent = d.rejected;
+
+document.getElementById('hRejectedText').textContent =
+    `(${d.reschedule} rescheduled, ${d.notWilling} not willing)`;
+  const data=[d.notWilling,d.reschedule,d.unavailable,d.ready];
+  const labels=['Not willing to handover','Reschedule','Unavailable','Ready to accept porter'];
+  const fills=['#ef1717','#f49a00','#8b8b8b','#6f42a5'];
+  if(donutChart) donutChart.destroy();
+  donutChart=new Chart(document.getElementById('donut'),{
+    type:'doughnut',
+    data:{labels,datasets:[{data,backgroundColor:fills,borderColor:'#fff',borderWidth:2}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'62%',plugins:{legend:{display:false},tooltip:{callbacks:{label:(ctx)=>`${ctx.label}: ${ctx.raw}`}}}}
+  });
+  document.getElementById('legend').innerHTML =
+    labels.map((l,i)=>`
+        <div>
+            <span class="dot" style="background:${fills[i]}"></span>
+            <span>${l}</span>
+            <strong>${data[i]}</strong>
+        </div>
+    `).join('');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function showInput(){
+  document.getElementById('dashboardView').classList.remove('active');
+  document.getElementById('inputView').classList.add('active');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function downloadDashboardPNG(){
+
+    const page = document.querySelector('.page');
+    const dashboardActions = document.querySelector('#dashboardView .actions');
+
+    if(!page){
+        alert('Dashboard not found.');
+        return;
+    }
+
+    // Temporarily hide buttons from the PNG
+    if(dashboardActions){
+        dashboardActions.style.display = 'none';
+    }
+
+    html2canvas(page, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        logging: false
+    }).then(canvas => {
+
+        const link = document.createElement('a');
+        const date = document.getElementById('reportDate').value || 'Report';
+
+        link.download = `Porter_EOD_Dashboard_${date}.png`;
+        link.href = canvas.toDataURL('image/png');
+
+        link.click();
+
+    }).catch(error => {
+
+        console.error(error);
+        alert('Unable to download dashboard as PNG.');
+
+    }).finally(() => {
+
+        // Show buttons again on the website
+        if(dashboardActions){
+            dashboardActions.style.display = '';
+        }
+
+    });
+}
+</script>
+</body>
+</html>
