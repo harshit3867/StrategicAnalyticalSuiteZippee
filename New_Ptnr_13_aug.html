@@ -48,16 +48,14 @@ body::before{
     );
 
     color:white;
+
     padding:18px 36px;
 
     display:flex;
-    justify-content:space-between;
-    align-items:center;
-}
 
-th{
-    background:#f4f6f8;
-    font-weight:700;
+    justify-content:space-between;
+
+    align-items:center;
 }
 
 .logo{
@@ -118,6 +116,12 @@ th{
     font-weight:700;
 }
 
+#reportContainer{
+    display:none;
+
+    margin-top:20px;
+}
+
 table{
     border-collapse:collapse;
 
@@ -134,10 +138,16 @@ table{
     width:auto;
 }
 
+th{
+    background:#f4f6f8;
+
+    font-weight:700;
+}
+
 th,td{
     border:1px solid #ddd;
 
-    padding:6px 6px;
+    padding:6px;
 
     font-size:13px;
 
@@ -264,7 +274,7 @@ th:nth-child(2){
                 <div
                     style="
                         font-size:18px;
-                        font-weight:800
+                        font-weight:800;
                     "
                 >
                     ZIPPEE &lt;&gt; Partnr Report
@@ -306,471 +316,150 @@ th:nth-child(2){
 
 
 /* =========================================================
-   GLOBAL DATASET
-   ========================================================= */
+   GLOBAL DATA
+========================================================= */
 
 let dataset = [];
 
 
 /* =========================================================
-   GLOBAL REPORT DATES
-   ========================================================= */
+   REPORT TIME WINDOW
+========================================================= */
 
-let reportTodayStart = null;
-let reportYesterday19 = null;
-let reportToday10 = null;
+let todayStart;
+
+let today10;
+
+let today19;
+
+let yesterday19;
 
 
 /* =========================================================
-   FILE UPLOAD
-   ========================================================= */
+   CREATE REPORT WINDOW
+========================================================= */
 
-document
-.getElementById("fileInput")
-.addEventListener(
-    "change",
-    async function(e){
+function createReportWindow(){
 
-        dataset = [];
+    const now = new Date();
 
 
-        const files =
-            Array.from(e.target.files);
+    /*
+    TODAY 00:00:00
+    */
 
-
-        if(!files.length){
-
-            return;
-
-        }
-
-
-        /*
-        =====================================================
-        REPORT DATE SETTINGS
-
-        TODAY
-        YESTERDAY 19:00
-        TODAY 10:00
-
-        =====================================================
-        */
-
-        const now =
-            new Date();
-
-
-        /*
-        -----------------------------------------------------
-        TODAY 00:00:00
-        -----------------------------------------------------
-        */
-
-        reportTodayStart =
-            new Date(
-                now.getFullYear(),
-                now.getMonth(),
-                now.getDate(),
-                0,
-                0,
-                0,
-                0
-            );
-
-
-        /*
-        -----------------------------------------------------
-        YESTERDAY
-        -----------------------------------------------------
-        */
-
-        const yesterday =
-            new Date(
-                reportTodayStart
-            );
-
-
-        yesterday.setDate(
-            yesterday.getDate() - 1
+    todayStart =
+        new Date(
+            now.getFullYear(),
+            now.getMonth(),
+            now.getDate(),
+            0,
+            0,
+            0,
+            0
         );
 
 
-        /*
-        -----------------------------------------------------
-        YESTERDAY 19:00:00
-        -----------------------------------------------------
-        */
+    /*
+    TODAY 10:00:00
+    */
 
-        reportYesterday19 =
-            new Date(
-                yesterday.getFullYear(),
-                yesterday.getMonth(),
-                yesterday.getDate(),
-                19,
-                0,
-                0,
-                0
-            );
-
-
-        /*
-        -----------------------------------------------------
-        TODAY 10:00:00
-        -----------------------------------------------------
-        */
-
-        reportToday10 =
-            new Date(
-                reportTodayStart.getFullYear(),
-                reportTodayStart.getMonth(),
-                reportTodayStart.getDate(),
-                10,
-                0,
-                0,
-                0
-            );
-
-
-        console.log(
-            "======================================"
-        );
-
-        console.log(
-            "TODAY:",
-            reportTodayStart
-        );
-
-        console.log(
-            "YESTERDAY 19:00:",
-            reportYesterday19
-        );
-
-        console.log(
-            "TODAY 10:00:",
-            reportToday10
-        );
-
-        console.log(
-            "======================================"
+    today10 =
+        new Date(
+            now.getFullYear(),
+            now.getMonth(),
+            now.getDate(),
+            10,
+            0,
+            0,
+            0
         );
 
 
-        /*
-        =====================================================
-        PROCESS EACH FILE
-        =====================================================
-        */
-
-        for(
-            const file of files
-        ){
-
-            try{
-
-                const data =
-                    await file.arrayBuffer();
-
-
-                const workbook =
-                    XLSX.read(
-                        data,
-                        {
-                            type:"array",
-                            cellDates:true
-                        }
-                    );
-
-
-                const sheetName =
-                    workbook.SheetNames[0];
-
-
-                const worksheet =
-                    workbook.Sheets[
-                        sheetName
-                    ];
-
-
-                const rows =
-                    XLSX.utils.sheet_to_json(
-                        worksheet,
-                        {
-                            header:1,
-                            defval:""
-                        }
-                    );
-
-
-                if(!rows.length){
-
-                    continue;
-
-                }
-
-
-                const header =
-                    rows[0];
-
-
-                /*
-                ------------------------------------------------
-                FIND ORDER DATE COLUMN
-
-                Your Order Date is Column G.
-
-                Index = 6
-                ------------------------------------------------
-                */
-
-                let orderDateIndex =
-                    header.findIndex(
-                        h =>
-                            String(h)
-                            .trim()
-                            .toLowerCase()
-                            === "order date"
-                    );
-
-
-                /*
-                If header is not found,
-                use Column G.
-                */
-
-                if(
-                    orderDateIndex === -1
-                ){
-
-                    orderDateIndex = 6;
-
-                }
-
-
-                let keptCount = 0;
-
-                let removedCount = 0;
-
-                let invalidCount = 0;
-
-
-                /*
-                =================================================
-                FILTER RAW DATA
-                =================================================
-                */
-
-                const filteredRows =
-                    rows
-                    .slice(1)
-                    .filter(
-                        row => {
-
-
-                            const rawOrderDate =
-                                row[
-                                    orderDateIndex
-                                ];
-
-
-                            const orderDate =
-                                parseIndianDate(
-                                    rawOrderDate
-                                );
-
-
-                            /*
-                            -------------------------------------
-                            INVALID DATE
-                            -------------------------------------
-                            */
-
-                            if(
-                                !orderDate ||
-                                isNaN(
-                                    orderDate.getTime()
-                                )
-                            ){
-
-                                invalidCount++;
-
-                                return false;
-
-                            }
-
-
-                            /*
-                            =====================================
-                            TODAY
-
-                            ALL TODAY ORDERS INCLUDED.
-
-                            INCLUDING:
-
-                            00:00
-                            05:00
-                            09:00
-                            10:00
-                            15:00
-                            20:00
-                            23:59
-                            =====================================
-                            */
-
-                            if(
-                                orderDate >=
-                                reportTodayStart
-                            ){
-
-                                keptCount++;
-
-                                return true;
-
-                            }
-
-
-                            /*
-                            =====================================
-                            YESTERDAY 19:00 ONWARDS
-
-                            INCLUDED.
-
-                            These orders will later be treated
-                            as TODAY 10:00 for breach calculation.
-                            =====================================
-                            */
-
-                            if(
-                                orderDate >=
-                                reportYesterday19
-                                &&
-                                orderDate <
-                                reportTodayStart
-                            ){
-
-                                keptCount++;
-
-                                return true;
-
-                            }
-
-
-                            /*
-                            =====================================
-                            EVERYTHING BEFORE YESTERDAY 19:00
-                            IS REMOVED.
-                            =====================================
-                            */
-
-                            removedCount++;
-
-                            return false;
-
-                        }
-                    );
-
-
-                /*
-                ------------------------------------------------
-                ADD FILTERED ROWS
-                ------------------------------------------------
-                */
-
-                dataset.push(
-                    ...filteredRows
-                );
-
-
-                console.log(
-                    "--------------------------------------"
-                );
-
-                console.log(
-                    "FILE:",
-                    file.name
-                );
-
-                console.log(
-                    "RAW ROWS:",
-                    rows.length - 1
-                );
-
-                console.log(
-                    "INCLUDED:",
-                    keptCount
-                );
-
-                console.log(
-                    "REMOVED:",
-                    removedCount
-                );
-
-                console.log(
-                    "INVALID:",
-                    invalidCount
-                );
-
-                console.log(
-                    "--------------------------------------"
-                );
-
-            }
-            catch(error){
-
-                console.error(
-                    "Error processing file:",
-                    file.name,
-                    error
-                );
-
-            }
-
-        }
-
-
-        console.log(
-            "======================================"
+    /*
+    TODAY 19:00:00
+
+    IMPORTANT:
+
+    19:00:00 belongs to NEXT DAY.
+    */
+
+    today19 =
+        new Date(
+            now.getFullYear(),
+            now.getMonth(),
+            now.getDate(),
+            19,
+            0,
+            0,
+            0
         );
 
-        console.log(
-            "FINAL DATASET:",
-            dataset.length
-        );
 
-        console.log(
-            "Included:"
-        );
+    /*
+    YESTERDAY 19:00:00
+    */
 
-        console.log(
-            "1. Yesterday 19:00 onwards"
-        );
+    yesterday19 =
+        new Date(today19);
 
-        console.log(
-            "2. Today's ALL orders"
-        );
+    yesterday19.setDate(
+        yesterday19.getDate() - 1
+    );
 
-        console.log(
-            "======================================"
-        );
 
-    }
-);
+    console.log(
+        "=============================="
+    );
+
+    console.log(
+        "REPORT WINDOW"
+    );
+
+    console.log(
+        "FROM:",
+        yesterday19
+    );
+
+    console.log(
+        "TO:",
+        today19
+    );
+
+    console.log(
+        "CARRY FORWARD TIME:",
+        today10
+    );
+
+    console.log(
+        "=============================="
+    );
+}
 
 
 /* =========================================================
-   DATE PARSER
-   ========================================================= */
+   CSV / EXCEL DATE PARSER
+
+   IMPORTANT:
+   Raw file contains values like:
+
+   11/08/2026 19:22 54
+
+   Which means:
+
+   11 Aug 2026
+   19:22:54
+
+========================================================= */
 
 function parseIndianDate(value){
-
 
     if(
         value === null ||
         value === undefined ||
         value === ""
     ){
-
         return null;
-
     }
 
 
@@ -784,36 +473,31 @@ function parseIndianDate(value){
         typeof value === "number"
     ){
 
-        const parsed =
+        const p =
             XLSX.SSF.parse_date_code(
                 value
             );
 
 
-        if(!parsed){
-
+        if(!p){
             return null;
-
         }
 
 
         return new Date(
-            parsed.y,
-            parsed.m - 1,
-            parsed.d,
-            parsed.H || 0,
-            parsed.M || 0,
-            Math.floor(
-                parsed.S || 0
-            )
+            p.y,
+            p.m - 1,
+            p.d,
+            p.H || 0,
+            p.M || 0,
+            Math.floor(p.S || 0)
         );
-
     }
 
 
     /*
     ---------------------------------------------------------
-    JAVASCRIPT DATE
+    JS DATE
     ---------------------------------------------------------
     */
 
@@ -829,14 +513,28 @@ function parseIndianDate(value){
 
 
     let str =
-        String(value).trim();
+        String(value)
+        .trim();
 
 
     /*
     ---------------------------------------------------------
-    ISO DATE
+    REMOVE EXTRA SPACES
+    ---------------------------------------------------------
+    */
 
-    2026-08-13T10:20:30
+    str =
+        str.replace(
+            /\s+/g,
+            " "
+        );
+
+
+    /*
+    ---------------------------------------------------------
+    ISO FORMAT
+
+    2026-08-13T19:22:54
     ---------------------------------------------------------
     */
 
@@ -844,40 +542,121 @@ function parseIndianDate(value){
         str.includes("T")
     ){
 
-        const [
-            datePart,
-            timePart
-        ] =
+        let parts =
             str.split("T");
 
 
-        const [
-            year,
-            month,
-            day
-        ] =
+        let datePart =
+            parts[0];
+
+
+        let timePart =
+            parts[1]
+            .replace("Z","");
+
+
+        let d =
             datePart
             .split("-")
             .map(Number);
 
 
-        const timeValues =
+        let t =
             timePart
-            .replace("Z","")
             .split(":")
             .map(Number);
 
 
-        const hour =
-            timeValues[0] || 0;
+        return new Date(
+            d[0],
+            d[1] - 1,
+            d[2],
+            t[0] || 0,
+            t[1] || 0,
+            t[2] || 0
+        );
+    }
 
 
-        const minute =
-            timeValues[1] || 0;
+    /*
+    ---------------------------------------------------------
+    NORMAL INDIAN FORMAT
+
+    DD/MM/YYYY HH:MM SS
+
+    Example:
+
+    11/08/2026 19:22 54
+
+    IMPORTANT:
+    Seconds are separated by SPACE in your raw file.
+    ---------------------------------------------------------
+    */
+
+    let match =
+        str.match(
+            /^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})\s+(\d{1,2}):(\d{2})(?:[:\s](\d{1,2}))?(?:\s+(AM|PM))?$/i
+        );
 
 
-        const second =
-            timeValues[2] || 0;
+    if(match){
+
+        let day =
+            Number(match[1]);
+
+
+        let month =
+            Number(match[2]);
+
+
+        let year =
+            Number(match[3]);
+
+
+        let hour =
+            Number(match[4]);
+
+
+        let minute =
+            Number(match[5]);
+
+
+        let second =
+            Number(
+                match[6] || 0
+            );
+
+
+        let ampm =
+            match[7]
+            ?
+                match[7].toUpperCase()
+            :
+                "";
+
+
+        /*
+        AM / PM
+        */
+
+        if(
+            ampm === "PM" &&
+            hour !== 12
+        ){
+
+            hour += 12;
+
+        }
+
+
+        if(
+            ampm === "AM" &&
+            hour === 12
+        ){
+
+            hour = 0;
+
+        }
 
 
         return new Date(
@@ -888,189 +667,77 @@ function parseIndianDate(value){
             minute,
             second
         );
-
     }
 
 
-    /*
-    ---------------------------------------------------------
-    INDIAN DATE FORMAT
-
-    13/08/2026 10:04:11
-    ---------------------------------------------------------
-    */
-
-    const parts =
-        str.split(/\s+/);
-
-
-    if(
-        parts.length < 2
-    ){
-
-        return null;
-
-    }
-
-
-    const datePart =
-        parts[0];
-
-
-    const dateSeparator =
-        datePart.includes("/")
-            ? "/"
-            : "-";
-
-
-    const dateValues =
-        datePart
-        .split(dateSeparator)
-        .map(Number);
-
-
-    if(
-        dateValues.length !== 3
-    ){
-
-        return null;
-
-    }
-
-
-    const day =
-        dateValues[0];
-
-
-    const month =
-        dateValues[1];
-
-
-    const year =
-        dateValues[2];
-
-
-    /*
-    ---------------------------------------------------------
-    TIME
-    ---------------------------------------------------------
-    */
-
-    const timeString =
-        parts[1];
-
-
-    const timeValues =
-        timeString
-        .split(":")
-        .map(Number);
-
-
-    let hour =
-        timeValues[0] || 0;
-
-
-    let minute =
-        timeValues[1] || 0;
-
-
-    let second =
-        timeValues[2] || 0;
-
-
-    /*
-    ---------------------------------------------------------
-    FORMAT:
-
-    10:04 11
-
-    Means:
-
-    10 hours
-    04 minutes
-    11 seconds
-    ---------------------------------------------------------
-    */
-
-    if(
-        timeValues.length === 2 &&
-        parts.length >= 3 &&
-        !isNaN(
-            Number(parts[2])
-        )
-    ){
-
-        second =
-            Number(parts[2]);
-
-    }
-
-
-    /*
-    ---------------------------------------------------------
-    AM / PM
-    ---------------------------------------------------------
-    */
-
-    const ampm =
-        parts.find(
-            p =>
-                p.toUpperCase() === "AM" ||
-                p.toUpperCase() === "PM"
-        );
-
-
-    if(ampm){
-
-        if(
-            ampm.toUpperCase() === "PM" &&
-            hour !== 12
-        ){
-
-            hour += 12;
-
-        }
-
-
-        if(
-            ampm.toUpperCase() === "AM" &&
-            hour === 12
-        ){
-
-            hour = 0;
-
-        }
-
-    }
-
-
-    return new Date(
-        year,
-        month - 1,
-        day,
-        hour,
-        minute,
-        second
-    );
-
+    return null;
 }
 
 
 /* =========================================================
-   IMPORTANT FUNCTION
+   CHECK REPORT WINDOW
 
-   ADJUST ORDER DATE FOR BREACH CALCULATION
-   ========================================================= */
+   REPORT WINDOW:
 
-function getAdjustedOrderDateForBreach(
-    rawOrderDate
-){
+   YESTERDAY 19:00:00
+             ↓
+   TODAY 19:00:00
+
+   19:00:00 TODAY IS EXCLUDED.
+========================================================= */
+
+function isInReportWindow(orderDate){
 
     if(
-        !rawOrderDate ||
-        isNaN(
-            rawOrderDate.getTime()
-        )
+        !orderDate ||
+        isNaN(orderDate.getTime())
+    ){
+
+        return false;
+
+    }
+
+
+    return (
+        orderDate >= yesterday19 &&
+        orderDate < today19
+    );
+}
+
+
+/* =========================================================
+   ADJUST ORDER TIME FOR BREACH
+
+   CASE 1:
+
+   Yesterday 19:00 → Today 09:59:59
+
+   becomes:
+
+   Today 10:00:00
+
+
+   CASE 2:
+
+   Today 00:00 → Today 09:59:59
+
+   becomes:
+
+   Today 10:00:00
+
+
+   CASE 3:
+
+   Today 10:00 onwards
+
+   actual order time is used.
+========================================================= */
+
+function getBreachOrderDate(orderDate){
+
+    if(
+        !orderDate ||
+        isNaN(orderDate.getTime())
     ){
 
         return null;
@@ -1079,104 +746,320 @@ function getAdjustedOrderDateForBreach(
 
 
     /*
-    =====================================================
-    RULE:
-
     YESTERDAY 19:00
-             TO
-    TODAY 10:00
-
-    WILL BE TREATED AS:
-
-    TODAY 10:00
-
-    =====================================================
-    */
-
-
-    /*
-    -----------------------------------------------------
-    1. YESTERDAY 19:00 ONWARDS
-    -----------------------------------------------------
+    THROUGH
+    TODAY 09:59:59
     */
 
     if(
-        rawOrderDate >=
-        reportYesterday19
-        &&
-        rawOrderDate <
-        reportToday10
+        orderDate >= yesterday19 &&
+        orderDate < today10
     ){
 
         return new Date(
-            reportToday10
+            today10
         );
 
     }
 
 
     /*
-    -----------------------------------------------------
-    2. TODAY BEFORE 10:00
-
-    These are also treated as TODAY 10:00.
-    -----------------------------------------------------
+    TODAY 00:00
+    THROUGH
+    TODAY 09:59:59
     */
 
     if(
-        rawOrderDate >=
-        reportTodayStart
-        &&
-        rawOrderDate <
-        reportToday10
+        orderDate >= todayStart &&
+        orderDate < today10
     ){
 
         return new Date(
-            reportToday10
+            today10
         );
 
     }
 
 
     /*
-    -----------------------------------------------------
-    3. TODAY 10:00 OR AFTER
-
-    Use actual order date/time.
-    -----------------------------------------------------
-    */
-
-    if(
-        rawOrderDate >=
-        reportToday10
-    ){
-
-        return new Date(
-            rawOrderDate
-        );
-
-    }
-
-
-    /*
-    -----------------------------------------------------
-    OTHER
-    -----------------------------------------------------
+    TODAY 10:00+
     */
 
     return new Date(
-        rawOrderDate
+        orderDate
     );
-
 }
+
+
+/* =========================================================
+   FILE UPLOAD
+========================================================= */
+
+document
+.getElementById("fileInput")
+.addEventListener(
+    "change",
+    async function(event){
+
+        dataset = [];
+
+
+        createReportWindow();
+
+
+        const files =
+            Array.from(
+                event.target.files
+            );
+
+
+        if(
+            !files.length
+        ){
+
+            return;
+
+        }
+
+
+        /*
+        PROCESS ALL FILES
+        */
+
+        for(
+            const file of files
+        ){
+
+            try{
+
+                const data =
+                    await file.arrayBuffer();
+
+
+                /*
+                -------------------------------------------------
+                USE XLSX LIBRARY FOR BOTH CSV AND XLSX
+
+                THIS FIXES THE OLD:
+
+                row.split(",")
+
+                PROBLEM.
+
+                Some CSV fields contain commas inside quotes.
+                -------------------------------------------------
+                */
+
+                const workbook =
+                    XLSX.read(
+                        data,
+                        {
+                            type:"array",
+                            cellDates:true,
+                            raw:true
+                        }
+                    );
+
+
+                const sheetName =
+                    workbook.SheetNames[0];
+
+
+                const sheet =
+                    workbook.Sheets[
+                        sheetName
+                    ];
+
+
+                const rows =
+                    XLSX.utils.sheet_to_json(
+                        sheet,
+                        {
+                            header:1,
+                            defval:"",
+                            raw:true
+                        }
+                    );
+
+
+                if(
+                    rows.length < 2
+                ){
+
+                    continue;
+
+                }
+
+
+                /*
+                HEADER
+                */
+
+                const header =
+                    rows[0];
+
+
+                /*
+                FIND ORDER DATE COLUMN
+
+                Expected:
+                Column G
+                index 6
+                */
+
+                let orderDateIndex =
+                    header.findIndex(
+                        h =>
+                            String(h)
+                            .trim()
+                            .toLowerCase() ===
+                            "order date"
+                    );
+
+
+                if(
+                    orderDateIndex === -1
+                ){
+
+                    orderDateIndex = 6;
+
+                }
+
+
+                let includedCount = 0;
+
+                let removedCount = 0;
+
+
+                /*
+                -------------------------------------------------
+                FILTER DATA
+                -------------------------------------------------
+                */
+
+                for(
+                    const row of rows.slice(1)
+                ){
+
+                    const orderDate =
+                        parseIndianDate(
+                            row[orderDateIndex]
+                        );
+
+
+                    /*
+                    INVALID DATE
+                    */
+
+                    if(
+                        !orderDate ||
+                        isNaN(
+                            orderDate.getTime()
+                        )
+                    ){
+
+                        removedCount++;
+
+                        continue;
+
+                    }
+
+
+                    /*
+                    ONLY REPORT WINDOW
+
+                    Yesterday 19:00
+                    TO
+                    Today 19:00
+
+                    TODAY 19:00 AND AFTER
+                    WILL NOT COME IN TODAY'S REPORT.
+                    */
+
+                    if(
+                        isInReportWindow(
+                            orderDate
+                        )
+                    ){
+
+                        dataset.push(
+                            row
+                        );
+
+                        includedCount++;
+
+                    }
+                    else{
+
+                        removedCount++;
+
+                    }
+
+                }
+
+
+                console.log(
+                    "================================"
+                );
+
+                console.log(
+                    "FILE:",
+                    file.name
+                );
+
+                console.log(
+                    "RAW ROWS:",
+                    rows.length - 1
+                );
+
+                console.log(
+                    "INCLUDED:",
+                    includedCount
+                );
+
+                console.log(
+                    "REMOVED:",
+                    removedCount
+                );
+
+                console.log(
+                    "================================"
+                );
+
+            }
+            catch(error){
+
+                console.error(
+                    "Error reading:",
+                    file.name,
+                    error
+                );
+
+            }
+
+        }
+
+
+        console.log(
+            "FINAL DATASET:",
+            dataset.length
+        );
+
+
+        alert(
+            dataset.length +
+            " orders included in the report."
+        );
+
+    }
+);
 
 
 /* =========================================================
    GENERATE REPORT
-   ========================================================= */
+========================================================= */
 
 function generateReport(){
-
 
     if(
         !dataset.length
@@ -1194,53 +1077,76 @@ function generateReport(){
     let cities = {};
 
 
+    /*
+    STATUS COUNTER
+    */
+
+    window.statusCounter = {};
+
+
+    /*
+    ---------------------------------------------------------
+    PROCESS EVERY ORDER
+    ---------------------------------------------------------
+    */
+
     dataset.forEach(
-        r => {
+        row => {
 
 
             /*
-            --------------------------------------------------
-            TRACKING NUMBER
-            --------------------------------------------------
+            COLUMN E
+            TRACKING NO
             */
 
-            let trackingNo =
-                (r[4] + "").trim();
+            const trackingNo =
+                String(
+                    row[4] || ""
+                )
+                .trim();
 
 
             /*
-            --------------------------------------------------
+            COLUMN F
             STATUS
-            --------------------------------------------------
             */
 
             let status =
-                r[5];
+                String(
+                    row[5] || ""
+                )
+                .replace(
+                    /\r|\n/g,
+                    ""
+                )
+                .trim()
+                .toLowerCase();
 
 
             /*
-            --------------------------------------------------
-            RAW ORDER DATE
-            --------------------------------------------------
+            COLUMN G
+            ORDER DATE
             */
 
-            let rawOrderDate =
+            const rawOrderDate =
                 parseIndianDate(
-                    r[6]
+                    row[6]
                 );
 
 
             /*
-            --------------------------------------------------
             CITY
-            --------------------------------------------------
+            COLUMN V = INDEX 21
             */
 
             let city =
-                (r[21] + "")
+                String(
+                    row[21] || ""
+                )
                 .split(" ")
                 .slice(2)
-                .join(" ");
+                .join(" ")
+                .trim();
 
 
             if(
@@ -1254,7 +1160,9 @@ function generateReport(){
             }
 
 
-            if(!city){
+            if(
+                !city
+            ){
 
                 return;
 
@@ -1262,9 +1170,7 @@ function generateReport(){
 
 
             /*
-            --------------------------------------------------
-            CREATE CITY OBJECT
-            --------------------------------------------------
+            CREATE CITY
             */
 
             if(
@@ -1280,6 +1186,14 @@ function generateReport(){
                     breach:0,
 
                     nonbreach:0,
+
+                    breach15:0,
+
+                    breach30:0,
+
+                    breach60:0,
+
+                    breachAbove:0,
 
                     deliverySum:0,
 
@@ -1302,28 +1216,27 @@ function generateReport(){
             }
 
 
+            /*
+            TOTAL ORDER
+            */
+
             cities[city].total++;
 
 
             /*
-            --------------------------------------------------
-            CLEAN STATUS
-            --------------------------------------------------
+            STATUS COUNTER
             */
 
-            status =
-                (status + "")
-                .replace(/\r/g,"")
-                .replace(/\n/g,"")
-                .trim()
-                .toLowerCase();
+            window.statusCounter[status] =
+                (
+                    window.statusCounter[status] ||
+                    0
+                ) + 1;
 
 
-            /*
-            ==================================================
-            DELIVERED
-            ==================================================
-            */
+            /* =================================================
+               DELIVERED
+            ================================================= */
 
             if(
                 status ===
@@ -1335,155 +1248,105 @@ function generateReport(){
 
 
                 /*
-                =================================================
-                RAW ORDER DATE
-
-                Example:
-
-                Yesterday 20:00
-                =================================================
+                -----------------------------------------------
+                BREACH ORDER TIME
+                -----------------------------------------------
                 */
 
-                let actualOrderDate =
+                const adjustedOrderDate =
+                    getBreachOrderDate(
+                        rawOrderDate
+                    );
+
+
+                /*
+                COLUMN H
+                SHIP DATE
+                */
+
+                const pickupDate =
                     parseIndianDate(
-                        r[6]
+                        row[7]
                     );
 
 
                 /*
-                =================================================
-                ADJUSTED ORDER DATE
-
-                Yesterday 20:00
-                         ↓
-                Today 10:00
-
-                Today 07:00
-                         ↓
-                Today 10:00
-                =================================================
-                */
-
-                let adjustedOrderDate =
-                    getAdjustedOrderDateForBreach(
-                        actualOrderDate
-                    );
-
-
-                /*
-                -------------------------------------------------
-                PICKUP DATE
-                -------------------------------------------------
-                */
-
-                let pickupDate =
-                    parseIndianDate(
-                        r[7]
-                    );
-
-
-                /*
-                -------------------------------------------------
+                COLUMN AE
                 DELIVERY DATE
-
-                Column AE = index 30
-                -------------------------------------------------
                 */
 
-                let deliveryDate =
+                const deliveryDate =
                     parseIndianDate(
-                        r[30]
+                        row[30]
                     );
 
 
                 /*
-                =================================================
-                BREACH CALCULATION
+                -----------------------------------------------
+                BREACH TIME
 
-                IMPORTANT:
+                Delivery - Adjusted Order
 
-                We DO NOT use the original order date here.
-
-                We use ADJUSTED ORDER DATE.
-                =================================================
+                > 120 = BREACH
+                <= 120 = NON BREACH
+                -----------------------------------------------
                 */
-
-                let diffMinutes =
-                    null;
-
 
                 if(
                     adjustedOrderDate &&
                     deliveryDate
                 ){
 
-                    diffMinutes =
+                    const diffMinutes =
                         (
                             deliveryDate -
                             adjustedOrderDate
                         ) / 60000;
 
-                }
+
+                    console.log(
+                        "--------------------------------"
+                    );
+
+                    console.log(
+                        "Tracking:",
+                        trackingNo
+                    );
+
+                    console.log(
+                        "Raw Order:",
+                        rawOrderDate
+                    );
+
+                    console.log(
+                        "Adjusted Order:",
+                        adjustedOrderDate
+                    );
+
+                    console.log(
+                        "Delivery:",
+                        deliveryDate
+                    );
+
+                    console.log(
+                        "Minutes:",
+                        diffMinutes
+                    );
 
 
-                /*
-                =================================================
-                DEBUG LOG
-
-                This will help you verify the calculation.
-                =================================================
-                */
-
-                console.log(
-                    "--------------------------------------"
-                );
-
-                console.log(
-                    "Tracking:",
-                    trackingNo
-                );
-
-                console.log(
-                    "Raw Order Date:",
-                    actualOrderDate
-                );
-
-                console.log(
-                    "Adjusted Order Date:",
-                    adjustedOrderDate
-                );
-
-                console.log(
-                    "Delivery Date:",
-                    deliveryDate
-                );
-
-                console.log(
-                    "Delivery Difference:",
-                    diffMinutes,
-                    "minutes"
-                );
-
-
-                /*
-                =================================================
-                BREACH RULE
-
-                <= 120 MINUTES
+                    /*
+                    -------------------------------------------
                     NON BREACH
 
-                > 120 MINUTES
-                    BREACH
-                =================================================
-                */
+                    120 minutes EXACTLY
+                    IS NOT BREACH.
 
-                if(
-                    !isNaN(
-                        diffMinutes
-                    )
-                ){
+                    BREACH ONLY > 120.
+                    -------------------------------------------
+                    */
 
                     if(
+                        diffMinutes >= 0 &&
                         diffMinutes <= 120
                     ){
 
@@ -1492,19 +1355,75 @@ function generateReport(){
 
 
                         console.log(
-                            "RESULT: NON BREACH"
+                            "NON BREACH"
                         );
 
                     }
-                    else{
+
+
+                    /*
+                    -------------------------------------------
+                    BREACH
+                    -------------------------------------------
+                    */
+
+                    else if(
+                        diffMinutes > 120
+                    ){
 
                         cities[city]
                             .breach++;
 
 
                         console.log(
-                            "RESULT: BREACH"
+                            "BREACH"
                         );
+
+
+                        /*
+                        ---------------------------------------
+                        BREACH BUCKETS
+
+                        120–135
+                        136–150
+                        151–180
+                        >180
+                        ---------------------------------------
+                        */
+
+                        if(
+                            diffMinutes <= 135
+                        ){
+
+                            cities[city]
+                                .breach15++;
+
+                        }
+
+                        else if(
+                            diffMinutes <= 150
+                        ){
+
+                            cities[city]
+                                .breach30++;
+
+                        }
+
+                        else if(
+                            diffMinutes <= 180
+                        ){
+
+                            cities[city]
+                                .breach60++;
+
+                        }
+
+                        else{
+
+                            cities[city]
+                                .breachAbove++;
+
+                        }
 
                     }
 
@@ -1512,21 +1431,21 @@ function generateReport(){
 
 
                 /*
-                =================================================
+                -----------------------------------------------
                 AVERAGE DELIVERY TIME
 
-                Pickup → Delivery
+                Ship Date → Delivery Date
 
-                This remains unchanged.
-                =================================================
+                Existing report logic preserved.
+                -----------------------------------------------
                 */
 
                 if(
-                    deliveryDate &&
-                    pickupDate
+                    pickupDate &&
+                    deliveryDate
                 ){
 
-                    let deliveryMinutes =
+                    const deliveryMinutes =
                         Math.round(
                             (
                                 deliveryDate -
@@ -1551,15 +1470,12 @@ function generateReport(){
 
                 }
 
-
             }
 
 
-            /*
-            ==================================================
-            OTHER STATUSES
-            ==================================================
-            */
+            /* =================================================
+               SHIPPED
+            ================================================= */
 
             else if(
                 status ===
@@ -1572,6 +1488,10 @@ function generateReport(){
             }
 
 
+            /* =================================================
+               SHIPPED & CANCELLED
+            ================================================= */
+
             else if(
                 status ===
                 "shipped & cancelled"
@@ -1582,6 +1502,10 @@ function generateReport(){
 
             }
 
+
+            /* =================================================
+               RTO
+            ================================================= */
 
             else if(
                 status ===
@@ -1594,6 +1518,25 @@ function generateReport(){
             }
 
 
+            /* =================================================
+               OPEN
+
+               IMPORTANT:
+
+               Open orders are counted ONLY if their
+               Order Date is inside the report window.
+
+               Therefore:
+
+               Today 19:00+ Open
+                    = NOT in dataset
+                    = NOT counted here.
+
+               Yesterday 19:00+ Open
+                    = belongs to today's report
+                    = counted here.
+            ================================================= */
+
             else if(
                 status ===
                 "open"
@@ -1605,6 +1548,10 @@ function generateReport(){
             }
 
 
+            /* =================================================
+               PICKED
+            ================================================= */
+
             else if(
                 status ===
                 "picked"
@@ -1615,6 +1562,10 @@ function generateReport(){
 
             }
 
+
+            /* =================================================
+               PACKED
+            ================================================= */
 
             else if(
                 status ===
@@ -1630,11 +1581,14 @@ function generateReport(){
     );
 
 
-    /*
-    =========================================================
-    CITY ORDER
-    =========================================================
-    */
+    console.table(
+        window.statusCounter
+    );
+
+
+    /* =========================================================
+       CITY ORDER
+    ========================================================= */
 
     const cityOrder = [
 
@@ -1651,19 +1605,17 @@ function generateReport(){
 
     const names =
         cityOrder.filter(
-            c =>
-                cities[c]
+            city =>
+                cities[city]
         );
 
 
     let html = "";
 
 
-    /*
-    =========================================================
-    TABLE HEADER
-    =========================================================
-    */
+    /* =========================================================
+       HEADER
+    ========================================================= */
 
     html += `
         <tr>
@@ -1677,9 +1629,15 @@ function generateReport(){
 
 
     names.forEach(
-        n =>
-            html +=
-            `<th>${n}</th>`
+        name => {
+
+            html += `
+                <th>
+                    ${name}
+                </th>
+            `;
+
+        }
     );
 
 
@@ -1690,11 +1648,9 @@ function generateReport(){
     `;
 
 
-    /*
-    =========================================================
-    ROW FUNCTION
-    =========================================================
-    */
+    /* =========================================================
+       ROW FUNCTION
+    ========================================================= */
 
     function row(
         sn,
@@ -1721,28 +1677,33 @@ function generateReport(){
 
 
         names.forEach(
-            n => {
+            name => {
 
-                let v =
+                const value =
                     fn(
-                        cities[n]
-                    ) || 0;
+                        cities[name]
+                    );
 
 
-                html +=
-                    `<td>${v}</td>`;
+                html += `
+                    <td>
+                        ${value}
+                    </td>
+                `;
 
 
-                let num =
-                    parseFloat(v);
+                const number =
+                    parseFloat(
+                        String(value)
+                    );
 
 
                 if(
-                    !isNaN(num)
+                    !isNaN(number)
                 ){
 
                     values.push(
-                        num
+                        number
                     );
 
                 }
@@ -1751,14 +1712,8 @@ function generateReport(){
         );
 
 
-        let total = 0;
+        let total;
 
-
-        /*
-        -------------------------------------------------------
-        CUSTOM TOTAL
-        -------------------------------------------------------
-        */
 
         if(
             totalFn
@@ -1768,45 +1723,6 @@ function generateReport(){
                 totalFn();
 
         }
-
-
-        /*
-        -------------------------------------------------------
-        AVERAGE
-        -------------------------------------------------------
-        */
-
-        else if(
-            label.includes(
-                "Time"
-            )
-        ){
-
-            total =
-                values.length
-                ?
-                    Math.round(
-                        values.reduce(
-                            (a,b) =>
-                                a + b,
-                            0
-                        ) /
-                        values.length
-                    ) +
-                    " mins"
-
-                :
-                    "0 mins";
-
-        }
-
-
-        /*
-        -------------------------------------------------------
-        NORMAL TOTAL
-        -------------------------------------------------------
-        */
-
         else{
 
             total =
@@ -1820,23 +1736,19 @@ function generateReport(){
 
 
         html += `
+                <td>
+                    ${total}
+                </td>
 
-            <td>
-                ${total}
-            </td>
-
-        </tr>
-
+            </tr>
         `;
 
     }
 
 
-    /*
-    =========================================================
-    TOTAL ORDERS
-    =========================================================
-    */
+    /* =========================================================
+       REPORT ROWS
+    ========================================================= */
 
     row(
         1,
@@ -1846,12 +1758,6 @@ function generateReport(){
     );
 
 
-    /*
-    =========================================================
-    DELIVERED ORDERS
-    =========================================================
-    */
-
     row(
         2,
         "Delivered Order",
@@ -1860,215 +1766,209 @@ function generateReport(){
     );
 
 
-    /*
-    =========================================================
-    DELIVERY %
-    =========================================================
-    */
-
     row(
         "",
         "Delivery %",
         d =>
-            (
+            d.total
+            ?
                 (
                     d.delivered /
-                    d.total
-                    || 0
-                ) * 100
-            )
-            .toFixed(2)
-            .replace(
-                /\.00$/,
-                ""
-            ) +
-            "%",
+                    d.total *
+                    100
+                ).toFixed(2) + "%"
+            :
+                "0%",
         "green-row",
         () => {
 
-            let totalDelivered =
+            const delivered =
                 names.reduce(
-                    (a,n) =>
-                        a +
-                        cities[n]
-                        .delivered,
+                    (sum,n) =>
+                        sum +
+                        cities[n].delivered,
                     0
                 );
 
 
-            let totalOrders =
+            const total =
                 names.reduce(
-                    (a,n) =>
-                        a +
-                        cities[n]
-                        .total,
+                    (sum,n) =>
+                        sum +
+                        cities[n].total,
                     0
                 );
 
 
-            return (
-                (
-                    totalDelivered /
-                    totalOrders
-                    || 0
-                ) * 100
-            )
-            .toFixed(2)
-            .replace(
-                /\.00$/,
-                ""
-            ) +
-            "%";
+            return total
+                ?
+                    (
+                        delivered /
+                        total *
+                        100
+                    ).toFixed(2) + "%"
+                :
+                    "0%";
 
         }
     );
 
 
-    /*
-    =========================================================
-    BREACH
-    =========================================================
-    */
+    /* BREACH */
 
     row(
         3,
         "Breach",
         d =>
-            d.breach || 0
+            d.breach
     );
 
 
-    /*
-    =========================================================
-    BREACH %
-    =========================================================
-    */
+    /* BREACH % */
 
     row(
         "",
         "Breach %",
         d =>
-            (
+            d.delivered
+            ?
                 (
                     d.breach /
-                    d.delivered
-                    || 0
-                ) * 100
-            )
-            .toFixed(2) +
-            "%",
+                    d.delivered *
+                    100
+                ).toFixed(2) + "%"
+            :
+                "0%",
         "",
         () => {
 
-            let totalBreach =
+            const breach =
                 names.reduce(
-                    (a,n) =>
-                        a +
-                        cities[n]
-                        .breach,
+                    (sum,n) =>
+                        sum +
+                        cities[n].breach,
                     0
                 );
 
 
-            let totalDelivered =
+            const delivered =
                 names.reduce(
-                    (a,n) =>
-                        a +
-                        cities[n]
-                        .delivered,
+                    (sum,n) =>
+                        sum +
+                        cities[n].delivered,
                     0
                 );
 
 
-            return (
-                (
-                    totalBreach /
-                    totalDelivered
-                    || 0
-                ) * 100
-            )
-            .toFixed(2) +
-            "%";
+            return delivered
+                ?
+                    (
+                        breach /
+                        delivered *
+                        100
+                    ).toFixed(2) + "%"
+                :
+                    "0%";
 
         }
     );
 
 
-    /*
-    =========================================================
-    NON BREACH
-    =========================================================
-    */
+    /* BREACH BUCKETS */
+
+    row(
+        "3.1",
+        "15 min",
+        d =>
+            d.breach15
+    );
+
+
+    row(
+        "3.2",
+        "15-30 Min",
+        d =>
+            d.breach30
+    );
+
+
+    row(
+        "3.3",
+        "30-60 Min",
+        d =>
+            d.breach60
+    );
+
+
+    row(
+        "3.4",
+        "Above 60 Min",
+        d =>
+            d.breachAbove
+    );
+
+
+    /* NON BREACH */
 
     row(
         4,
         "Non Breach",
         d =>
-            d.nonbreach || 0
+            d.nonbreach
     );
 
 
-    /*
-    =========================================================
-    NON BREACH %
-    =========================================================
-    */
+    /* NON BREACH % */
 
     row(
         "4.1",
         "Non Breach %",
         d =>
-            (
+            d.delivered
+            ?
                 (
                     d.nonbreach /
-                    d.delivered
-                    || 0
-                ) * 100
-            )
-            .toFixed(2) +
-            "%",
+                    d.delivered *
+                    100
+                ).toFixed(2) + "%"
+            :
+                "0%",
         "",
         () => {
 
-            let totalNB =
+            const nonbreach =
                 names.reduce(
-                    (a,n) =>
-                        a +
-                        cities[n]
-                        .nonbreach,
+                    (sum,n) =>
+                        sum +
+                        cities[n].nonbreach,
                     0
                 );
 
 
-            let totalDelivered =
+            const delivered =
                 names.reduce(
-                    (a,n) =>
-                        a +
-                        cities[n]
-                        .delivered,
+                    (sum,n) =>
+                        sum +
+                        cities[n].delivered,
                     0
                 );
 
 
-            return (
-                (
-                    totalNB /
-                    totalDelivered
-                    || 0
-                ) * 100
-            )
-            .toFixed(2) +
-            "%";
+            return delivered
+                ?
+                    (
+                        nonbreach /
+                        delivered *
+                        100
+                    ).toFixed(2) + "%"
+                :
+                    "0%";
 
         }
     );
 
 
-    /*
-    =========================================================
-    AVERAGE DELIVERY TIME
-    =========================================================
-    */
+    /* AVG DELIVERY */
 
     row(
         "4.2",
@@ -2081,109 +1981,117 @@ function generateReport(){
                     d.deliveryCount
                 ) +
                 " mins"
-
             :
-                "0 mins"
+                "0 mins",
+        "",
+        () => {
+
+            const sum =
+                names.reduce(
+                    (total,n) =>
+                        total +
+                        cities[n].deliverySum,
+                    0
+                );
+
+
+            const count =
+                names.reduce(
+                    (total,n) =>
+                        total +
+                        cities[n].deliveryCount,
+                    0
+                );
+
+
+            return count
+                ?
+                    Math.round(
+                        sum / count
+                    ) +
+                    " mins"
+                :
+                    "0 mins";
+
+        }
     );
 
 
-    /*
-    =========================================================
-    RTO
-    =========================================================
-    */
+    /* RTO */
 
     row(
         5,
         "Return to Origin (RTO)",
         d =>
-            d.rto || 0
+            d.rto
     );
 
+
+    /* RTO % */
 
     row(
         "",
-        "Return to Orgin %",
+        "Return to Origin %",
         d =>
-            (
+            d.total
+            ?
                 (
                     d.rto /
-                    d.total
-                    || 0
-                ) * 100
-            )
-            .toFixed(2) +
-            "%"
+                    d.total *
+                    100
+                ).toFixed(2) + "%"
+            :
+                "0%"
     );
 
 
-    /*
-    =========================================================
-    SHIPPED
-    =========================================================
-    */
+    /* SHIPPED */
 
     row(
         6,
         "Shipped",
         d =>
-            d.shipped || 0
+            d.shipped
     );
 
 
-    /*
-    =========================================================
-    SHIPPED & CANCELLED
-    =========================================================
-    */
+    /* CANCELLED */
 
     row(
         7,
         "Shipped & Cancelled",
         d =>
-            d.cancelled || 0
+            d.cancelled
     );
 
 
-    /*
-    =========================================================
-    OPEN
-    =========================================================
-    */
+    /* OPEN */
 
     row(
         8,
         "Open",
         d =>
-            d.open || 0
+            d.open
     );
 
 
-    /*
-    =========================================================
-    PACKED
-    =========================================================
-    */
+    /* PACKED */
 
     row(
         9,
         "Packed",
         d =>
-            d.packed || 0
+            d.packed
     );
 
 
-    /*
-    =========================================================
-    PICKED
-    =========================================================
-    */
+    /* PICKED */
 
     row(
         10,
         "Picked",
         d =>
-            d.picked || 0
+            d.picked
     );
 
 
@@ -2193,15 +2101,19 @@ function generateReport(){
     =========================================================
     */
 
-    document.getElementById(
-        "finalReportTable"
-    ).innerHTML =
+    document
+        .getElementById(
+            "finalReportTable"
+        )
+        .innerHTML =
         html;
 
 
-    document.getElementById(
-        "reportContainer"
-    ).style.display =
+    document
+        .getElementById(
+            "reportContainer"
+        )
+        .style.display =
         "block";
 
 
@@ -2215,9 +2127,11 @@ function generateReport(){
         new Date();
 
 
-    document.getElementById(
-        "autoDate"
-    ).innerText =
+    document
+        .getElementById(
+            "autoDate"
+        )
+        .innerText =
         now.toLocaleDateString(
             "en-GB",
             {
@@ -2234,45 +2148,28 @@ function generateReport(){
     =========================================================
     */
 
-    let h =
-        now.getHours();
-
-
-    let m =
-        now.getMinutes()
-        .toString()
-        .padStart(
-            2,
-            "0"
+    document
+        .getElementById(
+            "autoTime"
+        )
+        .innerText =
+        now.toLocaleTimeString(
+            "en-US",
+            {
+                hour:"numeric",
+                minute:"2-digit",
+                hour12:true
+            }
         );
-
-
-    let ampm =
-        h >= 12
-        ?
-            "PM"
-        :
-            "AM";
-
-
-    h =
-        h % 12 || 12;
-
-
-    document.getElementById(
-        "autoTime"
-    ).innerText =
-        `${h}:${m} ${ampm}`;
 
 }
 
 
 /* =========================================================
-   DOWNLOAD IMAGE
-   ========================================================= */
+   DOWNLOAD REPORT IMAGE
+========================================================= */
 
 function downloadImage(){
-
 
     const element =
         document.getElementById(
@@ -2283,12 +2180,12 @@ function downloadImage(){
     html2canvas(
         element,
         {
-            scale:3
+            scale:3,
+            backgroundColor:"#ffffff"
         }
     )
     .then(
         canvas => {
-
 
             const a =
                 document.createElement(
