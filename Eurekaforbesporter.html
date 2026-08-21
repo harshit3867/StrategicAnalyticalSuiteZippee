@@ -450,7 +450,7 @@ body{margin:0;background:#f4f7fb;font-family:Arial,Helvetica,sans-serif;color:#1
             </thead>
             <tbody>
               <tr>
-                <td style="padding:8px;border:1px solid #ddd;">Total Orders</td>
+                <td style="padding:8px;border:1px solid #ddd;">Opening Balance</td>
                 <td id="successTotalOrders" style="padding:8px;border:1px solid #ddd;text-align:center;font-weight:800;color:#1454a0;">0</td>
               </tr>
               <tr>
@@ -579,19 +579,8 @@ d1: {
 }
 function calculate(){
   const d=getData();
-  const reportDate = document.getElementById('reportDate').value;
-
-if (reportDate) {
-  const date = new Date(reportDate + 'T00:00:00');
-  date.setDate(date.getDate() - 1);
-
-  const day = String(date.getDate()).padStart(2, '0');
-  const month = date.toLocaleString('en-US', { month: 'short' }).toUpperCase();
-  const year = date.getFullYear();
-
   document.getElementById('d1Heading').textContent =
-    `${day}-${month}-${year} PENDING ORDER BIFURCATION`;
-}
+  'D-1 PENDING ORDER BIFURCATION';
   document.getElementById('bookedPct').value=d.bookedPct;
   document.getElementById('deliveryPct').value=d.deliveryPct;
 }
@@ -661,16 +650,16 @@ document.getElementById('funnel').innerHTML =
       </div>
     </div>`
   ).join('');
-  const closingBalance = Math.max(0, d.total - d.delivered);
-  const closingBalancePct = d.total > 0
-    ? ((closingBalance / d.total) * 100).toFixed(2).replace(/\.00$/,'') + '%'
-    : '0%';
+  const openingBalance = d.total + d.d1.total;
+const closingBalance = Math.max(0, openingBalance - d.delivered);
+  const closingBalancePct = openingBalance > 0
+  ? ((closingBalance / openingBalance) * 100).toFixed(2).replace(/\.00$/,'') + '%'
+  : '0%';
 
-  document.getElementById('successTotalOrders').textContent = d.total;
-  document.getElementById('successDelivered').textContent = d.delivered;
-  document.getElementById('successClosing').textContent = closingBalance;
-  document.getElementById('successClosingPct').textContent = closingBalancePct;
-
+  document.getElementById('successTotalOrders').textContent = openingBalance;
+document.getElementById('successDelivered').textContent = d.delivered;
+document.getElementById('successClosing').textContent = closingBalance;
+document.getElementById('successClosingPct').textContent = closingBalancePct;
   const bookingToDeliveryPct = d.booked > 0
     ? ((d.delivered / d.booked) * 100).toFixed(2).replace(/\.00$/,'') + '%'
     : '0%';
@@ -763,4 +752,4 @@ function downloadDashboardPNG(){
 }
 </script>
 </body>
-</html>
+</html> 
